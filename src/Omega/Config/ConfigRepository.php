@@ -36,9 +36,13 @@ use function sanitize_text_field;
  */
 class ConfigRepository
 {
-    private array $index = [];
+	#region Properties
+	/** @var array<string, mixed> Flat lookup index for fast configuration value resolution. */
+	private array $index = [];
+	#endregion
 
-    /**
+	#region Lifecycle
+	/**
      * ConfigRepository constructor.
      *
      * Initializes the repository with a static configuration array.
@@ -49,56 +53,9 @@ class ConfigRepository
     {
         $this->buildIndex($this->config);
     }
+	#endregion
 
-    private function buildIndex(array $data, string $prefix = ''): void
-    {
-        foreach ($data as $key => $value) {
-            $fullKey = $prefix === ''
-                ? (string)$key
-                : $prefix . '.' . $key;
-
-            if (is_array($value)) {
-                $this->buildIndex($value, $fullKey);
-                continue;
-            }
-
-            $this->index[$fullKey] = $value;
-        }
-    }
-
-    private function resolveFromIndex(string $key): mixed
-    {
-        foreach ($this->normalizeKey($key) as $variant) {
-            if (isset($this->index[$variant])) {
-                return $this->index[$variant];
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeKey(string $key): array
-    {
-        return [
-            $key,
-            str_replace('.', '_', $key),
-            str_replace('_', '.', $key),
-        ];
-    }
-
-    private function traverseArray(array $data, array $segments, mixed $default): mixed
-    {
-        foreach ($segments as $segment) {
-            if (!isset($data[$segment])) {
-                return $default;
-            }
-
-            $data = $data[$segment];
-        }
-
-        return $data;
-    }
-
+	#region Retrieval
     /**
      * Retrieve a configuration value using dot notation.
      *
@@ -111,21 +68,18 @@ class ConfigRepository
      */
     public function get(string $name, mixed $default = null): mixed
     {
-        // 1. prova accesso diretto da index (velocissimo)
         $value = $this->resolveFromIndex($name);
 
         if ($value !== null) {
             return $value;
         }
 
-        // 2. fallback: dot notation classica
         $value = $this->traverseArray($this->config, explode('.', $name), $default);
 
         if ($value !== $default) {
             return $value;
         }
 
-        // 3. fallback intelligente: underscore alias
         $underscoreKey = str_replace('.', '_', $name);
 
         $value = $this->resolveFromIndex($underscoreKey);
@@ -137,11 +91,31 @@ class ConfigRepository
         return $default;
     }
 
+	/**
+	 * Determine whether a configuration value exists.
+	 *
+	 * The lookup supports both dot-separated and underscore-separated keys.
+	 *
+	 * @param string $key Configuration key to check.
+	 * @return bool True if the configuration value exists, false otherwise.
+	 */
     public function has(string $key): bool
     {
         return $this->get($key, '__missing__') !== '__missing__';
     }
 
+	/**
+	 * Retrieve the entire configuration array.
+	 *
+	 * @return array<int|string, mixed> The full configuration dataset.
+	 */
+	public function getAll(): array
+	{
+		return $this->config;
+	}
+	#endregion
+
+	#region Casting
     /**
      * Retrieve a configuration value and cast it to a sanitized string.
      *
@@ -183,14 +157,98 @@ class ConfigRepository
     {
         return (int) $this->get($name, $default);
     }
+	#endregion
 
-    /**
-     * Retrieve the entire configuration array.
-     *
-     * @return array<int|string, mixed> The full configuration dataset.
-     */
-    public function getAll(): array
-    {
-        return $this->config;
-    }
+	#region Index
+	/**
+	 * Build a flat lookup index from a nested configuration array.
+	 *
+	 * Nested arrays are recursively traversed and their leaf values are stored
+	 * using dot-separated keys for fast direct access.
+	 *
+	 * @param array<int|string, mixed> $data Configuration data to index.
+	 * @param string $prefix Current key prefix used during recursion.
+	 * @return void
+	 */
+	private function buildIndex(array $data, string $prefix = ''): void
+	{
+		foreach ($data as $key => $value) {
+			$fullKey = $prefix === ''
+				? (string)$key
+				: $prefix . '.' . $key;
+
+			if (is_array($value)) {
+				$this->buildIndex($value, $fullKey);
+				continue;
+			}
+
+			$this->index[$fullKey] = $value;
+		}
+	}
+
+	/**
+	 * Resolve a configuration value from the lookup index.
+	 *
+	 * Multiple key variants are attempted to support both dot-separated and
+	 * underscore-separated configuration keys.
+	 *
+	 * @param string $key Configuration key to resolve.
+	 * @return mixed The resolved configuration value, or null if not found.
+	 */
+	private function resolveFromIndex(string $key): mixed
+	{
+		foreach ($this->normalizeKey($key) as $variant) {
+			if (isset($this->index[$variant])) {
+				return $this->index[$variant];
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Generate equivalent lookup keys for a configuration entry.
+	 *
+	 * Produces dot-separated and underscore-separated variants so both naming
+	 * conventions can be resolved transparently.
+	 *
+	 * @param string $key Original configuration key.
+	 * @return array<int, string> Normalized lookup key variants.
+	 */
+	private function normalizeKey(string $key): array
+	{
+		return [
+			$key,
+			str_replace('.', '_', $key),
+			str_replace('_', '.', $key),
+		];
+	}
+	#endregion
+
+	#region Traversal
+	/**
+	 * Traverse a nested configuration array using a sequence of key segments.
+	 *
+	 * Each segment is resolved against the current nesting level until the
+	 * target value is reached. If any segment cannot be resolved, the provided
+	 * default value is returned instead.
+	 *
+	 * @param array<int|string, mixed> $data Configuration array to traverse.
+	 * @param array<int, string> $segments Ordered key segments to resolve.
+	 * @param mixed $default Value returned when the path cannot be resolved.
+	 * @return mixed The resolved configuration value or the default value.
+	 */
+	private function traverseArray(array $data, array $segments, mixed $default): mixed
+	{
+		foreach ($segments as $segment) {
+			if (!isset($data[$segment])) {
+				return $default;
+			}
+
+			$data = $data[$segment];
+		}
+
+		return $data;
+	}
+	#endregion
 }

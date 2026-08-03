@@ -40,6 +40,7 @@ use function str_replace;
  */
 class DatabaseServiceProvider extends ServiceProvider
 {
+	#region Container
     /**
      * {@inheritdoc}
      */
@@ -62,7 +63,9 @@ class DatabaseServiceProvider extends ServiceProvider
     {
         add_filter('query', [$this, 'restoreNullOperators']);
     }
+	#endregion
 
+	#region Query Filters
     /**
      * Restore native SQL NULL operators in prepared WordPress queries.
      *
@@ -87,4 +90,5 @@ class DatabaseServiceProvider extends ServiceProvider
             $query
         );
     }
+	#endregion
 }

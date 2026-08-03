@@ -43,6 +43,7 @@ use function substr;
  */
 class ForeignKeyDefinition
 {
+	#region Lifecycle
     /**
      * Create a new foreign key definition instance.
      *
@@ -58,7 +59,9 @@ class ForeignKeyDefinition
         protected array $attributes = []
     ) {
     }
+	#endregion
 
+	#region Configuration
     /**
      * Set the referenced column for the foreign key constraint.
      *
@@ -90,18 +93,6 @@ class ForeignKeyDefinition
     }
 
     /**
-     * Get the raw foreign key definition attributes.
-     *
-     * Returns the internal configuration used to build the SQL constraint.
-     *
-     * @return array<string, mixed> Foreign key attributes.
-     */
-    public function getAttributes(): array
-    {
-        return $this->attributes;
-    }
-
-    /**
      * Define the action to perform when the referenced record is deleted.
      *
      * Common actions include: CASCADE, RESTRICT, SET NULL, NO ACTION.
@@ -115,7 +106,23 @@ class ForeignKeyDefinition
 
         return $this;
     }
+	#endregion
 
+	#region Accessors
+	/**
+	 * Get the raw foreign key definition attributes.
+	 *
+	 * Returns the internal configuration used to build the SQL constraint.
+	 *
+	 * @return array<string, mixed> Foreign key attributes.
+	 */
+	public function getAttributes(): array
+	{
+		return $this->attributes;
+	}
+	#endregion
+
+	#region Compilation
     /**
      * Generate the SQL fragment for the foreign key constraint.
      *
@@ -164,4 +171,5 @@ class ForeignKeyDefinition
 
         return $sql;
     }
+	#endregion
 }

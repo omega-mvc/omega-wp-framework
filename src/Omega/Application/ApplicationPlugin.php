@@ -49,6 +49,7 @@ use function sprintf;
  */
 class ApplicationPlugin extends Application
 {
+	#region Constants
 	/**
 	 * The name of the framework.
 	 *
@@ -72,7 +73,9 @@ class ApplicationPlugin extends Application
 	 * @var string
 	 */
 	protected const string VERSION = '1.0.0';
+	#endregion
 
+	#region Lifecycle
 	/**
 	 * Creates a new concrete application instance.
 	 *
@@ -107,7 +110,9 @@ class ApplicationPlugin extends Application
             );
         }
 	}
+	#endregion
 
+	#region WordPress Metadata
     /**
      * {@inheritdoc}
      *
@@ -143,4 +148,5 @@ class ApplicationPlugin extends Application
 
         return $value;
     }
+	#endregion
 }

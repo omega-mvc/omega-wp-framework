@@ -45,6 +45,7 @@ use function is_dir;
  */
 class ConfigServiceProvider extends ServiceProvider
 {
+	#region Container
     /**
      * {@inheritdoc}
      */
@@ -63,4 +64,5 @@ class ConfigServiceProvider extends ServiceProvider
             return new ConfigRepository($config);
         });
     }
+	#endregion
 }

@@ -12,19 +12,20 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent;
+namespace Omega\Database\ORM;
 
 use ArrayAccess;
 use Omega\Application\ApplicationFactory;
 use Omega\Collection\Collection;
 use Omega\Database\Database;
-use Omega\Database\Eloquent\Casts\ArrayCast;
-use Omega\Database\Eloquent\Casts\Attribute;
-use Omega\Database\Eloquent\Casts\BooleanCast;
-use Omega\Database\Eloquent\Casts\MoneyCast;
-use Omega\Database\Eloquent\Relations\BelongsTo;
-use Omega\Database\Eloquent\Relations\HasMany;
-use Omega\Database\Eloquent\Relations\HasOne;
+use Omega\Database\ORM\Casts\ArrayCast;
+use Omega\Database\ORM\Casts\Attribute;
+use Omega\Database\ORM\Casts\BooleanCast;
+use Omega\Database\ORM\Casts\CastsAttributesInterface;
+use Omega\Database\ORM\Casts\MoneyCast;
+use Omega\Database\ORM\Relations\BelongsTo;
+use Omega\Database\ORM\Relations\HasMany;
+use Omega\Database\ORM\Relations\HasOne;
 use Omega\Paginator\Paginator;
 use ReflectionClass;
 use ReflectionException;
@@ -81,6 +82,7 @@ use function ucwords;
  */
 abstract class AbstractModel implements ArrayAccess
 {
+	#region Properties
     /** @var array<class-string, AbstractModel> Cached singleton-like model instances indexed by class name. */
     private static array $instances = [];
 
@@ -116,7 +118,9 @@ abstract class AbstractModel implements ArrayAccess
 
     /** @var Database Database manager instance used by the model. */
     protected mixed $db;
+	#endregion
 
+	#region Lifecycle
     /**
      * Retrieve the shared model instance for the current model class.
      *
@@ -162,7 +166,9 @@ abstract class AbstractModel implements ArrayAccess
             $this->data[$key] = $this->getAttributeValue($key, $value);
         }
     }
+	#endregion
 
+	#region Table Metadata
     /**
      * Resolve the fully qualified database table name for the model.
      *
@@ -265,6 +271,95 @@ abstract class AbstractModel implements ArrayAccess
         return strtolower($tableNameUnderscored) . '_id';
     }
 
+	/**
+	 * Retrieve the fully qualified database table name.
+	 *
+	 * @return string The model table name including prefixes.
+	 */
+	public function getTableName(): string
+	{
+		return $this->table;
+	}
+
+	/**
+	 * Retrieve the model primary key column name.
+	 *
+	 * @return string The primary key column name.
+	 */
+	public function getPrimaryKey(): string
+	{
+		return $this->primaryKey;
+	}
+
+	/**
+	 * Retrieve the model table name statically.
+	 *
+	 * @return string The fully qualified model table name.
+	 */
+	public static function getTable(): string
+	{
+		$instance = self::getInstance();
+
+		return $instance->table;
+	}
+
+	/**
+	 * Retrieve the custom table prefix defined by the model.
+	 *
+	 * @return string The configured model table prefix.
+	 * @throws ReflectionException If the given class cannot be reflected.
+	 */
+	public static function getPrefix(): string
+	{
+		$class = get_called_class();
+
+		return static::getDefaultPropertyValue($class, 'prefix', '');
+	}
+
+	/**
+	 * Determine whether timestamp management is enabled for the model.
+	 *
+	 * When enabled, the model automatically manages the
+	 * "created_at" and "updated_at" columns.
+	 *
+	 * @return bool True when timestamps are enabled, otherwise false.
+	 * @throws ReflectionException If the given class cannot be reflected.
+	 */
+	public static function usesTimestamps(): bool
+	{
+		$class = get_called_class();
+
+		return static::getDefaultPropertyValue($class, 'timestamps', false);
+	}
+
+	/**
+	 * Get the default value of a class property using reflection.
+	 *
+	 * Inspects the given class and retrieves the declared default value
+	 * for the specified property. If the property does not exist or has
+	 * no declared default value, the provided fallback value is returned.
+	 *
+	 * @param class-string|object $className Class name or object instance to inspect.
+	 * @param string $propertyName Name of the property whose default value should be retrieved.
+	 * @param mixed|null $default Fallback value returned when the property is not defined.
+	 * @return mixed The declared default property value or the provided fallback value.
+	 * @throws ReflectionException If the given class cannot be reflected.
+	 */
+	public static function getDefaultPropertyValue(
+		string|object $className,
+		string $propertyName,
+		mixed $default = null
+	): mixed {
+		$reflectionClass   = new ReflectionClass($className);
+		$defaultProperties = $reflectionClass->getDefaultProperties();
+
+		return array_key_exists($propertyName, $defaultProperties)
+			? $defaultProperties[$propertyName]
+			: $default;
+	}
+	#endregion
+
+	#region Query Builder
     /**
      * Create a new query builder instance for the current model.
      *
@@ -437,35 +532,40 @@ abstract class AbstractModel implements ArrayAccess
         return $builder;
     }
 
-    /**
-     * Retrieve the custom table prefix defined by the model.
-     *
-     * @return string The configured model table prefix.
-     * @throws ReflectionException If the given class cannot be reflected.
-     */
-    public static function getPrefix(): string
-    {
-        $class = get_called_class();
+	/**
+	 * Conditionally modify a query builder instance.
+	 *
+	 * The callback is only executed when the provided condition
+	 * evaluates to a truthy value.
+	 *
+	 * @param mixed $condition The condition to evaluate.
+	 * @param callable $callback The callback used to modify the query.
+	 * @return QueryBuilder The query builder instance.
+	 */
+	public static function when(mixed $condition, callable $callback): QueryBuilder
+	{
+		if (isset($condition) && !empty($condition) && $condition !== false) {
+			return $callback(self::query(), $condition);
+		}
 
-        return static::getDefaultPropertyValue($class, 'prefix', '');
-    }
+		return self::query();
+	}
 
-    /**
-     * Determine whether timestamp management is enabled for the model.
-     *
-     * When enabled, the model automatically manages the
-     * "created_at" and "updated_at" columns.
-     *
-     * @return bool True when timestamps are enabled, otherwise false.
-     * @throws ReflectionException If the given class cannot be reflected.
-     */
-    public static function usesTimestamps(): bool
-    {
-        $class = get_called_class();
+	/**
+	 * Paginate the model query results.
+	 *
+	 * @param mixed $perPage The number of items per page.
+	 * @return Paginator The paginator instance containing query results.
+	 */
+	public static function paginate(mixed $perPage): Paginator
+	{
+		$builder = self::query();
 
-        return static::getDefaultPropertyValue($class, 'timestamps', false);
-    }
+		return $builder->paginate($perPage);
+	}
+	#endregion
 
+	#region Persistence
     /**
      * Create and persist a new model instance.
      *
@@ -626,6 +726,21 @@ abstract class AbstractModel implements ArrayAccess
         return false;
     }
 
+	/**
+	 * Insert multiple records into the model table.
+	 *
+	 * @param array<int, array<string, mixed>> $columnsValues List of rows to insert.
+	 * @return bool|int False on failure or the number of affected rows.
+	 */
+	public static function createMany(array $columnsValues): bool|int
+	{
+		$instance = self::getInstance();
+
+		return $instance->db->insertMultiple($instance->table, $columnsValues);
+	}
+	#endregion
+
+	#region Relationships
     /**
      * Determine whether a relationship has already been loaded.
      *
@@ -637,6 +752,44 @@ abstract class AbstractModel implements ArrayAccess
         return isset($this->data[$relation]);
     }
 
+	/**
+	 * Define a one-to-one relationship.
+	 *
+	 * @param string $relatedClass The related model class name.
+	 * @return HasOne The configured one-to-one relationship instance.
+	 */
+	public function hasOne(string $relatedClass): HasOne
+	{
+		return new HasOne($this, $relatedClass, "{$this->foreignKey}_id", "id");
+	}
+
+	/**
+	 * Define an inverse one-to-one or many relationship.
+	 *
+	 * @param string $relatedClass The related model class name.
+	 * @return BelongsTo The configured belongs-to relationship instance.
+	 * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
+	 */
+	public function belongsTo(string $relatedClass): BelongsTo
+	{
+		$foreignKey = $this->modelToForeign($relatedClass);
+
+		return new BelongsTo($this, $relatedClass, "{$foreignKey}_id", "id");
+	}
+
+	/**
+	 * Define a one-to-many relationship.
+	 *
+	 * @param string $relatedClass The related model class name.
+	 * @return HasMany The configured one-to-many relationship instance.
+	 */
+	public function hasMany(string $relatedClass): HasMany
+	{
+		return new HasMany($this, $relatedClass, "{$this->foreignKey}_id", "id");
+	}
+	#endregion
+
+	#region Attribute Casting
     /**
      * Set a raw attribute value on the model instance.
      *
@@ -652,87 +805,192 @@ abstract class AbstractModel implements ArrayAccess
         $this->data[$key] = $value;
     }
 
-    /**
-     * Insert multiple records into the model table.
-     *
-     * @param array<int, array<string, mixed>> $columnsValues List of rows to insert.
-     * @return bool|int False on failure or the number of affected rows.
-     */
-    public static function createMany(array $columnsValues): bool|int
-    {
-        $instance = self::getInstance();
+	/**
+	 * Resolve the accessor or mutator method name for an attribute.
+	 *
+	 * Converts snake_case attribute names into camelCase method names
+	 * and checks whether the method exists on the model.
+	 *
+	 * @param string $key The attribute name.
+	 * @return string|null The resolved method name or null if not found.
+	 */
+	protected function getAttributeMethod(string $key): ?string
+	{
+		$method = lcfirst(str_replace('_', '', ucwords($key, '_')));
 
-        return $instance->db->insertMultiple($instance->table, $columnsValues);
-    }
+		return method_exists($this, $method) ? $method : null;
+	}
 
-    /**
-     * Define a one-to-one relationship.
-     *
-     * @param string $relatedClass The related model class name.
-     * @return HasOne The configured one-to-one relationship instance.
-     */
-    public function hasOne(string $relatedClass): HasOne
-    {
-        return new HasOne($this, $relatedClass, "{$this->foreignKey}_id", "id");
-    }
+	/**
+	 * Retrieve and transform an attribute value.
+	 *
+	 * This method applies:
+	 * - attribute accessors
+	 * - custom attribute objects
+	 * - configured attribute casts
+	 *
+	 * Built-in primitive casts and custom cast classes are both supported.
+	 *
+	 * @param string $key The attribute name.
+	 * @param mixed $value Optional raw attribute value.
+	 * @return mixed The transformed attribute value.
+	 */
+	private function getAttributeValue(string $key, mixed $value = null): mixed
+	{
+		$attributeMethod = $this->getAttributeMethod($key);
 
-    /**
-     * Define an inverse one-to-one or many relationship.
-     *
-     * @param string $relatedClass The related model class name.
-     * @return BelongsTo The configured belongs-to relationship instance.
-     * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
-     */
-    public function belongsTo(string $relatedClass): BelongsTo
-    {
-        $foreignKey = $this->modelToForeign($relatedClass);
+		if ($attributeMethod && method_exists($this, $attributeMethod)) {
+			$attribute = $this->$attributeMethod();
 
-        return new BelongsTo($this, $relatedClass, "{$foreignKey}_id", "id");
-    }
+			if ($attribute instanceof Attribute && $attribute->get) {
+				return call_user_func(
+					$attribute->get,
+					$value !== null
+						? $value
+						: ($this->data[$key] ?? null),
+					$this->data
+				);
+			}
+		}
 
-    /**
-     * Define a one-to-many relationship.
-     *
-     * @param string $relatedClass The related model class name.
-     * @return HasMany The configured one-to-many relationship instance.
-     */
-    public function hasMany(string $relatedClass): HasMany
-    {
-        return new HasMany($this, $relatedClass, "{$this->foreignKey}_id", "id");
-    }
+		$casts = $this->casts();
 
-    /**
-     * Retrieve the fully qualified database table name.
-     *
-     * @return string The model table name including prefixes.
-     */
-    public function getTableName(): string
-    {
-        return $this->table;
-    }
+		if (array_key_exists($key, $casts)) {
+			$cast = $casts[$key];
 
-    /**
-     * Retrieve the model primary key column name.
-     *
-     * @return string The primary key column name.
-     */
-    public function getPrimaryKey(): string
-    {
-        return $this->primaryKey;
-    }
+			if (is_string($cast)) {
+				switch (strtolower($cast)) {
+					case 'boolean':
+					case 'bool':
+						$cast = BooleanCast::class;
+						break;
 
-    /**
-     * Retrieve the model table name statically.
-     *
-     * @return string The fully qualified model table name.
-     */
-    public static function getTable(): string
-    {
-        $instance = self::getInstance();
+					case 'array':
+						$cast = ArrayCast::class;
+						break;
 
-        return $instance->table;
-    }
+					case 'money':
+						$cast = MoneyCast::class;
+						break;
 
+					case 'int':
+					case 'integer':
+						return (int) $value;
+
+					case 'real':
+					case 'float':
+					case 'double':
+						return (float) $value;
+
+					case 'string':
+						return $value === null ? null : (string) $value;
+				}
+
+				if (class_exists($cast)) {
+					$cast = new $cast();
+				}
+			}
+
+			if ($cast instanceof CastsAttributesInterface) {
+				return $cast->get($this, $key, $value, $this->data);
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Transform and prepare an attribute value before persistence.
+	 *
+	 * This method applies:
+	 * - attribute mutators
+	 * - custom attribute objects
+	 * - configured attribute casts
+	 *
+	 * Built-in primitive casts and custom cast classes are supported.
+	 *
+	 * @param string $key The attribute name.
+	 * @param mixed $value The raw attribute value.
+	 * @param array<string, mixed> $data Additional attribute data context.
+	 * @return mixed The transformed attribute value.
+	 */
+	private function setAttributeValue(
+		string $key,
+		mixed $value,
+		array $data = []
+	): mixed {
+		$attributeMethod = $this->getAttributeMethod($key);
+
+		if ($attributeMethod && method_exists($this, $attributeMethod)) {
+			$attribute = $this->$attributeMethod();
+
+			if ($attribute instanceof Attribute && $attribute->set) {
+				return call_user_func(
+					$attribute->set,
+					$value,
+					array_merge($data, $this->data)
+				);
+			}
+		}
+
+		$casts = $this->casts();
+
+		if (array_key_exists($key, $casts)) {
+			$cast = $casts[$key];
+
+			if (is_string($cast)) {
+				switch (strtolower($cast)) {
+					case 'boolean':
+					case 'bool':
+						$cast = BooleanCast::class;
+						break;
+
+					case 'array':
+						$cast = ArrayCast::class;
+						break;
+
+					case 'money':
+						$cast = MoneyCast::class;
+						break;
+
+					case 'int':
+					case 'integer':
+						return (int) $value;
+
+					case 'real':
+					case 'float':
+					case 'double':
+						return (float) $value;
+
+					case 'string':
+						return $value === null ? null : (string) $value;
+				}
+
+				if (class_exists($cast)) {
+					$cast = new $cast();
+				}
+			}
+
+			if ($cast instanceof CastsAttributesInterface) {
+				return $cast->set($this, $key, $value, $this->data);
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Retrieve the model attribute cast definitions.
+	 *
+	 * @return array<string, mixed> The configured attribute casts.
+	 */
+	protected function casts(): array
+	{
+		return $this->casts ?? [];
+	}
+	#endregion
+
+	#region Model State
     /**
      * Retrieve the database manager instance associated with the model.
      *
@@ -763,6 +1021,29 @@ abstract class AbstractModel implements ArrayAccess
         return in_array(SoftDeletesTrait::class, class_uses(get_called_class()));
     }
 
+	/**
+	 * Determine whether the model was retrieved from the database.
+	 *
+	 * @return bool True when the model originates from the database.
+	 */
+	public function wasRetrieved(): bool
+	{
+		return $this->wasRetrieved;
+	}
+
+	/**
+	 * Set the retrieved state of the model instance.
+	 *
+	 * @param bool $wasRetrieved The retrieved state value.
+	 * @return void
+	 */
+	public function setWasRetrieved(bool $wasRetrieved): void
+	{
+		$this->wasRetrieved = $wasRetrieved;
+	}
+	#endregion
+
+	#region Serialization
     /**
      * Convert the model instance into an array representation.
      *
@@ -791,7 +1072,9 @@ abstract class AbstractModel implements ArrayAccess
 
         return $result;
     }
+	#endregion
 
+	#region Helpers
     /**
      * Determine whether a given attribute exists in the model data.
      *
@@ -802,191 +1085,9 @@ abstract class AbstractModel implements ArrayAccess
     {
         return array_key_exists($key, $this->data);
     }
+	#endregion
 
-    /**
-     * Resolve the accessor or mutator method name for an attribute.
-     *
-     * Converts snake_case attribute names into camelCase method names
-     * and checks whether the method exists on the model.
-     *
-     * @param string $key The attribute name.
-     * @return string|null The resolved method name or null if not found.
-     */
-    protected function getAttributeMethod(string $key): ?string
-    {
-        $method = lcfirst(str_replace('_', '', ucwords($key, '_')));
-
-        return method_exists($this, $method) ? $method : null;
-    }
-
-    /**
-     * Retrieve and transform an attribute value.
-     *
-     * This method applies:
-     * - attribute accessors
-     * - custom attribute objects
-     * - configured attribute casts
-     *
-     * Built-in primitive casts and custom cast classes are both supported.
-     *
-     * @param string $key The attribute name.
-     * @param mixed $value Optional raw attribute value.
-     * @return mixed The transformed attribute value.
-     */
-    private function getAttributeValue(string $key, mixed $value = null): mixed
-    {
-        $attributeMethod = $this->getAttributeMethod($key);
-
-        if ($attributeMethod && method_exists($this, $attributeMethod)) {
-            $attribute = $this->$attributeMethod();
-
-            if ($attribute instanceof Attribute && $attribute->get) {
-                return call_user_func(
-                    $attribute->get,
-                    $value !== null
-                        ? $value
-                        : ($this->data[$key] ?? null),
-                    $this->data
-                );
-            }
-        }
-
-        $casts = $this->casts();
-
-        if (array_key_exists($key, $casts)) {
-            $cast = $casts[$key];
-
-            if (is_string($cast)) {
-                switch (strtolower($cast)) {
-                    case 'boolean':
-                    case 'bool':
-                        $cast = BooleanCast::class;
-                        break;
-
-                    case 'array':
-                        $cast = ArrayCast::class;
-                        break;
-
-                    case 'money':
-                        $cast = MoneyCast::class;
-                        break;
-
-                    case 'int':
-                    case 'integer':
-                        return (int) $value;
-
-                    case 'real':
-                    case 'float':
-                    case 'double':
-                        return (float) $value;
-
-                    case 'string':
-                        return $value === null ? null : (string) $value;
-                }
-
-                if (class_exists($cast)) {
-                    $cast = new $cast();
-                }
-            }
-
-            if ($cast instanceof CastsAttributesInterface) {
-                return $cast->get($this, $key, $value, $this->data);
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * Transform and prepare an attribute value before persistence.
-     *
-     * This method applies:
-     * - attribute mutators
-     * - custom attribute objects
-     * - configured attribute casts
-     *
-     * Built-in primitive casts and custom cast classes are supported.
-     *
-     * @param string $key The attribute name.
-     * @param mixed $value The raw attribute value.
-     * @param array<string, mixed> $data Additional attribute data context.
-     * @return mixed The transformed attribute value.
-     */
-    private function setAttributeValue(
-        string $key,
-        mixed $value,
-        array $data = []
-    ): mixed {
-        $attributeMethod = $this->getAttributeMethod($key);
-
-        if ($attributeMethod && method_exists($this, $attributeMethod)) {
-            $attribute = $this->$attributeMethod();
-
-            if ($attribute instanceof Attribute && $attribute->set) {
-                return call_user_func(
-                    $attribute->set,
-                    $value,
-                    array_merge($data, $this->data)
-                );
-            }
-        }
-
-        $casts = $this->casts();
-
-        if (array_key_exists($key, $casts)) {
-            $cast = $casts[$key];
-
-            if (is_string($cast)) {
-                switch (strtolower($cast)) {
-                    case 'boolean':
-                    case 'bool':
-                        $cast = BooleanCast::class;
-                        break;
-
-                    case 'array':
-                        $cast = ArrayCast::class;
-                        break;
-
-                    case 'money':
-                        $cast = MoneyCast::class;
-                        break;
-
-                    case 'int':
-                    case 'integer':
-                        return (int) $value;
-
-                    case 'real':
-                    case 'float':
-                    case 'double':
-                        return (float) $value;
-
-                    case 'string':
-                        return $value === null ? null : (string) $value;
-                }
-
-                if (class_exists($cast)) {
-                    $cast = new $cast();
-                }
-            }
-
-            if ($cast instanceof CastsAttributesInterface) {
-                return $cast->set($this, $key, $value, $this->data);
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * Retrieve the model attribute cast definitions.
-     *
-     * @return array<string, mixed> The configured attribute casts.
-     */
-    protected function casts(): array
-    {
-        return $this->casts ?? [];
-    }
-
+	#region Magic Methods
     /**
      * Dynamically retrieve a model attribute or relationship.
      *
@@ -1042,7 +1143,9 @@ abstract class AbstractModel implements ArrayAccess
     {
         return isset($this->data[$name]);
     }
+	#endregion
 
+	#region ArrayAccess
     /**
      * Determine whether a value exists at the given array offset.
      *
@@ -1116,83 +1219,5 @@ abstract class AbstractModel implements ArrayAccess
     {
         unset($this->data[$offset]);
     }
-
-    /**
-     * Determine whether the model was retrieved from the database.
-     *
-     * @return bool True when the model originates from the database.
-     */
-    public function wasRetrieved(): bool
-    {
-        return $this->wasRetrieved;
-    }
-
-    /**
-     * Set the retrieved state of the model instance.
-     *
-     * @param bool $wasRetrieved The retrieved state value.
-     * @return void
-     */
-    public function setWasRetrieved(bool $wasRetrieved): void
-    {
-        $this->wasRetrieved = $wasRetrieved;
-    }
-
-    /**
-     * Conditionally modify a query builder instance.
-     *
-     * The callback is only executed when the provided condition
-     * evaluates to a truthy value.
-     *
-     * @param mixed $condition The condition to evaluate.
-     * @param callable $callback The callback used to modify the query.
-     * @return QueryBuilder The query builder instance.
-     */
-    public static function when(mixed $condition, callable $callback): QueryBuilder
-    {
-        if (isset($condition) && !empty($condition) && $condition !== false) {
-            return $callback(self::query(), $condition);
-        }
-
-        return self::query();
-    }
-
-    /**
-     * Paginate the model query results.
-     *
-     * @param mixed $perPage The number of items per page.
-     * @return Paginator The paginator instance containing query results.
-     */
-    public static function paginate(mixed $perPage): Paginator
-    {
-        $builder = self::query();
-
-        return $builder->paginate($perPage);
-    }
-
-    /**
-     * Get the default value of a class property using reflection.
-     *
-     * Inspects the given class and retrieves the declared default value
-     * for the specified property. If the property does not exist or has
-     * no declared default value, the provided fallback value is returned.
-     *
-     * @param class-string|object $className Class name or object instance to inspect.
-     * @param string $propertyName Name of the property whose default value should be retrieved.
-     * @param mixed|null $default Fallback value returned when the property is not defined.
-     * @return mixed The declared default property value or the provided fallback value.
-     * @throws ReflectionException If the given class cannot be reflected.
-     */
-    public static function getDefaultPropertyValue(
-        string|object $className,
-        string $propertyName,
-        mixed $default = null
-    ): mixed {
-        $reflectionClass   = new ReflectionClass($className);
-        $defaultProperties = $reflectionClass->getDefaultProperties();
-
-        return array_key_exists($propertyName, $defaultProperties)
-            ? $defaultProperties[$propertyName]
-            : $default;
-    }
+	#endregion
 }

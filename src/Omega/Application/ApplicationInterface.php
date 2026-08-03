@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Part of Omega - Application Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Omega\Application;
@@ -7,8 +17,41 @@ namespace Omega\Application;
 use Omega\Config\ConfigRepository;
 use Omega\Settings\SettingsRepository;
 
+/**
+ * Defines the contract for an Omega application instance.
+ *
+ * An application represents the runtime context of a WordPress plugin or
+ * theme. It exposes the services and metadata required by the framework,
+ * including application identity, filesystem paths, configuration access,
+ * service registration, bootstrapping, routing, migrations, and header
+ * information.
+ *
+ * Both plugin and theme implementations must provide a consistent API so
+ * framework components can interact with the current application without
+ * depending on its underlying WordPress type.
+ *
+ * @category  Omega
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
 interface ApplicationInterface
 {
+	#region Lifecycle
+	/**
+	 * Bootstrap all registered service providers.
+	 *
+	 * Calls the "boot" method on each provider if available.
+	 *
+	 * @return void
+	 */
+	public function bootstrap(): void;
+	#endregion
+
+	#region Identity
 	/**
 	 * Get the unique application identifier.
 	 *
@@ -22,82 +65,6 @@ interface ApplicationInterface
 	 * @return string|array Return the application in snake_case format.
 	 */
 	public function getIdAsUnderscore(): array|string;
-
-	/**
-	 * Get the base path of the application.
-	 *
-	 * @return string Return the absolute base path.
-	 */
-	public function getBasePath(): string;
-
-	/**
-	 * Get the root directory of the plugin.
-	 *
-	 * @return string Return the plugin root dir.
-	 */
-	public function getAppRoot(): string;
-
-	/**
-	 * Get the main plugin file path.
-	 *
-	 * @return string Return the plugin file.
-	 */
-	public function getAppFile(): string;
-
-	/**
-	 * Register a service provider within the application container.
-	 *
-	 * @param object|string $provider Service provider class name or instance
-	 * @return object|string Registered service provider instance
-	 */
-	public function register(object|string $provider): object|string;
-
-	/**
-	 * Bootstrap all registered service providers.
-	 *
-	 * Calls the "boot" method on each provider if available.
-	 *
-	 * @return void
-	 */
-	public function bootstrap(): void;
-
-	/**
-	 * Add a route file to the application.
-	 *
-	 * @param string $path Path to the route file
-	 * @param string $type Route type (e.g. "api" or "admin")
-	 * @return void
-	 */
-	public function addRouteFile(string $path, string $type = 'api'): void;
-
-	/**
-	 * Register a migration folder path.
-	 *
-	 * @param string $path Directory containing migration files
-	 * @return void
-	 */
-	public function addMigrationFolder(string $path): void;
-
-	/**
-	 * Get all registered API route file paths.
-	 *
-	 * @return array List of API route file paths
-	 */
-	public function getRestRouteFiles(): array;
-
-	/**
-	 * Get all registered admin route file paths.
-	 *
-	 * @return array List of admin route file paths
-	 */
-	public function getAdminRouteFiles(): array;
-
-	/**
-	 * Get all registered migration folder paths.
-	 *
-	 * @return array List of migration directories
-	 */
-	public function getMigrationFolders(): array;
 
 	/**
 	 * Get the name of the application framework.
@@ -118,6 +85,84 @@ interface ApplicationInterface
 	 * @return string The framework version.
 	 */
 	public function getVersion(): string;
+	#endregion
+
+	#region Filesystem
+	/**
+	 * Get the base path of the application.
+	 *
+	 * @return string Return the absolute base path.
+	 */
+	public function getBasePath(): string;
+
+	/**
+	 * Get the root directory of the plugin.
+	 *
+	 * @return string Return the plugin root dir.
+	 */
+	public function getAppRoot(): string;
+
+	/**
+	 * Get the main plugin file path.
+	 *
+	 * @return string Return the plugin file.
+	 */
+	public function getAppFile(): string;
+	#endregion
+
+	#region Container
+	/**
+	 * Register a service provider within the application container.
+	 *
+	 * @param object|string $provider Service provider class name or instance
+	 * @return object|string Registered service provider instance
+	 */
+	public function register(object|string $provider): object|string;
+	#endregion
+
+	#region Routes
+	/**
+	 * Add a route file to the application.
+	 *
+	 * @param string $path Path to the route file
+	 * @param string $type Route type (e.g. "api" or "admin")
+	 * @return void
+	 */
+	public function addRouteFile(string $path, string $type = 'api'): void;
+
+	/**
+	 * Get all registered API route file paths.
+	 *
+	 * @return array List of API route file paths
+	 */
+	public function getRestRouteFiles(): array;
+
+	/**
+	 * Get all registered admin route file paths.
+	 *
+	 * @return array List of admin route file paths
+	 */
+	public function getAdminRouteFiles(): array;
+	#endregion
+
+	#region Migrations
+	/**
+	 * Register a migration folder path.
+	 *
+	 * @param string $path Directory containing migration files
+	 * @return void
+	 */
+	public function addMigrationFolder(string $path): void;
+
+	/**
+	 * Get all registered migration folder paths.
+	 *
+	 * @return array List of migration directories
+	 */
+	public function getMigrationFolders(): array;
+	#endregion
+
+	#region Configuration
 	/**
 	 * Get the configuration repository instance.
 	 *
@@ -156,4 +201,5 @@ interface ApplicationInterface
      *               or cannot be resolved.
      */
     public function getHeaderField(string $headerKey): string;
+	#endregion
 }

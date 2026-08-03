@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Admin;
 
+use InvalidArgumentException;
 use Omega\Admin\Features\FeaturesInterface;
 use Omega\Admin\Features\WooCommerce;
 use Omega\Admin\Menu\AbstractMenuBuilder;
@@ -23,6 +24,7 @@ use ReflectionException;
 use function add_action;
 use function class_exists;
 use function load_plugin_textdomain;
+use function load_theme_textdomain;
 
 /**
  * Service provider responsible for bootstrapping Omega admin features.
@@ -86,13 +88,24 @@ class AdminServiceProvider extends ServiceProvider
     public function init(): void
     {
         $enableTranslation = $this->app->resolve('config')->boolean('app.translation.enable');
+	    $type              = $this->app->resolve('config')->string('app.translation.string');
+
 
         if ($enableTranslation === true) {
-            load_plugin_textdomain(
-                $this->app->getId(),
-                false,
-                $this->app->getId() . '/resources/languages'
-            );
+	        match ($type) {
+		        'theme' => load_theme_textdomain(
+			        $this->app->getId(),
+			        $this->app->getBasePath() . '/resources/languages'
+		        ),
+		        'plugin' => load_plugin_textdomain(
+			        $this->app->getId(),
+			        false,
+		        $this->app->getBasePath() . '/resources/languages'
+		        ),
+		        default => throw new InvalidArgumentException(
+			        sprintf('Invalid translation type "%s" configured.', $type)
+		        ),
+	        };
         }
     }
 

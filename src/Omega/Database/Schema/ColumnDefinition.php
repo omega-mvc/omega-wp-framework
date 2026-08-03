@@ -41,6 +41,7 @@ use function is_bool;
  */
 class ColumnDefinition
 {
+	#region Properties
     /** @var bool Indicates whether the column accepts NULL values. */
     protected bool $nullable = false;
 
@@ -70,7 +71,9 @@ class ColumnDefinition
 
     /** @var string|null The column after which this column should be placed. */
     protected ?string $after = null;
+	#endregion
 
+	#region Lifecycle
     /**
      * Create a new column definition instance.
      *
@@ -96,8 +99,119 @@ class ColumnDefinition
         $this->type = $data['type'];
         $this->name = $data['name'];
     }
+	#endregion
 
-    /**
+	#region Modifiers
+	/**
+	 * Mark the column as nullable.
+	 *
+	 * @return static The current column definition instance.
+	 */
+	public function nullable(): static
+	{
+		$this->nullable = true;
+
+		return $this;
+	}
+
+	/**
+	 * Mark the column as unsigned.
+	 *
+	 * Typically used for numeric column types.
+	 *
+	 * @return static The current column definition instance.
+	 */
+	public function unsigned(): static
+	{
+		$this->unsigned = true;
+
+		return $this;
+	}
+
+	/**
+	 * Mark the column as a primary key.
+	 *
+	 * @return static The current column definition instance.
+	 */
+	public function primary(): static
+	{
+		$this->primary = true;
+
+		return $this;
+	}
+
+	/**
+	 * Mark the column as unique.
+	 *
+	 * A unique index will be generated for this column.
+	 *
+	 * @return static The current column definition instance.
+	 */
+	public function unique(): static
+	{
+		$this->unique = true;
+
+		return $this;
+	}
+
+	/**
+	 * Mark the column as indexed.
+	 *
+	 * A standard index will be generated for this column.
+	 *
+	 * @return static The current column definition instance.
+	 */
+	public function index(): static
+	{
+		$this->index = true;
+
+		return $this;
+	}
+
+	/**
+	 * Set the default value for the column.
+	 *
+	 * @param mixed $value Default value assigned to the column.
+	 * @return static The current column definition instance.
+	 */
+	public function default(mixed $value): static
+	{
+		$this->default = $value;
+
+		return $this;
+	}
+	#endregion
+
+	#region Positioning
+	/**
+	 * Specify the column position within the table.
+	 *
+	 * The column will be placed after the specified existing column
+	 * when generating ALTER TABLE statements.
+	 *
+	 * @param string $column Name of the reference column.
+	 * @return static The current column definition instance.
+	 */
+	public function after(string $column): static
+	{
+		$this->after = $column;
+
+		return $this;
+	}
+
+	/**
+	 * Get the column positioning reference.
+	 *
+	 * @return string|null The column name used for positioning, or null if not set.
+	 */
+	public function getAfter(): ?string
+	{
+		return $this->after;
+	}
+	#endregion
+
+	#region State
+	/**
      * Determine whether the column accepts NULL values.
      *
      * @return bool True if the column is nullable, false otherwise.
@@ -108,18 +222,6 @@ class ColumnDefinition
     }
 
     /**
-     * Mark the column as nullable.
-     *
-     * @return static The current column definition instance.
-     */
-    public function nullable(): static
-    {
-        $this->nullable = true;
-
-        return $this;
-    }
-
-    /**
      * Determine whether the column is unsigned.
      *
      * @return bool True if the column is unsigned, false otherwise.
@@ -127,20 +229,6 @@ class ColumnDefinition
     public function isUnsigned(): bool
     {
         return $this->unsigned;
-    }
-
-    /**
-     * Mark the column as unsigned.
-     *
-     * Typically used for numeric column types.
-     *
-     * @return static The current column definition instance.
-     */
-    public function unsigned(): static
-    {
-        $this->unsigned = true;
-
-        return $this;
     }
 
     /**
@@ -164,45 +252,6 @@ class ColumnDefinition
     }
 
     /**
-     * Mark the column as a primary key.
-     *
-     * @return static The current column definition instance.
-     */
-    public function primary(): static
-    {
-        $this->primary = true;
-
-        return $this;
-    }
-
-    /**
-     * Set the default value for the column.
-     *
-     * @param mixed $value Default value assigned to the column.
-     * @return static The current column definition instance.
-     */
-    public function default(mixed $value): static
-    {
-        $this->default = $value;
-
-        return $this;
-    }
-
-    /**
-     * Mark the column as unique.
-     *
-     * A unique index will be generated for this column.
-     *
-     * @return static The current column definition instance.
-     */
-    public function unique(): static
-    {
-        $this->unique = true;
-
-        return $this;
-    }
-
-    /**
      * Determine whether the column has a unique index.
      *
      * @return bool True if the column is unique, false otherwise.
@@ -210,20 +259,6 @@ class ColumnDefinition
     public function isUnique(): bool
     {
         return $this->unique;
-    }
-
-    /**
-     * Mark the column as indexed.
-     *
-     * A standard index will be generated for this column.
-     *
-     * @return static The current column definition instance.
-     */
-    public function index(): static
-    {
-        $this->index = true;
-
-        return $this;
     }
 
     /**
@@ -235,33 +270,9 @@ class ColumnDefinition
     {
         return $this->index;
     }
+	#endregion
 
-    /**
-     * Specify the column position within the table.
-     *
-     * The column will be placed after the specified existing column
-     * when generating ALTER TABLE statements.
-     *
-     * @param string $column Name of the reference column.
-     * @return static The current column definition instance.
-     */
-    public function after(string $column): static
-    {
-        $this->after = $column;
-
-        return $this;
-    }
-
-    /**
-     * Get the column positioning reference.
-     *
-     * @return string|null The column name used for positioning, or null if not set.
-     */
-    public function getAfter(): ?string
-    {
-        return $this->after;
-    }
-
+	#region Accessors
     /**
      * Get the database column type.
      *
@@ -298,7 +309,9 @@ class ColumnDefinition
 
         return $this->default;
     }
+	#endregion
 
+	#region Serialization
     /**
      * Get all column definition attributes.
      *
@@ -320,4 +333,5 @@ class ColumnDefinition
             'after'         => $this->getAfter(),
         ];
     }
+	#endregion
 }

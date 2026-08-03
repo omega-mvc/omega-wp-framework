@@ -46,4 +46,3 @@ class RecursiveDependencyException extends AbstractContainerException
         );
     }
 }
-

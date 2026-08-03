@@ -34,6 +34,7 @@ namespace Omega\Container;
  */
 interface ContainerInterface
 {
+	#region Registration
 	/**
 	 * Register a class definition.
 	 *
@@ -71,6 +72,37 @@ interface ContainerInterface
 	public function bindFactory(string $identifier, callable $factory): void;
 
 	/**
+	 * Register a singleton service.
+	 *
+	 * The service is instantiated only once. Subsequent resolutions of the
+	 * identifier always return the same instance.
+	 *
+	 * If no definition is provided, the identifier itself is treated as the
+	 * class name to resolve.
+	 *
+	 * The service definition may be a class name or a factory closure.
+	 *
+	 * @param string $identifier Unique service identifier.
+	 * @param mixed $definition Optional service definition.
+	 * @return void
+	 */
+	public function singleton(string $identifier, mixed $definition = null): void;
+
+	/**
+	 * Register an alias for an existing service identifier.
+	 *
+	 * Aliases are resolved transparently, allowing the same service to be
+	 * referenced by multiple identifiers.
+	 *
+	 * @param string $identifier Existing service identifier.
+	 * @param string $alias Alias to associate with the identifier.
+	 * @return void
+	 */
+	public function alias(string $identifier, string $alias): void;
+	#endregion
+
+	#region Resolution
+	/**
 	 * Resolve a service from the container.
 	 *
 	 * If the identifier refers to a registered instance, that instance is
@@ -98,33 +130,5 @@ interface ContainerInterface
 	 * @return mixed The callable return value.
 	 */
 	public function invoke(callable $callable, mixed ...$parameters): mixed;
-
-	/**
-	 * Register an alias for an existing service identifier.
-	 *
-	 * Aliases are resolved transparently, allowing the same service to be
-	 * referenced by multiple identifiers.
-	 *
-	 * @param string $identifier Existing service identifier.
-	 * @param string $alias Alias to associate with the identifier.
-	 * @return void
-	 */
-	public function alias(string $identifier, string $alias): void;
-
-	/**
-	 * Register a singleton service.
-	 *
-	 * The service is instantiated only once. Subsequent resolutions of the
-	 * identifier always return the same instance.
-	 *
-	 * If no definition is provided, the identifier itself is treated as the
-	 * class name to resolve.
-	 *
-	 * The service definition may be a class name or a factory closure.
-	 *
-	 * @param string $identifier Unique service identifier.
-	 * @param mixed $definition Optional service definition.
-	 * @return void
-	 */
-	public function singleton(string $identifier, mixed $definition = null): void;
+	#endregion
 }

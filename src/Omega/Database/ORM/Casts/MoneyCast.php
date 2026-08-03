@@ -12,10 +12,9 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent\Casts;
+namespace Omega\Database\ORM\Casts;
 
-use Omega\Database\Eloquent\AbstractModel;
-use Omega\Database\Eloquent\CastsAttributesInterface;
+use Omega\Database\ORM\AbstractModel;
 
 use function round;
 
@@ -45,10 +44,11 @@ use function round;
  */
 class MoneyCast implements CastsAttributesInterface
 {
+	#region Casting
     /**
      * {@inheritdoc}
      */
-    public function get(AbstractModel $model, string $key, mixed $value, array $attributes): mixed
+    public function get(AbstractModel $model, string $key, mixed $value, array $attributes): int|float
     {
         return $value / 100;
     }
@@ -56,8 +56,9 @@ class MoneyCast implements CastsAttributesInterface
     /**
      * {@inheritdoc}
      */
-    public function set(AbstractModel $model, string $key, mixed $value, array $attributes): mixed
+    public function set(AbstractModel $model, string $key, mixed $value, array $attributes): int
     {
         return (int)round($value * 100);
     }
+	#endregion
 }

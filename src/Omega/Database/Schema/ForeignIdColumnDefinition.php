@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace Omega\Database\Schema;
 
+use Omega\Database\Exceptions\ColumnDefinitionException;
+
 use function explode;
 
 /**
@@ -38,9 +40,12 @@ use function explode;
  */
 class ForeignIdColumnDefinition extends ColumnDefinition
 {
+	#region Properties
     /** @var Blueprint The blueprint instance associated with the column definition. */
     protected Blueprint $blueprint;
+	#endregion
 
+	#region Lifecycle
     /**
      * Create a new foreign ID column definition instance.
      *
@@ -50,7 +55,7 @@ class ForeignIdColumnDefinition extends ColumnDefinition
      * @param Blueprint $blueprint The parent blueprint instance.
      * @param array<string, mixed> $attributes Column definition attributes.
      * @return void
-     * @throws InvalidArgumentException Thrown when required column attributes are missing.
+     * @throws ColumnDefinitionException Thrown when required column attributes are missing.
      */
     public function __construct(Blueprint $blueprint, array $attributes = [])
     {
@@ -58,7 +63,9 @@ class ForeignIdColumnDefinition extends ColumnDefinition
 
         $this->blueprint = $blueprint;
     }
+	#endregion
 
+	#region Foreign Key
     /**
      * Create a foreign key constraint using conventional table and column names.
      *
@@ -81,6 +88,20 @@ class ForeignIdColumnDefinition extends ColumnDefinition
         return $this->references($column, $indexName)->on($table);
     }
 
+	/**
+	 * Define the referenced column for the foreign key constraint.
+	 *
+	 * @param string $column Referenced column name.
+	 * @param string|null $indexName Optional foreign key constraint name.
+	 * @return ForeignKeyDefinition The generated foreign key definition instance.
+	 */
+	public function references(string $column, ?string $indexName = null): ForeignKeyDefinition
+	{
+		return $this->blueprint->foreign($this->name, $indexName)->references($column);
+	}
+	#endregion
+
+	#region Resolution
     /**
      * Infer the related table name from a foreign key column name.
      *
@@ -93,18 +114,8 @@ class ForeignIdColumnDefinition extends ColumnDefinition
     {
         $parts = explode('_', $column);
 
-        return "{$parts[0]}s";
+	    /** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
+	    return "{$parts[0]}s";
     }
-
-    /**
-     * Define the referenced column for the foreign key constraint.
-     *
-     * @param string $column Referenced column name.
-     * @param string|null $indexName Optional foreign key constraint name.
-     * @return ForeignKeyDefinition The generated foreign key definition instance.
-     */
-    public function references(string $column, ?string $indexName = null): ForeignKeyDefinition
-    {
-        return $this->blueprint->foreign($this->name, $indexName)->references($column);
-    }
+	#endregion
 }

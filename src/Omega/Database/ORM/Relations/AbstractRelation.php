@@ -12,9 +12,9 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent\Relations;
+namespace Omega\Database\ORM\Relations;
 
-use Omega\Database\Eloquent\AbstractModel;
+use Omega\Database\ORM\AbstractModel;
 
 /**
  * AbstractRelation
@@ -44,6 +44,7 @@ use Omega\Database\Eloquent\AbstractModel;
  */
 abstract class AbstractRelation
 {
+	#region Lifecycle
     /**
      * AbstractRelation constructor.
      *
@@ -61,7 +62,9 @@ abstract class AbstractRelation
         protected string $localKey
     ) {
     }
+	#endregion
 
+	#region Accessors
     /**
      * Get the foreign key used in the relationship.
      *
@@ -101,4 +104,5 @@ abstract class AbstractRelation
     {
         return $this->relatedClass;
     }
+	#endregion
 }

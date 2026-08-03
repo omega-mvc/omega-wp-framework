@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Part of Omega - Application Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Omega\Application;
@@ -9,18 +19,43 @@ use ReflectionException;
 
 use function array_key_first;
 use function array_keys;
+use function class_exists;
 use function count;
 use function debug_backtrace;
 use function file_exists;
+use function file_get_contents;
 use function json_decode;
-use function sprintf;
 use function str_contains;
 
+/**
+ * Factory and registry for Omega application instances.
+ *
+ * This class is the primary entry point for creating and bootstrapping
+ * WordPress plugin and theme applications. It is responsible for
+ * constructing application instances, executing their bootstrap process,
+ * and storing them in a shared registry for later retrieval.
+ *
+ * When multiple applications coexist within the same WordPress runtime,
+ * the factory also resolves the correct application context for service
+ * lookups by inspecting the current execution stack or, when possible,
+ * the requested service namespace.
+ *
+ * @category  Omega
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
 class ApplicationFactory
 {
+	#region Properties
     /** @var array<string, ApplicationPlugin|ApplicationTheme> Omega Application Container. */
     private static array $apps = [];
+	#endregion
 
+	#region Factory
     /**
      * Create and initialize a new Plugin application instance.
      *
@@ -83,7 +118,9 @@ class ApplicationFactory
 
         return self::$apps[$id];
     }
+	#endregion
 
+	#region Resolver
     /**
      * Get an app instance or a service from a specific app.
      *
@@ -95,7 +132,7 @@ class ApplicationFactory
     public static function app(?string $service = null, ?string $appId = null): mixed
     {
 
-        if (!$appId && count(self::$apps) > 1 && \class_exists('Omega\Console\ConsoleApplication')) {
+        if (!$appId && count(self::$apps) > 1 && class_exists('Omega\Console\ConsoleApplication')) {
             $trace = debug_backtrace();
             foreach ($trace as $frame) {
                 if (isset($frame['file'])) {
@@ -113,7 +150,7 @@ class ApplicationFactory
                 foreach (self::$apps as $id => $app) {
                     $composerJson = $app->getAppRoot() . '/composer.json';
                     if (file_exists($composerJson)) {
-                        $data = json_decode(\file_get_contents($composerJson), true);
+                        $data = json_decode( file_get_contents($composerJson), true);
                         $psr4 = array_keys($data['autoload']['psr-4'] ?? []);
                         if (isset($psr4[0]) && $service && Str::startsWith($service, $psr4[0])) {
                             $appId = $id;
@@ -134,4 +171,5 @@ class ApplicationFactory
 
         return self::$apps[$appId]->resolve($service);
     }
+	#endregion
 }

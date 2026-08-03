@@ -75,6 +75,7 @@ use function trim;
  */
 class Router
 {
+	#region Properties
     /** @var array<int, array<string, mixed>> Registered route definitions. */
     protected array $routes = [];
 
@@ -95,7 +96,9 @@ class Router
 
     /** @var array Additional configuration options for admin page routing. */
     protected array $pageOptions = [];
+	#endregion
 
+	#region Lifecycle
     /**
      * Router constructor.
      *
@@ -110,7 +113,9 @@ class Router
         protected ?Router $parentRouter = null
     ) {
     }
+	#endregion
 
+	#region Route Registration
     /**
      * Add a new route to the router and register it based on the current route type.
      *
@@ -246,7 +251,9 @@ class Router
             ]
         );
     }
+	#endregion
 
+	#region Request Dispatching
     /**
      * Process a controller request and dispatch it to REST or Admin handler.
      *
@@ -265,6 +272,171 @@ class Router
         return $this->processRestRequest($action, $request);
     }
 
+	/**
+	 * Handle REST request execution and return API response.
+	 *
+	 * Resolves controller dependencies, executes method and normalizes output.
+	 *
+	 * @param array $action Controller class and method.
+	 * @param WP_REST_Request $request Incoming REST request instance.
+	 * @return WP_REST_Response|WP_Error|array Normalized API response.
+	 * @throws Exception If controller resolution fails.
+	 */
+	private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array
+	{
+		[$controllerClass, $method] = $action;
+
+		$reflector = new ReflectionClass($controllerClass);
+
+		$instance = $reflector->getConstructor()
+			? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
+			: new $controllerClass();
+
+		$calledMethod = $reflector->getMethod($method);
+		$dependencies = $this->resolveDependencies($calledMethod, $request);
+
+		if (is_wp_error($dependencies)) {
+			return $dependencies;
+		}
+
+		$result = call_user_func_array([$instance, $method], $dependencies);
+
+		return $result ?? [];
+	}
+
+	/**
+	 * Handle admin request execution and render output directly.
+	 *
+	 * Executes controller method and prints result as HTML or debug output.
+	 *
+	 * @param array $action Controller class and method.
+	 * @param mixed $request Optional request payload.
+	 * @return void
+	 * @throws Exception If controller resolution fails.
+	 */
+	private function processAdminRequest(array $action, mixed $request = null): void
+	{
+		[$controllerClass, $method] = $action;
+
+		$reflector = new ReflectionClass($controllerClass);
+
+		$instance = $reflector->getConstructor()
+			? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
+			: new $controllerClass();
+
+		$calledMethod = $reflector->getMethod($method);
+		$dependencies = $this->resolveDependencies($calledMethod, $request);
+
+		if (is_wp_error($dependencies)) {
+			echo '<div class="error"><p>' . esc_html($dependencies->get_error_message()) . '</p></div>';
+			return;
+		}
+
+		$result = call_user_func_array([$instance, $method], $dependencies);
+
+		if (is_string($result)) {
+			echo $result;
+		}
+
+		if (is_array($result)) {
+			echo '<pre>' . esc_html(print_r($result, true)) . '</pre>';
+		}
+	}
+	#endregion
+
+	#region Dependency Resolution
+	/**
+	 * Resolve method dependencies using reflection and IoC container.
+	 *
+	 * Supports FormRequest validation, WP_REST_Request injection,
+	 * container-based resolution and default parameter values.
+	 *
+	 * @param ReflectionMethod        $method  Target method to resolve.
+	 * @param WP_REST_Request|array|null $request Current request context.
+	 * @return WP_Error|array Resolved dependency arguments.
+	 * @throws Exception If a dependency cannot be resolved.
+	 */
+	protected function resolveDependencies(
+		ReflectionMethod $method,
+		WP_REST_Request|array|null $request = null
+	): WP_Error|array {
+		$resolved = [];
+
+		foreach ($method->getParameters() as $param) {
+			$type = $param->getType();
+
+			if ($type && !$type->isBuiltin()) {
+				$className = $type->getName();
+
+				if (is_subclass_of($className, FormRequest::class)) {
+					if (!$request instanceof WP_REST_Request) {
+						return new WP_Error(
+							'invalid_request',
+							"FormRequest requires a WP_REST_Request instance for parameter '{$param->getName()}'."
+						);
+					}
+
+					$formRequest = new $className($request);
+					$formRequest->validate();
+
+					if ($formRequest->fails()) {
+						$errors = $formRequest->errors();
+						$firstError = reset($errors) ?: 'Validation error';
+
+						return new WP_Error('validation_error', $firstError, $errors);
+					}
+
+					$resolved[] = $formRequest;
+					continue;
+				}
+
+				if ($className === WP_REST_Request::class) {
+					if ($request instanceof WP_REST_Request) {
+						$resolved[] = $request;
+						continue;
+					}
+
+					throw new Exception(
+						sprintf(
+							"WP_REST_Request requested but no valid request available for parameter '%s'.",
+							$param->getName()
+						)
+					);
+				}
+
+				try {
+					$resolved[] = ApplicationFactory::app($className);
+					continue;
+				} catch (Exception) {
+					throw new Exception(
+						sprintf(
+							"Cannot resolve dependency '%s' for parameter '%s'.",
+							$className,
+							$param->getName()
+						)
+					);
+				}
+			}
+
+			if ($param->isDefaultValueAvailable()) {
+				$resolved[] = $param->getDefaultValue();
+				continue;
+			}
+
+			throw new Exception(
+				sprintf(
+					"Cannot resolve parameter '%s' in method %s.",
+					$param->getName(),
+					$method->getName()
+				)
+			);
+		}
+
+		return $resolved;
+	}
+	#endregion
+
+	#region URI Handling
     /**
      * Convert URI parameters in `{param}` format into regex named capture groups.
      *
@@ -281,97 +453,9 @@ class Router
 
         return $uri;
     }
+	#endregion
 
-    /**
-     * Resolve method dependencies using reflection and IoC container.
-     *
-     * Supports FormRequest validation, WP_REST_Request injection,
-     * container-based resolution and default parameter values.
-     *
-     * @param ReflectionMethod        $method  Target method to resolve.
-     * @param WP_REST_Request|array|null $request Current request context.
-     * @return WP_Error|array Resolved dependency arguments.
-     * @throws Exception If a dependency cannot be resolved.
-     */
-    protected function resolveDependencies(
-        ReflectionMethod $method,
-        WP_REST_Request|array|null $request = null
-    ): WP_Error|array {
-        $resolved = [];
-
-        foreach ($method->getParameters() as $param) {
-            $type = $param->getType();
-
-            if ($type && !$type->isBuiltin()) {
-                $className = $type->getName();
-
-                if (is_subclass_of($className, FormRequest::class)) {
-                    if (!$request instanceof WP_REST_Request) {
-                        return new WP_Error(
-                            'invalid_request',
-                            "FormRequest requires a WP_REST_Request instance for parameter '{$param->getName()}'."
-                        );
-                    }
-
-                    $formRequest = new $className($request);
-                    $formRequest->validate();
-
-                    if ($formRequest->fails()) {
-                        $errors = $formRequest->errors();
-                        $firstError = reset($errors) ?: 'Validation error';
-
-                        return new WP_Error('validation_error', $firstError, $errors);
-                    }
-
-                    $resolved[] = $formRequest;
-                    continue;
-                }
-
-                if ($className === WP_REST_Request::class) {
-                    if ($request instanceof WP_REST_Request) {
-                        $resolved[] = $request;
-                        continue;
-                    }
-
-                    throw new Exception(
-                        sprintf(
-                            "WP_REST_Request requested but no valid request available for parameter '%s'.",
-                            $param->getName()
-                        )
-                    );
-                }
-
-                try {
-                    $resolved[] = ApplicationFactory::app($className);
-                    continue;
-                } catch (Exception) {
-                    throw new Exception(
-                        sprintf(
-                            "Cannot resolve dependency '%s' for parameter '%s'.",
-                            $className,
-                            $param->getName()
-                        )
-                    );
-                }
-            }
-
-            if ($param->isDefaultValueAvailable()) {
-                $resolved[] = $param->getDefaultValue();
-                continue;
-            }
-
-            throw new Exception(
-                sprintf(
-                    "Cannot resolve parameter '%s' in method %s.",
-                    $param->getName(),
-                    $method->getName()
-                )
-            );
-        }
-
-        return $resolved;
-    }
-
+	#region Route Groups
     /**
      * Set a route prefix scoped to the current group depth.
      *
@@ -443,7 +527,9 @@ class Router
 
         return $this;
     }
+	#endregion
 
+	#region Routing Context
     /**
      * Set the current admin page identifier and switch to admin routing mode.
      *
@@ -485,6 +571,25 @@ class Router
         return $this;
     }
 
+	/**
+	 * Create a new router instance bound to an admin page context.
+	 *
+	 * Useful for nested admin routing groups.
+	 *
+	 * @param mixed $id Page identifier.
+	 * @param array $options Optional page configuration.
+	 * @return Router New router instance.
+	 */
+	public function page(mixed $id, array $options = []): Router
+	{
+		$instance = new self($this->routerBuilder, $this);
+		$instance->setPage($id);
+
+		return $instance;
+	}
+	#endregion
+
+	#region Context Resolution
     /**
      * Build the full route prefix based on the current group stack.
      *
@@ -534,7 +639,9 @@ class Router
             ? array_merge(...$guards)
             : $guards;
     }
+	#endregion
 
+	#region Accessor
     /**
      * Retrieve all registered routes.
      *
@@ -544,92 +651,5 @@ class Router
     {
         return $this->routes;
     }
-
-    /**
-     * Create a new router instance bound to an admin page context.
-     *
-     * Useful for nested admin routing groups.
-     *
-     * @param mixed $id Page identifier.
-     * @param array $options Optional page configuration.
-     * @return Router New router instance.
-     */
-    public function page(mixed $id, array $options = []): Router
-    {
-        $instance = new self($this->routerBuilder, $this);
-        $instance->setPage($id);
-
-        return $instance;
-    }
-
-    /**
-     * Handle REST request execution and return API response.
-     *
-     * Resolves controller dependencies, executes method and normalizes output.
-     *
-     * @param array $action Controller class and method.
-     * @param WP_REST_Request $request Incoming REST request instance.
-     * @return WP_REST_Response|WP_Error|array Normalized API response.
-     * @throws Exception If controller resolution fails.
-     */
-    private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array
-    {
-        [$controllerClass, $method] = $action;
-
-        $reflector = new ReflectionClass($controllerClass);
-
-        $instance = $reflector->getConstructor()
-            ? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
-            : new $controllerClass();
-
-        $calledMethod = $reflector->getMethod($method);
-        $dependencies = $this->resolveDependencies($calledMethod, $request);
-
-        if (is_wp_error($dependencies)) {
-            return $dependencies;
-        }
-
-        $result = call_user_func_array([$instance, $method], $dependencies);
-
-        return $result ?? [];
-    }
-
-    /**
-     * Handle admin request execution and render output directly.
-     *
-     * Executes controller method and prints result as HTML or debug output.
-     *
-     * @param array $action Controller class and method.
-     * @param mixed $request Optional request payload.
-     * @return void
-     * @throws Exception If controller resolution fails.
-     */
-    private function processAdminRequest(array $action, mixed $request = null): void
-    {
-        [$controllerClass, $method] = $action;
-
-        $reflector = new ReflectionClass($controllerClass);
-
-        $instance = $reflector->getConstructor()
-            ? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
-            : new $controllerClass();
-
-        $calledMethod = $reflector->getMethod($method);
-        $dependencies = $this->resolveDependencies($calledMethod, $request);
-
-        if (is_wp_error($dependencies)) {
-            echo '<div class="error"><p>' . esc_html($dependencies->get_error_message()) . '</p></div>';
-            return;
-        }
-
-        $result = call_user_func_array([$instance, $method], $dependencies);
-
-        if (is_string($result)) {
-            echo $result;
-        }
-
-        if (is_array($result)) {
-            echo '<pre>' . esc_html(print_r($result, true)) . '</pre>';
-        }
-    }
+	#endregion
 }

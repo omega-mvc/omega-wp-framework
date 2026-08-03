@@ -14,7 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Database;
 
-use Omega\Database\Eloquent\AbstractModel;
+use Omega\Database\ORM\AbstractModel;
 use ReflectionException;
 
 /**
@@ -40,9 +40,12 @@ use ReflectionException;
  */
 class DynamicModel extends AbstractModel
 {
+	#region Properties
     /** @var string Primary key of the underlying table. */
     protected string $primaryKey = 'id';
+	#endregion
 
+	#region Lifecycle
     /**
      * DynamicModel constructor.
      *
@@ -56,7 +59,9 @@ class DynamicModel extends AbstractModel
     {
         parent::__construct($data, $table);
     }
+	#endregion
 
+	#region Lifecycle
     /**
      * Get the table name associated with this model instance.
      *
@@ -68,4 +73,5 @@ class DynamicModel extends AbstractModel
     {
         return $this->table;
     }
+	#endregion
 }

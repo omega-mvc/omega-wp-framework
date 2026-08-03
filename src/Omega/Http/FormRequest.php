@@ -40,6 +40,7 @@ use function strtolower;
  */
 class FormRequest extends Validator
 {
+	#region Lifecycle
     /**
      * Create a new FormRequest instance from a WordPress REST request.
      *
@@ -55,7 +56,9 @@ class FormRequest extends Validator
 
         $this->data = $request->get_params();
     }
+	#endregion
 
+	#region Request
     /**
      * Determine if the current HTTP request matches the given method.
      *
@@ -68,4 +71,5 @@ class FormRequest extends Validator
     {
         return strtolower($method) === strtolower($_SERVER['REQUEST_METHOD']);
     }
+	#endregion
 }

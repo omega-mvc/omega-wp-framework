@@ -44,7 +44,13 @@ use function rtrim;
  * Concrete applications such as plugins or themes may extend this class to provide
  * environment-specific behavior while keeping the common application logic intact.
  *
- * @package Omega\Application
+ * @category  Omega
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
  */
 class Application extends AbstractApplication
 {
@@ -65,7 +71,7 @@ class Application extends AbstractApplication
 	protected string $id;
 	#endregion
 
-	#region Public Method's
+	#region Lifecycle
 	/**
 	 * Create a new Omega application instance.
 	 *
@@ -110,7 +116,9 @@ class Application extends AbstractApplication
 
 		parent::__construct($id, $basePath);
 	}
+	#endregion
 
+	#region Identity
 	/**
 	 * {@inheritdoc}
 	 */
@@ -125,6 +133,35 @@ class Application extends AbstractApplication
 	public function getIdAsUnderscore(): array|string
 	{
 		return Str::toSnake($this->id);
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function getName(): string
+	{
+		return static::NAME;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function getVersion(): string
+	{
+		return static::VERSION;
+	}
+	#endregion
+
+	#region Filesystem
+	/**
+	 * Set the base path for the application.
+	 *
+	 * @param string $basePath Base directory path
+	 * @return void
+	 */
+	protected function setBasePath(string $basePath): void
+	{
+		$this->basePath = rtrim($basePath, '/');
 	}
 
 	/**
@@ -157,7 +194,9 @@ class Application extends AbstractApplication
 
 		return "{$this->getAppRoot()}/{$this->getId()}.php";
 	}
+	#endregion
 
+	#region Routes
 	/**
 	 * {@inheritdoc}
 	 */
@@ -167,14 +206,6 @@ class Application extends AbstractApplication
 			'type' => $type,
 			'path' => $path
 		];
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function addMigrationFolder(string $path): void
-	{
-		$this->migrationFolders[] = $path;
 	}
 
 	/**
@@ -198,6 +229,16 @@ class Application extends AbstractApplication
 			array_filter($this->routeFiles, fn($route) => $route['type'] === 'admin')
 		);
 	}
+	#endregion
+
+	#region Migrations
+	/**
+	 * {@inheritdoc}
+	 */
+	public function addMigrationFolder(string $path): void
+	{
+		$this->migrationFolders[] = $path;
+	}
 
 	/**
 	 * {@inheritdoc}
@@ -206,7 +247,9 @@ class Application extends AbstractApplication
 	{
 		return $this->migrationFolders;
 	}
+	#endregion
 
+	#region Configuration
 	/**
 	 * {@inheritdoc}
 	 *
@@ -226,23 +269,9 @@ class Application extends AbstractApplication
 	{
 		return $this->resolve('settings');
 	}
+	#endregion
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getName(): string
-	{
-		return static::NAME;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getVersion(): string
-	{
-		return static::VERSION;
-	}
-
+	#region WordPress Metadata
 	/**
 	 * {@inheritdoc}
 	 */
@@ -252,20 +281,7 @@ class Application extends AbstractApplication
 	}
 	#endregion
 
-	#region Protected Method's
-	/**
-	 * Set the base path for the application.
-	 *
-	 * @param string $basePath Base directory path
-	 * @return void
-	 */
-	protected function setBasePath(string $basePath): void
-	{
-		$this->basePath = rtrim($basePath, '/');
-	}
-	#endregion
-
-	#region Private Method's
+	#region Validation
 	/**
 	 * Validate the minimum required parameters for application initialization.
 	 *

@@ -40,6 +40,7 @@ use Omega\Container\ServiceProvider;
  */
 class ViewServiceProvider extends ServiceProvider
 {
+	#region Container
     /**
      * Register the view service in the container.
      *
@@ -55,4 +56,5 @@ class ViewServiceProvider extends ServiceProvider
             return new View($this->app);
         });
     }
+	#endregion
 }

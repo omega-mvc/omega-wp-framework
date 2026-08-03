@@ -55,6 +55,7 @@ use function sprintf;
  */
 class Migrator
 {
+	#region Properties
     /** @var string|array Application identifier used as table prefix. */
     protected string|array $prefix;
 
@@ -69,7 +70,9 @@ class Migrator
 
     /** @var mixed Previous installed application version used for conditional migrations. */
     protected mixed $oldVersion;
+	#endregion
 
+	#region Lifecycle
     /**
      * Create a new Migrator instance.
      *
@@ -87,7 +90,9 @@ class Migrator
         $this->tableName  = "{$this->prefix}_migrations";
         $this->oldVersion = get_option("{$this->prefix}_version", $app->getHeaderField('Version'));
     }
+	#endregion
 
+	#region Schema
     /**
      * Ensure that the migrations tracking table exists.
      *
@@ -124,7 +129,9 @@ class Migrator
 		    );
 	    }
     }
+	#endregion
 
+	#region Migration Execution
     /**
      * Execute a single migration file.
      *
@@ -217,7 +224,9 @@ class Migrator
 
         return $applied;
     }
+	#endregion
 
+	#region Rollback
 	/**
 	 * Rollback all applied migrations and re-run them.
 	 *
@@ -240,7 +249,8 @@ class Migrator
 
                     if (method_exists($migration, 'down')) {
                         $migration->down();
-                        $success[] = $mg->name;
+	                    /** @noinspection PhpArrayWriteIsNotUsedInspection */
+	                    $success[] = $mg->name;
                         $model->where(['id' => $mg->id])->delete();
                     }
                 }
@@ -249,4 +259,5 @@ class Migrator
 
         return $this->run();
     }
+	#endregion
 }

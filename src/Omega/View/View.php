@@ -16,10 +16,16 @@ namespace Omega\View;
 
 use Omega\Application\ApplicationInterface;
 use Omega\View\Exception\ViewFileNotFoundException;
+use Throwable;
 
 use function extract;
 use function file_exists;
+use function ob_end_clean;
+use function ob_get_clean;
+use function ob_start;
 use function str_replace;
+
+use const EXTR_SKIP;
 
 /**
  * Render application view files.
@@ -46,8 +52,9 @@ use function str_replace;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-class View
+class View implements ViewInterface
 {
+	#region Lyfecycle
     /**
      * Create a new view renderer instance.
      *
@@ -56,40 +63,35 @@ class View
     public function __construct(protected ApplicationInterface $app)
     {
     }
+	#endregion
 
+	#region Rendering
     /**
-     * Render a view file.
-     *
-     * The provided view name may use dot notation to represent
-     * nested directories. The supplied data array is extracted
-     * into individual variables so they become directly available
-     * inside the included template.
-     *
-     * Example:
-     *
-     * make('admin.dashboard', ['title' => 'Dashboard']);
-     *
-     * makes the variable $title available inside:
-     *
-     * resources/views/admin/dashboard.php
-     *
-     * @param string $view The logical name of the view using dot notation.
-     * @param array $data The data to expose to the view file.
-     * @return void
-     * @throws ViewFileNotFoundException Thrown when the resolved view file does not exist.
+     * {@inheritdoc}
      */
-    public function make(string $view, array $data = []): void
-    {
-        $viewPath = $this->getViewPath($view);
+	public function render(string $view, array $data = []): string
+	{
+		$viewPath = $this->getViewPath($view);
 
-        if (file_exists($viewPath)) {
-            extract($data);
-            include $viewPath;
-        } else {
-            throw new ViewFileNotFoundException($view);
-        }
-    }
+		if (!file_exists($viewPath)) {
+			throw new ViewFileNotFoundException($view);
+		}
 
+		ob_start();
+
+		try {
+			extract($data, EXTR_SKIP);
+			include $viewPath;
+		} catch ( Throwable $e) {
+			ob_end_clean();
+			throw $e;
+		}
+
+		return (string) ob_get_clean();
+	}
+	#endregion
+
+	#region Resolution
     /**
      * Resolve the absolute path of a view file.
      *
@@ -111,4 +113,5 @@ class View
 
         return $this->app->getBasePath() . "/resources/views/$view.php";
     }
+	#endregion
 }

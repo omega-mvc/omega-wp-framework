@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace Omega\Database\Schema;
 
 use Omega\Collection\Collection;
-
 use Omega\Database\Exceptions\SchemaQueryException;
 
 use function array_merge;
@@ -55,6 +54,7 @@ use function is_array;
  */
 class Blueprint
 {
+	#region Properties
     /** @var ColumnDefinition[] Registered column definitions for the current table blueprint. */
     protected array $columns = [];
 
@@ -63,7 +63,9 @@ class Blueprint
 
     /** @var array Registered schema commands and foreign key definitions. */
     protected array $commands = [];
+	#endregion
 
+	#region Lifecycle
     /**
      * Create a new schema blueprint instance.
      *
@@ -72,13 +74,26 @@ class Blueprint
      *
      * @param string $table Database table name handled by the blueprint.
      * @return void
-     *
-     * @noinspection PhpGetterAndSetterCanBeReplacedWithPropertyHooksInspection
      */
     public function __construct(protected string $table)
     {
     }
 
+	/**
+	 * Mark the blueprint as a table creation operation.
+	 *
+	 * Changes the internal command state from "alter" to "create",
+	 * causing the blueprint to generate a CREATE TABLE statement.
+	 *
+	 * @return void
+	 */
+	public function setCreate(): void
+	{
+		$this->command = 'create';
+	}
+	#endregion
+
+	#region Primary Keys
     /**
      * Create a new auto-incrementing primary key column.
      *
@@ -92,20 +107,9 @@ class Blueprint
     {
         return $this->bigIncrements($column)->primary();
     }
+	#endregion
 
-    /**
-     * Mark the blueprint as a table creation operation.
-     *
-     * Changes the internal command state from "alter" to "create",
-     * causing the blueprint to generate a CREATE TABLE statement.
-     *
-     * @return void
-     */
-    public function setCreate(): void
-    {
-        $this->command = 'create';
-    }
-
+	#region Column Genertion
     /**
      * Generate the SQL definition for a single column.
      *
@@ -236,7 +240,9 @@ class Blueprint
 
         return $columnsSql;
     }
+	#endregion
 
+	#region Schema Inspection
     /**
      * Determine whether a database table exists.
      *
@@ -292,7 +298,93 @@ class Blueprint
 
         return $exists !== null;
     }
+	#endregion
 
+	#region Schema Execution
+	/**
+	 * Execute the schema blueprint against the database.
+	 *
+	 * Depending on the current command state, this method generates
+	 * and executes either CREATE TABLE or ALTER TABLE statements.
+	 *
+	 * Existing tables and columns are automatically checked before
+	 * attempting schema modifications.
+	 *
+	 * @return void
+	 */
+	public function run(): void
+	{
+		global $wpdb;
+
+		if ($this->command === 'create') {
+
+			$tableName = $wpdb->prefix . $this->table;
+
+			if ($this->tableExists( $tableName)) {
+				return;
+			}
+
+			$columnsSql = $this->prepareColumns();
+
+			$columnsDef = implode( ",\n  ", $columnsSql );
+
+			// Pin the engine instead of inheriting the server default: foreign keys are silently
+			// ignored by MyISAM, and a table created on a MyISAM-defaulting host can never be
+			// referenced by one, which fails the child's CREATE with errno 150.
+			$sql = "CREATE TABLE `$tableName` (\n  $columnsDef\n) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+			$this->query( $sql, $tableName );
+		} else {
+			$tableName = $wpdb->prefix . $this->table;
+
+			$this->runAlterCommands($tableName);
+
+			foreach ($this->columns as $column) {
+				$columnName = $column->getName();
+
+				if (!$this->columnExists($tableName, $columnName)) {
+					$columnSql = $this->generateSingleColumnSql($column);
+
+					$afterColumn = $column->getAfter();
+					$sql = "ALTER TABLE `$tableName` ADD $columnSql" . ($afterColumn ? " AFTER `$afterColumn`" : "") . ";";
+					$this->query( $sql, $tableName );
+				}
+			}
+
+			$this->runIndexCommands($tableName);
+		}
+	}
+
+	/**
+	 * Execute a schema SQL statement and fail fast if the database reports an error.
+	 *
+	 * WordPress database operations normally signal failure by returning false instead
+	 * of throwing an exception. Without checking that return value, failed CREATE or
+	 * ALTER statements would be silently ignored and the current migration could still
+	 * be recorded as successfully applied, leaving the database schema permanently out
+	 * of sync. This helper converts database failures into exceptions so the migration
+	 * is never marked as completed unless every schema operation succeeds.
+	 *
+	 * @param string $sql SQL statement to execute.
+	 * @param string $tableName Database table involved in the operation.
+	 * @return void
+	 * @throws SchemaQueryException When the SQL statement cannot be executed.
+	 */
+	private function query(string $sql, string $tableName): void
+	{
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( false === $wpdb->query( $sql ) ) {
+			throw new SchemaQueryException(
+				sprintf( 'Schema statement failed for table %s: %s', $tableName, $wpdb->last_error )
+			);
+		}
+	}
+	#endregion
+
+	#region Alter Commands
     /**
      * Execute queued ALTER TABLE commands.
      *
@@ -348,89 +440,9 @@ class Blueprint
             }
         }
     }
+	#endregion
 
-    /**
-     * Execute the schema blueprint against the database.
-     *
-     * Depending on the current command state, this method generates
-     * and executes either CREATE TABLE or ALTER TABLE statements.
-     *
-     * Existing tables and columns are automatically checked before
-     * attempting schema modifications.
-     *
-     * @return void
-     */
-    public function run(): void
-    {
-	    global $wpdb;
-
-	    if ($this->command === 'create') {
-
-		    $tableName = $wpdb->prefix . $this->table;
-
-		    if ($this->tableExists( $tableName)) {
-			    return;
-		    }
-
-		    $columnsSql = $this->prepareColumns();
-
-		    $columnsDef = \implode( ",\n  ", $columnsSql );
-
-		    // Pin the engine instead of inheriting the server default: foreign keys are silently
-		    // ignored by MyISAM, and a table created on a MyISAM-defaulting host can never be
-		    // referenced by one, which fails the child's CREATE with errno 150.
-		    $sql = "CREATE TABLE `$tableName` (\n  $columnsDef\n) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
-		    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		    $this->query( $sql, $tableName );
-	    } else {
-		    $tableName = $wpdb->prefix . $this->table;
-
-		    $this->runAlterCommands($tableName);
-
-		    foreach ($this->columns as $column) {
-			    $columnName = $column->getName();
-
-			    if (!$this->columnExists($tableName, $columnName)) {
-				    $columnSql = $this->generateSingleColumnSql($column);
-
-				    $afterColumn = $column->getAfter();
-				    $sql = "ALTER TABLE `$tableName` ADD $columnSql" . ($afterColumn ? " AFTER `$afterColumn`" : "") . ";";
-				    $this->query( $sql, $tableName );
-			    }
-		    }
-
-		    $this->runIndexCommands($tableName);
-	    }
-    }
-
-	/**
-	 * Execute a schema SQL statement and fail fast if the database reports an error.
-	 *
-	 * WordPress database operations normally signal failure by returning false instead
-	 * of throwing an exception. Without checking that return value, failed CREATE or
-	 * ALTER statements would be silently ignored and the current migration could still
-	 * be recorded as successfully applied, leaving the database schema permanently out
-	 * of sync. This helper converts database failures into exceptions so the migration
-	 * is never marked as completed unless every schema operation succeeds.
-	 *
-	 * @param string $sql SQL statement to execute.
-	 * @param string $tableName Database table involved in the operation.
-	 * @return void
-	 * @throws SchemaQueryException When the SQL statement cannot be executed.
-	 */
-	private function query(string $sql, string $tableName): void
-	{
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		if ( false === $wpdb->query( $sql ) ) {
-			throw new SchemaQueryException(
-				sprintf( 'Schema statement failed for table %s: %s', $tableName, $wpdb->last_error )
-			);
-		}
-	}
-
+	#region Column Definitions
     /**
      * Create a new auto-incrementing unsigned big integer column.
      *
@@ -473,6 +485,160 @@ class Blueprint
         return $this->integer($column, $autoIncrement, true);
     }
 
+	/**
+	 * Create a new timestamp column.
+	 *
+	 * If no precision is provided, the default schema precision
+	 * configured by the blueprint will be applied.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @param int|null $precision Optional fractional seconds precision.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function timestamp(string $column, ?int $precision = null): ColumnDefinition
+	{
+		$precision ??= $this->defaultTimePrecision();
+
+		return $this->addColumn('timestamp', $column, compact('precision'));
+	}
+
+	/**
+	 * Create a new datetime column.
+	 *
+	 * If no precision is provided, the default schema precision
+	 * configured by the blueprint will be applied.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @param int|null $precision Optional fractional seconds precision.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function dateTime(string $column, ?int $precision = null): ColumnDefinition
+	{
+		$precision ??= $this->defaultTimePrecision();
+
+		return $this->addColumn('dateTime', $column, compact('precision'));
+	}
+
+	/**
+	 * Create a new text column.
+	 *
+	 * The generated column is suitable for medium-length textual content.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function text(string $column): ColumnDefinition
+	{
+		return $this->addColumn('text', $column);
+	}
+
+	/**
+	 * Create a new long text column.
+	 *
+	 * The generated column is suitable for storing large textual content.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function longText(string $column): ColumnDefinition
+	{
+		return $this->addColumn('longText', $column);
+	}
+
+	/**
+	 * Create a new JSON column.
+	 *
+	 * The generated column is intended for storing structured JSON data.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function json(string $column): ColumnDefinition
+	{
+		return $this->addColumn('json', $column);
+	}
+
+	/**
+	 * Create a new boolean column.
+	 *
+	 * Internally the column is represented using a tiny integer type.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function boolean(string $column): ColumnDefinition
+	{
+		return $this->addColumn('boolean', $column);
+	}
+
+	/**
+	 * Create a new UUID column.
+	 *
+	 * UUID values are stored internally as fixed-length string columns
+	 * with a length of 36 characters.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function uuid(string $column): ColumnDefinition
+	{
+		return $this->addColumn('string', $column, ['length' => 36]);
+	}
+
+	/**
+	 * Create a new big integer column.
+	 *
+	 * Supports optional unsigned and auto-increment modifiers.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @param bool $autoIncrement Indicates whether the column should auto increment.
+	 * @param bool $unsigned Indicates whether the column should be unsigned.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function bigInteger(
+		string $column,
+		bool $autoIncrement = false,
+		bool $unsigned = false
+	): ColumnDefinition {
+		return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
+	}
+
+	/**
+	 * Create a new integer column.
+	 *
+	 * Supports optional unsigned and auto-increment modifiers.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @param bool $autoIncrement Indicates whether the column should auto increment.
+	 * @param bool $unsigned Indicates whether the column should be unsigned.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function integer(
+		string $column,
+		bool $autoIncrement = false,
+		bool $unsigned = false
+	): ColumnDefinition {
+		return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
+	}
+
+	/**
+	 * Create a new string column.
+	 *
+	 * If no length is provided, a default length of 255 characters is used.
+	 *
+	 * @param string $column Name of the column to create.
+	 * @param int|null $length Maximum length of the string column.
+	 * @return ColumnDefinition The configured column definition instance.
+	 */
+	public function string(string $column, ?int $length = null): ColumnDefinition
+	{
+		$length = $length ?: 255;
+
+		return $this->addColumn('string', $column, compact('length'));
+	}
+	#endregion
+
+	#region Time Helpers
     /**
      * Add nullable created_at and updated_at datetime columns.
      *
@@ -492,106 +658,6 @@ class Blueprint
     }
 
     /**
-     * Create a new timestamp column.
-     *
-     * If no precision is provided, the default schema precision
-     * configured by the blueprint will be applied.
-     *
-     * @param string $column Name of the column to create.
-     * @param int|null $precision Optional fractional seconds precision.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function timestamp(string $column, ?int $precision = null): ColumnDefinition
-    {
-        $precision ??= $this->defaultTimePrecision();
-
-        return $this->addColumn('timestamp', $column, compact('precision'));
-    }
-
-    /**
-     * Create a new datetime column.
-     *
-     * If no precision is provided, the default schema precision
-     * configured by the blueprint will be applied.
-     *
-     * @param string $column Name of the column to create.
-     * @param int|null $precision Optional fractional seconds precision.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function dateTime(string $column, ?int $precision = null): ColumnDefinition
-    {
-        $precision ??= $this->defaultTimePrecision();
-
-        return $this->addColumn('dateTime', $column, compact('precision'));
-    }
-
-    /**
-     * Create a new text column.
-     *
-     * The generated column is suitable for medium-length textual content.
-     *
-     * @param string $column Name of the column to create.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function text(string $column): ColumnDefinition
-    {
-        return $this->addColumn('text', $column);
-    }
-
-    /**
-     * Create a new long text column.
-     *
-     * The generated column is suitable for storing large textual content.
-     *
-     * @param string $column Name of the column to create.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function longText(string $column): ColumnDefinition
-    {
-        return $this->addColumn('longText', $column);
-    }
-
-    /**
-     * Create a new JSON column.
-     *
-     * The generated column is intended for storing structured JSON data.
-     *
-     * @param string $column Name of the column to create.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function json(string $column): ColumnDefinition
-    {
-        return $this->addColumn('json', $column);
-    }
-
-    /**
-     * Create a new boolean column.
-     *
-     * Internally the column is represented using a tiny integer type.
-     *
-     * @param string $column Name of the column to create.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function boolean(string $column): ColumnDefinition
-    {
-        return $this->addColumn('boolean', $column);
-    }
-
-    /**
-     * Create a new UUID column.
-     *
-     * UUID values are stored internally as fixed-length string columns
-     * with a length of 36 characters.
-     *
-     * @param string $column Name of the column to create.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function uuid(string $column): ColumnDefinition
-    {
-        return $this->addColumn('string', $column, ['length' => 36]);
-    }
-
-    /**
      * Get the default fractional seconds precision for time columns.
      *
      * This value is used when no explicit precision is provided
@@ -603,59 +669,9 @@ class Blueprint
     {
         return 0;
     }
+	#endregion
 
-    /**
-     * Create a new big integer column.
-     *
-     * Supports optional unsigned and auto-increment modifiers.
-     *
-     * @param string $column Name of the column to create.
-     * @param bool $autoIncrement Indicates whether the column should auto increment.
-     * @param bool $unsigned Indicates whether the column should be unsigned.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function bigInteger(
-        string $column,
-        bool $autoIncrement = false,
-        bool $unsigned = false
-    ): ColumnDefinition {
-        return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
-    }
-
-    /**
-     * Create a new integer column.
-     *
-     * Supports optional unsigned and auto-increment modifiers.
-     *
-     * @param string $column Name of the column to create.
-     * @param bool $autoIncrement Indicates whether the column should auto increment.
-     * @param bool $unsigned Indicates whether the column should be unsigned.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function integer(
-        string $column,
-        bool $autoIncrement = false,
-        bool $unsigned = false
-    ): ColumnDefinition {
-        return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
-    }
-
-    /**
-     * Create a new string column.
-     *
-     * If no length is provided, a default length of 255 characters is used.
-     *
-     * @param string $column Name of the column to create.
-     * @param int|null $length Maximum length of the string column.
-     * @return ColumnDefinition The configured column definition instance.
-     */
-    public function string(string $column, ?int $length = null): ColumnDefinition
-    {
-        $length = $length ?: 255;
-
-        return $this->addColumn('string', $column, compact('length'));
-    }
-
+	#region Foreign Keys
     /**
      * Define a foreign key constraint for the table.
      *
@@ -684,6 +700,27 @@ class Blueprint
         ]);
     }
 
+	/**
+	 * Create a new unsigned foreign ID column.
+	 *
+	 * The generated column is configured as an unsigned big integer
+	 * intended for use with foreign key constraints.
+	 *
+	 * @param string $column Name of the foreign ID column.
+	 * @return ForeignIdColumnDefinition|ColumnDefinition The configured column definition instance.
+	 */
+	public function foreignId(string $column): ForeignIdColumnDefinition|ColumnDefinition
+	{
+		return $this->addColumnDefinition(new ForeignIdColumnDefinition($this, [
+			'type'          => 'bigInteger',
+			'name'          => $column,
+			'autoIncrement' => false,
+			'unsigned'      => true,
+		]));
+	}
+	#endregion
+
+	#region Indexes
     /**
      * Specify an index for the table.
      *
@@ -761,26 +798,9 @@ class Blueprint
 
         return implode( ', ', $quoted );
     }
+	#endregion
 
-    /**
-     * Create a new unsigned foreign ID column.
-     *
-     * The generated column is configured as an unsigned big integer
-     * intended for use with foreign key constraints.
-     *
-     * @param string $column Name of the foreign ID column.
-     * @return ForeignIdColumnDefinition|ColumnDefinition The configured column definition instance.
-     */
-    public function foreignId(string $column): ForeignIdColumnDefinition|ColumnDefinition
-    {
-        return $this->addColumnDefinition(new ForeignIdColumnDefinition($this, [
-            'type'          => 'bigInteger',
-            'name'          => $column,
-            'autoIncrement' => false,
-            'unsigned'      => true,
-        ]));
-    }
-
+	#region Column Registration
     /**
      * Add a new column definition to the blueprint.
      *
@@ -814,20 +834,9 @@ class Blueprint
 
         return $definition;
     }
+	#endregion
 
-    /**
-     * Get the table name associated with the blueprint.
-     *
-     * Returns the raw table name configured for the schema operation,
-     * without applying any database prefix.
-     *
-     * @return string The blueprint table name.
-     */
-    public function getTable(): string
-    {
-        return $this->table;
-    }
-
+	#region Drop Operations
     /**
      * Queue a column drop operation for the table.
      *
@@ -887,4 +896,20 @@ class Blueprint
 
         return $this;
     }
+	#endregion
+
+	#region Accessors
+	/**
+	 * Get the table name associated with the blueprint.
+	 *
+	 * Returns the raw table name configured for the schema operation,
+	 * without applying any database prefix.
+	 *
+	 * @return string The blueprint table name.
+	 */
+	public function getTable(): string
+	{
+		return $this->table;
+	}
+	#endregion
 }

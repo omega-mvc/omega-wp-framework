@@ -16,6 +16,7 @@ namespace Omega\Facade;
 
 use Omega\Application\ApplicationFactory;
 use Omega\Facade\Exception\FacadeObjectNotSetException;
+use ReflectionException;
 use RuntimeException;
 
 /**
@@ -41,79 +42,103 @@ use RuntimeException;
  */
 abstract class AbstractFacade implements FacadeInterface
 {
-    /** @var array<string, mixed> Cached resolved instances indexed by their facade accessor. */
-    protected static array $resolvedInstance = [];
+	#region Properties
+	/** @var array<string, mixed> Cached resolved instances indexed by their facade accessor. */
+	protected static array $resolvedInstance = [];
+	#endregion
 
-    /**
-     * Handle dynamic static method calls and proxy them to the underlying instance.
-     *
-     * @param string $method The method name being called.
-     * @param array<int, mixed> $args The arguments passed to the method.
-     * @return mixed The result of the proxied method call.
-     * @throws RuntimeException If no facade root instance has been resolved.
-     */
-    public static function __callStatic(string $method, array $args): mixed
-    {
-        $instance = static::getFacadeRoot();
+	#region Static Proxy
+	/**
+	 * Handle dynamic static method calls and proxy them to the underlying instance.
+	 *
+	 * @param string $method The method name being called.
+	 * @param array<int, mixed> $args The arguments passed to the method.
+	 * @return mixed The result of the proxied method call.
+	 * @throws ReflectionException When the container fails to resolve the facade
+	 *                             service dependencies through reflection.
+	 * @throws RuntimeException If no facade root instance has been resolved.
+	 */
+	public static function __callStatic(string $method, array $args): mixed
+	{
+		$instance = static::getFacadeRoot();
 
-        if (!$instance) {
-            throw new RuntimeException('A facade root has not been set.');
-        }
+		if (!$instance) {
+			throw new RuntimeException('A facade root has not been set.');
+		}
 
-        return $instance->$method(...$args);
-    }
+		return $instance->$method(...$args);
+	}
+	#endregion
 
-    /**
-     * Get the root object behind the facade.
-     *
-     * @return mixed The resolved instance from the container.
-     */
-    public static function getFacadeRoot(): mixed
-    {
-        return static::resolveFacadeInstance(static::getFacadeAccessor());
-    }
+	#region Resolution
+	/**
+	 * Get the root object behind the facade.
+	 *
+	 * Resolves the underlying service instance using the accessor returned by
+	 * the concrete facade implementation.
+	 *
+	 * @return mixed The resolved instance from the container.
+	 * @throws ReflectionException When the underlying service cannot be resolved
+	 *                              because dependency metadata cannot be inspected
+	 *                              through reflection.
+	 */
+	public static function getFacadeRoot(): mixed
+	{
+		return static::resolveFacadeInstance(static::getFacadeAccessor());
+	}
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function getFacadeAccessor(): string
-    {
-        throw new FacadeObjectNotSetException('Facade does not define a facade accessor.');
-    }
+	/**
+	 * {@inheritdoc}
+	 */
+	public static function getFacadeAccessor(): string
+	{
+		throw new FacadeObjectNotSetException(
+			'Facade does not define a facade accessor.'
+		);
+	}
 
-    /**
-     * Resolve a facade instance from the container or cache.
-     *
-     * @param string $name The container binding key.
-     * @return mixed The resolved instance.
-     */
-    protected static function resolveFacadeInstance(string $name): mixed
-    {
-        if (isset(static::$resolvedInstance[$name])) {
-            return static::$resolvedInstance[$name];
-        }
+	/**
+	 * Resolve a facade instance from the container or cache.
+	 *
+	 * If the instance has not already been cached, the method delegates the
+	 * resolution process to the application container factory.
+	 *
+	 * @param string $name The container binding key.
+	 * @return mixed The resolved instance.
+	 * @throws ReflectionException When the container cannot instantiate the bound
+	 *                             service due to reflection failures while
+	 *                             inspecting constructors or dependencies.
+	 */
+	protected static function resolveFacadeInstance(string $name): mixed
+	{
+		if (isset(static::$resolvedInstance[$name])) {
+			return static::$resolvedInstance[$name];
+		}
 
-        return static::$resolvedInstance[$name] = ApplicationFactory::app($name);
-    }
+		return static::$resolvedInstance[$name] = ApplicationFactory::app($name);
+	}
+	#endregion
 
-    /**
-     * Remove a specific resolved instance from the cache.
-     *
-     * @param string $name The container binding key.
-     * @return void
-     */
-    public static function clearResolvedInstance(string $name): void
-    {
-        unset(static::$resolvedInstance[$name]);
-    }
+	#region Cache Management
+	/**
+	 * Remove a specific resolved instance from the cache.
+	 *
+	 * @param string $name The container binding key.
+	 * @return void
+	 */
+	public static function clearResolvedInstance(string $name): void
+	{
+		unset(static::$resolvedInstance[$name]);
+	}
 
-    /**
-     * Clear all resolved facade instances from the cache.
-     *
-     * @return void
-     */
-    public static function clearResolvedInstances(): void
-    {
-        static::$resolvedInstance = [];
-    }
+	/**
+	 * Clear all resolved facade instances from the cache.
+	 *
+	 * @return void
+	 */
+	public static function clearResolvedInstances(): void
+	{
+		static::$resolvedInstance = [];
+	}
+	#endregion
 }

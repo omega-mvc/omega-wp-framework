@@ -48,10 +48,11 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	/** @var array Registered service provider instances. */
     protected array $serviceProviders = [];
 
+	/** @var array<class-string> Service providers defined by the application layer. */
 	protected array $providers = [];
 	#endregion
 
-	#region Public Method's
+	#region Lifecycle
     /**
      * Create and initialize a new application instance.
      *
@@ -91,41 +92,17 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	/**
 	 * {@inheritdoc}
 	 */
-    public function register(object|string $provider): object|string
-    {
-        $class = is_string($provider) ? $provider : get_class($provider);
-
-        if (isset($this->serviceProviders[$class])) {
-            return $this->serviceProviders[$class];
-        }
-
-        if (is_string($provider)) {
-            $provider = new $provider($this);
-        }
-
-        $this->serviceProviders[$class] = $provider;
-
-        if (method_exists($provider, 'register')) {
-            $provider->register();
-        }
-
-        return $provider;
-    }
-
-	/**
-	 * {@inheritdoc}
-	 */
-    public function bootstrap(): void
-    {
-        foreach ($this->serviceProviders as $provider) {
-            if (method_exists($provider, 'boot')) {
-                $provider->boot();
-            }
-        }
-    }
+	public function bootstrap(): void
+	{
+		foreach ($this->serviceProviders as $provider) {
+			if (method_exists($provider, 'boot')) {
+				$provider->boot();
+			}
+		}
+	}
 	#endregion
 
-	#region Protected Method's
+	#region Service providers
 	/**
 	 * Register core container bindings required by the application.
 	 *
@@ -143,7 +120,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	protected function registerBaseServiceProviders(): void
 	{
 		$this->register(new ConfigServiceProvider($this));
-        $this->register(new SettingsServiceProvider($this));
+		$this->register(new SettingsServiceProvider($this));
 		$this->register(new RouterServiceProvider($this));
 		$this->register(new DatabaseServiceProvider($this));
 		$this->register(new ViewServiceProvider($this));
@@ -167,6 +144,32 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 			}
 		}
 	}
+	#endregion
+
+	#region Container
+	/**
+	 * {@inheritdoc}
+	 */
+    public function register(object|string $provider): object|string
+    {
+        $class = is_string($provider) ? $provider : get_class($provider);
+
+        if (isset($this->serviceProviders[$class])) {
+            return $this->serviceProviders[$class];
+        }
+
+        if (is_string($provider)) {
+            $provider = new $provider($this);
+        }
+
+        $this->serviceProviders[$class] = $provider;
+
+        if (method_exists($provider, 'register')) {
+            $provider->register();
+        }
+
+        return $provider;
+    }
 
 	/**
 	 * Register core container aliases for internal services.

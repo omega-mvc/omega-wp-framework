@@ -58,6 +58,7 @@ use function is_null;
  */
 class Container implements ContainerInterface
 {
+	#region Properties
 	/**
 	 * Registered service definitions.
 	 *
@@ -96,7 +97,9 @@ class Container implements ContainerInterface
 	 * @var string[]
 	 */
 	private array $dependencyStack = [];
+	#endregion
 
+	#region Registration
 	/**
 	 * {@inheritdoc}
 	 */
@@ -121,6 +124,38 @@ class Container implements ContainerInterface
 		$this->bindings[$identifier] = $factory;
 	}
 
+	/**
+	 * {@inheritdoc}
+	 */
+	public function singleton(string $identifier, mixed $definition = null): void
+	{
+		$definition = $definition ?: $identifier;
+
+		$this->bindFactory($identifier, function($container) use ($definition) {
+			static $instance;
+			if ($instance === null) {
+				$instance = ($definition instanceof Closure)
+					? $definition($container)
+					: $this->resolve($definition);
+			}
+			return $instance;
+		});
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function alias(string $identifier, string $alias): void
+	{
+		while (array_key_exists($identifier, $this->aliases)) {
+			$identifier = $this->aliases[$identifier];
+		}
+
+		$this->aliases[$alias] = $identifier;
+	}
+	#endregion
+
+	#region Resolution
 	/**
 	 * {@inheritdoc}
 	 *
@@ -167,37 +202,9 @@ class Container implements ContainerInterface
 
 		return $reflection->invokeArgs($this->resolveMethodDependencies($reflection, $parameters));
 	}
+	#endregion
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function alias(string $identifier, string $alias): void
-	{
-		while (array_key_exists($identifier, $this->aliases)) {
-			$identifier = $this->aliases[$identifier];
-		}
-
-		$this->aliases[$alias] = $identifier;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function singleton(string $identifier, mixed $definition = null): void
-	{
-		$definition = $definition ?: $identifier;
-
-		$this->bindFactory($identifier, function($container) use ($definition) {
-			static $instance;
-			if ($instance === null) {
-				$instance = ($definition instanceof Closure)
-					? $definition($container)
-					: $this->resolve($definition);
-			}
-			return $instance;
-		});
-	}
-
+	#region Identifier Resolution
 	/**
 	 * Resolve the canonical identifier for a service.
 	 *
@@ -215,7 +222,9 @@ class Container implements ContainerInterface
 	{
 		return $this->aliases[$identifier] ?? $identifier;
 	}
+	#endregion
 
+	#region Instance Creation
 	/**
 	 * Instantiate the given class resolving its constructor dependencies.
 	 *
@@ -250,7 +259,9 @@ class Container implements ContainerInterface
 
 		return $reflection->newInstanceArgs($this->resolveMethodDependencies($constructor, $parameters));
 	}
+	#endregion
 
+	#region Dependency Resolution
 	/**
 	 * Resolve the arguments required by a constructor or callable.
 	 *
@@ -308,4 +319,5 @@ class Container implements ContainerInterface
 
 		return $this->resolve( $type instanceof ReflectionNamedType ? $type->getName() : (string) $type);
 	}
+	#endregion
 }

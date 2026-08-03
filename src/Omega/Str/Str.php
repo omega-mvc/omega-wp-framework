@@ -66,6 +66,7 @@ use function strncmp;
  */
 class Str
 {
+	#region Array Helpers
     /**
      * Retrieve a value from an array using dot notation.
      *
@@ -132,7 +133,9 @@ class Str
             }
         }
     }
+	#endregion
 
+	#region String Helpers
     /**
      * Convert a string to snake-case format.
      *
@@ -162,4 +165,5 @@ class Str
     {
         return strncmp($haystack, $needle, strlen($needle)) === 0;
     }
+	#endregion
 }

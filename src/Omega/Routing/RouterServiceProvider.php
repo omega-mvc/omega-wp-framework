@@ -44,6 +44,7 @@ use function add_action;
  */
 class RouterServiceProvider extends ServiceProvider
 {
+	#region Container
     /**
      * {@inheritdoc}
      */
@@ -73,4 +74,5 @@ class RouterServiceProvider extends ServiceProvider
 		    $this->app->resolve(RouteLoader::class)->loadAdminRoutes();
 	    }, 99);
     }
+	#endregion
 }

@@ -12,19 +12,19 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent\Relations;
+namespace Omega\Database\ORM\Relations;
 
 /**
- * HasMany
+ * HasOne
  *
- * Represents a one-to-many relationship where a single parent model
- * is associated with multiple related models.
+ * Represents a one-to-one relationship where a single parent model
+ * is associated with exactly one related model.
  *
- * The foreign key is stored on the related models and references
+ * The foreign key is stored on the related model and references
  * the parent model's local key.
  *
- * This class inherits all behavior from AbstractHasOneOrMany
- * and differs only in the expected cardinality of results.
+ * Although structurally identical to HasMany, this relation
+ * enforces a single-result semantic at the ORM level.
  *
  * @category   Omega
  * @package    Database
@@ -35,6 +35,6 @@ namespace Omega\Database\Eloquent\Relations;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  */
-class HasMany extends AbstractHasOneOrMany
+class HasOne extends AbstractHasOneOrMany
 {
 }

@@ -149,12 +149,15 @@ use const FILTER_VALIDATE_INT;
  */
 class Validator
 {
+	#region Properties
     /** @var array Validation error messages indexed by field name. */
     protected array $errors = [];
 
     /** @var array Data that passed all validation rules. */
     protected array $validatedData = [];
+	#endregion
 
+	#region Lifecycle
     /**
      * Create a new validator instance.
      *
@@ -165,7 +168,9 @@ class Validator
     public function __construct(protected array $data, protected array $rules)
     {
     }
+	#endregion
 
+	#region Factory
     /**
      * Create a new Validator instance.
      *
@@ -177,7 +182,9 @@ class Validator
     {
         return new static($data, $rules);
     }
+	#endregion
 
+	#region Validation
     /**
      * Execute validation process using defined rules.
      *
@@ -231,7 +238,6 @@ class Validator
         }
     }
 
-
     /**
      * Hook executed before validation starts for data preprocessing.
      */
@@ -250,6 +256,276 @@ class Validator
         return $this->rules;
     }
 
+	/**
+	 * Retrieve all validation errors.
+	 *
+	 * @return array List of validation errors
+	 */
+	public function errors(): array
+	{
+		return $this->errors;
+	}
+
+	/**
+	 * Determine if validation has failed.
+	 *
+	 * @return bool True if errors exist
+	 */
+	public function hasErrors(): bool
+	{
+		return !empty($this->errors);
+	}
+
+	/**
+	 * Alias for hasErrors().
+	 *
+	 * @return bool True if validation failed
+	 */
+	public function fails(): bool
+	{
+		return $this->hasErrors();
+	}
+
+	/**
+	 * Get validated data after successful validation.
+	 *
+	 * @param string|null $key Optional field key using dot notation
+	 * @return mixed Full dataset if null, otherwise specific validated value
+	 */
+	public function validated(?string $key = null): mixed
+	{
+		if ($key === null) {
+			return $this->validatedData;
+		}
+
+		return Str::getNestedValue($this->validatedData, $key);
+	}
+	#endregion Rules
+
+	#region Validation Rules
+	/**
+	 * Validate that a field is present and not empty.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function required(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value === null || $value === '') {
+			$this->errors[$field] = "The field {$field} is required.";
+		}
+	}
+
+	/**
+	 * Validate that a field contains a valid email address.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function email(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+			$this->errors[$field] = "The field {$field} must be a valid email address.";
+		}
+	}
+
+	/**
+	 * Validate that a field is an array.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function array(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if (!is_array($value)) {
+			$this->errors[$field] = "The field {$field} must be an array.";
+		}
+	}
+
+	/**
+	 * Validate that a field has a minimum string length.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param string $length Minimum allowed length
+	 * @return void
+	 */
+	protected function min(string $field, string $length): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && strlen((string)$value) < $length) {
+			$this->errors[$field] = "The field {$field} must be at least {$length} characters.";
+		}
+	}
+
+	/**
+	 * Validate that a field does not exceed maximum length.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param string $length Maximum allowed length
+	 * @return void
+	 */
+	protected function max(string $field, string $length): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && strlen((string)$value) > $length) {
+			$this->errors[$field] = "The field {$field} may not be greater than {$length} characters.";
+		}
+	}
+
+	/**
+	 * Validate that a field has an exact length.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param string $size Required exact length
+	 * @return void
+	 */
+	protected function size(string $field, string $size): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && strlen((string)$value) !== (int)$size) {
+			$this->errors[$field] = "The field must be {$size} characters.";
+		}
+	}
+
+	/**
+	 * Validate that a field is an integer value.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function integer(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !filter_var($value, FILTER_VALIDATE_INT)) {
+			$this->errors[$field] = "The field {$field} must be an integer.";
+		}
+	}
+
+	/**
+	 * Nullable rule placeholder method.
+	 *
+	 * This method exists only to allow the rule parser to recognize "nullable".
+	 * The actual logic is handled during the validation loop.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function nullable(string $field): void
+	{
+		// Intentionally empty
+	}
+
+	/**
+	 * Validate that a field value is within a predefined set of values.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param mixed ...$values Allowed values list
+	 * @return void
+	 */
+	protected function in(string $field, mixed ...$values): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !in_array($value, $values, true)) {
+			$validValues = implode(', ', $values);
+			$this->errors[$field] = "The field {$field} must be one of: {$validValues}.";
+		}
+	}
+
+	/**
+	 * Validate that a field contains a numeric value.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function numeric(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !is_numeric($value)) {
+			$this->errors[$field] = "The field {$field} must be numeric.";
+		}
+	}
+
+	/**
+	 * Validate that a field is a string value.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function string(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !is_string($value)) {
+			$this->errors[$field] = "The field {$field} must be a string.";
+		}
+	}
+
+	/**
+	 * Validate that a field contains a valid date string.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return void
+	 */
+	protected function date(string $field): void
+	{
+		$value = Str::getNestedValue($this->data, $field);
+
+		if ($value !== null && !strtotime($value)) {
+			$this->errors[$field] = "The field {$field} must be a valid date.";
+		}
+	}
+	#endregion
+
+	#region Data Manipulation
+	/**
+	 * Merge additional values into the validation dataset.
+	 *
+	 * @param array $fields Key-value pairs to merge into data
+	 * @return void
+	 */
+	protected function merge(array $fields): void
+	{
+		foreach ($fields as $key => $value) {
+			Str::setNestedValue($this->data, $key, $value);
+		}
+	}
+
+	/**
+	 * Retrieve a value from the input data using dot notation.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param mixed $default Default value if key does not exist
+	 * @return mixed
+	 */
+	public function get(string $field, mixed $default = null): mixed
+	{
+		return Str::getNestedValue($this->data, $field, $default);
+	}
+
+	/**
+	 * Set a value in the input data using dot notation.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @param mixed $value Value to assign
+	 * @return void
+	 */
+	public function set(string $field, mixed $value): void
+	{
+		Str::setNestedValue($this->data, $field, $value);
+	}
+
     /**
      * Return the original input data.
      *
@@ -260,260 +536,19 @@ class Validator
         return $this->data;
     }
 
-    /**
-     * Retrieve all validation errors.
-     *
-     * @return array List of validation errors
-     */
-    public function errors(): array
-    {
-        return $this->errors;
-    }
+	/**
+	 * Determine if a field exists in the dataset using dot notation.
+	 *
+	 * @param string $field Field name using dot notation
+	 * @return bool
+	 */
+	public function has(string $field): bool
+	{
+		return $this->hasNestedKey($this->data, $field);
+	}
+	#endregion
 
-    /**
-     * Determine if validation has failed.
-     *
-     * @return bool True if errors exist
-     */
-    public function hasErrors(): bool
-    {
-        return !empty($this->errors);
-    }
-
-    /**
-     * Alias for hasErrors().
-     *
-     * @return bool True if validation failed
-     */
-    public function fails(): bool
-    {
-        return $this->hasErrors();
-    }
-
-    /**
-     * Get validated data after successful validation.
-     *
-     * @param string|null $key Optional field key using dot notation
-     * @return mixed Full dataset if null, otherwise specific validated value
-     */
-    public function validated(?string $key = null): mixed
-    {
-        if ($key === null) {
-            return $this->validatedData;
-        }
-
-        return Str::getNestedValue($this->validatedData, $key);
-    }
-
-    /**
-     * Validate that a field is present and not empty.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function required(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value === null || $value === '') {
-            $this->errors[$field] = "The field {$field} is required.";
-        }
-    }
-
-    /**
-     * Validate that a field contains a valid email address.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function email(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $this->errors[$field] = "The field {$field} must be a valid email address.";
-        }
-    }
-
-    /**
-     * Validate that a field is an array.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function array(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if (!is_array($value)) {
-            $this->errors[$field] = "The field {$field} must be an array.";
-        }
-    }
-
-    /**
-     * Validate that a field has a minimum string length.
-     *
-     * @param string $field Field name using dot notation
-     * @param string $length Minimum allowed length
-     * @return void
-     */
-    protected function min(string $field, string $length): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && strlen((string)$value) < $length) {
-            $this->errors[$field] = "The field {$field} must be at least {$length} characters.";
-        }
-    }
-
-    /**
-     * Validate that a field does not exceed maximum length.
-     *
-     * @param string $field Field name using dot notation
-     * @param string $length Maximum allowed length
-     * @return void
-     */
-    protected function max(string $field, string $length): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && strlen((string)$value) > $length) {
-            $this->errors[$field] = "The field {$field} may not be greater than {$length} characters.";
-        }
-    }
-
-    /**
-     * Validate that a field has an exact length.
-     *
-     * @param string $field Field name using dot notation
-     * @param string $size Required exact length
-     * @return void
-     */
-    protected function size(string $field, string $size): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && strlen((string)$value) !== (int)$size) {
-            $this->errors[$field] = "The field must be {$size} characters.";
-        }
-    }
-
-    /**
-     * Validate that a field is an integer value.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function integer(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !filter_var($value, FILTER_VALIDATE_INT)) {
-            $this->errors[$field] = "The field {$field} must be an integer.";
-        }
-    }
-
-    /**
-     * Nullable rule placeholder method.
-     *
-     * This method exists only to allow the rule parser to recognize "nullable".
-     * The actual logic is handled during the validation loop.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function nullable(string $field): void
-    {
-        // Intentionally empty
-    }
-
-    /**
-     * Validate that a field value is within a predefined set of values.
-     *
-     * @param string $field Field name using dot notation
-     * @param mixed ...$values Allowed values list
-     * @return void
-     */
-    protected function in(string $field, mixed ...$values): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !in_array($value, $values, true)) {
-            $validValues = implode(', ', $values);
-            $this->errors[$field] = "The field {$field} must be one of: {$validValues}.";
-        }
-    }
-
-    /**
-     * Validate that a field contains a numeric value.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function numeric(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !is_numeric($value)) {
-            $this->errors[$field] = "The field {$field} must be numeric.";
-        }
-    }
-
-    /**
-     * Validate that a field is a string value.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function string(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !is_string($value)) {
-            $this->errors[$field] = "The field {$field} must be a string.";
-        }
-    }
-
-    /**
-     * Validate that a field contains a valid date string.
-     *
-     * @param string $field Field name using dot notation
-     * @return void
-     */
-    protected function date(string $field): void
-    {
-        $value = Str::getNestedValue($this->data, $field);
-
-        if ($value !== null && !strtotime($value)) {
-            $this->errors[$field] = "The field {$field} must be a valid date.";
-        }
-    }
-
-    /**
-     * Merge additional values into the validation dataset.
-     *
-     * @param array $fields Key-value pairs to merge into data
-     * @return void
-     */
-    protected function merge(array $fields): void
-    {
-        foreach ($fields as $key => $value) {
-            Str::setNestedValue($this->data, $key, $value);
-        }
-    }
-
-    /**
-     * Retrieve a value from the input data using dot notation.
-     *
-     * @param string $field Field name using dot notation
-     * @param mixed $default Default value if key does not exist
-     * @return mixed
-     */
-    public function get(string $field, mixed $default = null): mixed
-    {
-        return Str::getNestedValue($this->data, $field, $default);
-    }
-
+	#region Magic Accessor
     /**
      * Magic getter for retrieving input data using dot notation.
      *
@@ -523,18 +558,6 @@ class Validator
     public function __get(string $name): mixed
     {
         return Str::getNestedValue($this->data, $name, null);
-    }
-
-    /**
-     * Set a value in the input data using dot notation.
-     *
-     * @param string $field Field name using dot notation
-     * @param mixed $value Value to assign
-     * @return void
-     */
-    public function set(string $field, mixed $value): void
-    {
-        Str::setNestedValue($this->data, $field, $value);
     }
 
     /**
@@ -550,17 +573,6 @@ class Validator
     }
 
     /**
-     * Determine if a field exists in the dataset using dot notation.
-     *
-     * @param string $field Field name using dot notation
-     * @return bool
-     */
-    public function has(string $field): bool
-    {
-        return $this->hasNestedKey($this->data, $field);
-    }
-
-    /**
      * Magic isset check using dot notation.
      *
      * @param string $name Field name using dot notation
@@ -570,7 +582,9 @@ class Validator
     {
         return $this->hasNestedKey($this->data, $name);
     }
+	#endregion
 
+	#region Helpers
     /**
      * Determine if a nested key exists inside an array using dot notation.
      *
@@ -618,4 +632,5 @@ class Validator
     {
         return Str::getNestedValue($this->data, $field);
     }
+	#endregion
 }

@@ -48,6 +48,7 @@ use function wp_get_theme;
  */
 class ApplicationTheme extends Application
 {
+	#region Constants
 	/**
 	 * The name of the framework.
 	 *
@@ -71,7 +72,9 @@ class ApplicationTheme extends Application
 	 * @var string
 	 */
 	protected const string VERSION = '1.0.0';
+	#endregion
 
+	#region Lifecycle
     /**
      * Create and initialize a new theme application instance.
      *
@@ -97,7 +100,9 @@ class ApplicationTheme extends Application
     {
         parent::__construct($id, $basePath);
     }
+	#endregion
 
+	#region WordPress Metadata
     /**
      * {@inheritdoc}
      *
@@ -117,4 +122,5 @@ class ApplicationTheme extends Application
 
         return $value;
     }
+	#endregion
 }

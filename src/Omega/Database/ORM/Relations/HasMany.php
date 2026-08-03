@@ -12,25 +12,19 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent\Relations;
+namespace Omega\Database\ORM\Relations;
 
 /**
- * BelongsTo
+ * HasMany
  *
- * Represents an inverse relationship where the current model
- * holds the foreign key pointing to another model.
+ * Represents a one-to-many relationship where a single parent model
+ * is associated with multiple related models.
  *
- * In a BelongsTo relationship, the foreign key resides on the
- * current (child) model and references the primary key of the
- * related (parent) model.
+ * The foreign key is stored on the related models and references
+ * the parent model's local key.
  *
- * This is typically used to express ownership or dependency,
- * such as:
- * - A Post belongs to a User
- * - A Comment belongs to a Post
- *
- * The actual resolution logic is handled by AbstractRelation
- * and higher-level query builders.
+ * This class inherits all behavior from AbstractHasOneOrMany
+ * and differs only in the expected cardinality of results.
  *
  * @category   Omega
  * @package    Database
@@ -41,6 +35,6 @@ namespace Omega\Database\Eloquent\Relations;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  */
-class BelongsTo extends AbstractRelation
+class HasMany extends AbstractHasOneOrMany
 {
 }

@@ -12,10 +12,9 @@
 
 declare(strict_types=1);
 
-namespace Omega\Database\Eloquent\Casts;
+namespace Omega\Database\ORM\Casts;
 
-use Omega\Database\Eloquent\AbstractModel;
-use Omega\Database\Eloquent\CastsAttributesInterface;
+use Omega\Database\ORM\AbstractModel;
 
 use function json_decode;
 use function wp_json_encode;
@@ -44,6 +43,7 @@ use function wp_json_encode;
  */
 class ArrayCast implements CastsAttributesInterface
 {
+	#region Casting
     /**
      * {@inheritdoc}
      */
@@ -55,8 +55,9 @@ class ArrayCast implements CastsAttributesInterface
     /**
      * {@inheritdoc}
      */
-    public function set(AbstractModel $model, string $key, mixed $value, array $attributes): mixed
+    public function set(AbstractModel $model, string $key, mixed $value, array $attributes): string|false
     {
         return wp_json_encode($value);
     }
+	#endregion
 }

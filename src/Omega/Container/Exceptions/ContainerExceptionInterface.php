@@ -35,4 +35,3 @@ use Throwable;
 interface ContainerExceptionInterface extends Throwable
 {
 }
-

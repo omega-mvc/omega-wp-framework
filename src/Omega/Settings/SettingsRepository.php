@@ -57,9 +57,12 @@ use function update_option;
  */
 class SettingsRepository
 {
+	#region Properties
     /** @var array Internal settings storage containing merged defaults and persisted configuration values. */
     protected array $config;
+	#endregion
 
+	#region Lifecycle
     /**
      * SettingsRepository handles persistent application settings stored in the WordPress options table.
      *
@@ -76,7 +79,9 @@ class SettingsRepository
         $saved_config = get_option("{$this->app->getIdAsUnderscore()}_settings", []);
         $this->config = $this->mergeConfig($defaults, $saved_config);
     }
+	#endregion
 
+	#region Configuration Merge
     /**
      * Recursively merge two configuration arrays, preserving nested structures.
      *
@@ -103,7 +108,45 @@ class SettingsRepository
 
         return $merged;
     }
+	#endregion
 
+	#region Persistence
+	/**
+	 * Persist the current configuration to the database.
+	 *
+	 * @return bool True if the configuration was successfully saved, false otherwise.
+	 */
+	private function save(): bool
+	{
+		return update_option("{$this->app->getIdAsUnderscore()}_settings", $this->config);
+	}
+	#endregion
+
+	#region Processing
+	/**
+	 * Normalize a value before storing it in the configuration.
+	 *
+	 * Converts boolean values into storage-safe string representations and
+	 * recursively processes nested arrays.
+	 *
+	 * @param mixed $value The value to process before storage.
+	 * @return mixed The normalized value ready for persistence.
+	 */
+	private function processValue(mixed $value): mixed
+	{
+		if (is_array($value)) {
+			foreach ($value as $key => $val) {
+				$value[$key] = $this->processValue($val);
+			}
+		} elseif (is_bool($value)) {
+			return $value ? 'yes' : 'no';
+		}
+
+		return $value;
+	}
+	#endregion
+
+	#region Mutation
     /**
      * Update a configuration value and persist it to storage.
      *
@@ -128,55 +171,36 @@ class SettingsRepository
         return $this->save();
     }
 
-    /**
-     * Normalize a value before storing it in the configuration.
-     *
-     * Converts boolean values into storage-safe string representations and
-     * recursively processes nested arrays.
-     *
-     * @param mixed $value The value to process before storage.
-     * @return mixed The normalized value ready for persistence.
-     */
-    private function processValue(mixed $value): mixed
-    {
-        if (is_array($value)) {
-            foreach ($value as $key => $val) {
-                $value[$key] = $this->processValue($val);
-            }
-        } elseif (is_bool($value)) {
-            return $value ? 'yes' : 'no';
-        }
+	/**
+	 * Delete a configuration key using dot notation.
+	 *
+	 * @param string $name The configuration key path to remove.
+	 * @return bool True if the key was successfully deleted and saved, false otherwise.
+	 */
+	public function delete(string $name): bool
+	{
+		$keys = explode('.', $name);
+		$config = &$this->config;
 
-        return $value;
-    }
+		for ($i = 0; $i < count($keys) - 1; $i++) {
+			if (!isset($config[$keys[$i]]) || !is_array($config[$keys[$i]])) {
+				return false;
+			}
+			$config = &$config[$keys[$i]];
+		}
 
-    /**
-     * Persist the current configuration to the database.
-     *
-     * @return bool True if the configuration was successfully saved, false otherwise.
-     */
-    private function save(): bool
-    {
-        return update_option("{$this->app->getIdAsUnderscore()}_settings", $this->config);
-    }
+		$lastKey = end($keys);
 
-    /**
-     * Build a nested configuration array using a list of keys.
-     *
-     * @param array $keys The list of keys representing the nested path.
-     * @param mixed $value The value to assign to the final key.
-     * @param bool $create Whether to create missing intermediate keys (currently unused).
-     * @return array The constructed nested array structure.
-     * @noinspection PhpSameParameterValueInspection
-     * @noinspection PhpUnusedParameterInspection
-     */
-    private function addKeyValueRecursively(array $keys, mixed $value, bool $create = false): array
-    {
-        return array_reduce(array_reverse($keys), function ($carry, $key) use ($value) {
-            return [$key => $carry ?: $value];
-        }, []);
-    }
+		if (isset($config[$lastKey])) {
+			unset($config[$lastKey]);
+			return $this->save();
+		}
 
+		return false;
+	}
+	#endregion
+
+	#region Retrieval
     /**
      * Retrieve a configuration value using dot notation.
      *
@@ -253,34 +277,6 @@ class SettingsRepository
     }
 
     /**
-     * Delete a configuration key using dot notation.
-     *
-     * @param string $name The configuration key path to remove.
-     * @return bool True if the key was successfully deleted and saved, false otherwise.
-     */
-    public function delete(string $name): bool
-    {
-        $keys = explode('.', $name);
-        $config = &$this->config;
-
-        for ($i = 0; $i < count($keys) - 1; $i++) {
-            if (!isset($config[$keys[$i]]) || !is_array($config[$keys[$i]])) {
-                return false;
-            }
-            $config = &$config[$keys[$i]];
-        }
-
-        $lastKey = end($keys);
-
-        if (isset($config[$lastKey])) {
-            unset($config[$lastKey]);
-            return $this->save();
-        }
-
-        return false;
-    }
-
-    /**
      * Determine whether a configuration key exists.
      *
      * @param string $name The configuration key path to check.
@@ -300,4 +296,24 @@ class SettingsRepository
 
         return true;
     }
+	#endregion
+
+	#region Helpers
+	/**
+	 * Build a nested configuration array using a list of keys.
+	 *
+	 * @param array $keys The list of keys representing the nested path.
+	 * @param mixed $value The value to assign to the final key.
+	 * @param bool $create Whether to create missing intermediate keys (currently unused).
+	 * @return array The constructed nested array structure.
+	 * @noinspection PhpSameParameterValueInspection
+	 * @noinspection PhpUnusedParameterInspection
+	 */
+	private function addKeyValueRecursively(array $keys, mixed $value, bool $create = false): array
+	{
+		return array_reduce(array_reverse($keys), function ($carry, $key) use ($value) {
+			return [$key => $carry ?: $value];
+		}, []);
+	}
+	#endregion
 }
