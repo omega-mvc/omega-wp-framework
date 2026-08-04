@@ -21,8 +21,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Omega\\": "src/Omega"
-        }
+            "Omega\\": "src/Omega/"
+        },
+        "files": [
+            "src/Omega/Application/helper.php",
+            "src/Omega/Environment/helper.php",
+        ]
     },
     "autoload-dev": {
         "psr-4": {

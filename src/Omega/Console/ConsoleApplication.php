@@ -31,6 +31,7 @@ use function getenv;
 use function is_array;
 use function is_dir;
 use function putenv;
+use function Omega\Application\slash;
 use function str_contains;
 
 /**
@@ -171,7 +172,7 @@ class ConsoleApplication
     public function discoverCommands(): array
     {
         $commandPaths = [
-            'Omega\\Console\\Commands\\' => __DIR__ . '/Commands',
+            'Omega\\Console\\Commands\\' => __DIR__ . slash(path: '/Commands'),
             //'App\\Console\\Commands\\'   => $this->app->get('path.command'),
         ];
 
