@@ -17,6 +17,7 @@ namespace Omega\Application;
 use Omega\Admin\AdminServiceProvider;
 use Omega\Config\ConfigServiceProvider;
 use Omega\Container\Container;
+use Omega\Container\ContainerInterface;
 use Omega\Database\DatabaseServiceProvider;
 use Omega\Routing\RouterServiceProvider;
 use Omega\Settings\SettingsServiceProvider;
@@ -108,8 +109,11 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	 *
 	 * @return void
 	 */
-	protected function registerBaseBindings()
+	protected function registerBaseBindings(): void
 	{
+		$this->bindInstance(ContainerInterface::class, $this);
+		$this->bindInstance(Container::class, $this);
+		$this->bindInstance(ApplicationInterface::class, $this);
 	}
 
 	/**
@@ -123,8 +127,10 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 		$this->register(new SettingsServiceProvider($this));
 		$this->register(new RouterServiceProvider($this));
 		$this->register(new DatabaseServiceProvider($this));
-		$this->register(new ViewServiceProvider($this));
-		$this->register(new AdminServiceProvider($this));
+		if (!$this->isCli()) {
+			$this->register( new ViewServiceProvider( $this ) );
+			$this->register( new AdminServiceProvider( $this ) );
+		}
 	}
 
 	/**
@@ -150,7 +156,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	/**
 	 * {@inheritdoc}
 	 */
-    public function register(object|string $provider): object|string
+	public function register(object|string $provider): object|string
     {
         $class = is_string($provider) ? $provider : get_class($provider);
 
@@ -178,6 +184,13 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	 */
 	protected function registerCoreContainerAliases()
 	{
+	}
+	#endregion
+
+	#region Questo metodo è provvisorio.
+	private function isCli(): bool
+	{
+		return PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
 	}
 	#endregion
 }
