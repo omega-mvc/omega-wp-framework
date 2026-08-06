@@ -37,7 +37,7 @@ use Omega\Application\ApplicationInterface;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-class ServiceProvider
+class ServiceProvider extends AbstractServiceProvider
 {
 	#region Lifecycle
     /**
@@ -48,33 +48,7 @@ class ServiceProvider
      */
     public function __construct(public ApplicationInterface $app)
     {
-    }
-	#endregion
-
-	#region Registration
-    /**
-     * Register services into the container.
-     *
-     * This method should be used to bind services, singletons, and other
-     * dependencies into the application container.
-     *
-     * @return void
-     */
-    public function register(): void
-    {
-    }
-
-    /**
-     * Bootstrap application services.
-     *
-     * This method is executed after all service providers have been registered,
-     * and is intended for runtime initialization logic such as event listeners,
-     * routes, or other side effects.
-     *
-     * @return void
-     */
-    public function boot(): void
-    {
+		parent::__construct($app);
     }
 	#endregion
 

@@ -16,10 +16,16 @@ declare(strict_types=1);
 
 namespace Omega\Application;
 
+use Omega\Admin\AdminServiceProvider;
 use Omega\Application\Exception\MissingParameterException;
 use Omega\Config\ConfigRepository;
+use Omega\Config\ConfigServiceProvider;
+use Omega\Database\DatabaseServiceProvider;
+use Omega\Routing\RouterServiceProvider;
 use Omega\Settings\SettingsRepository;
+use Omega\Settings\SettingsServiceProvider;
 use Omega\Str\Str;
+use Omega\View\ViewServiceProvider;
 use ReflectionException;
 
 use function array_filter;
@@ -54,7 +60,7 @@ use const DIRECTORY_SEPARATOR;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-class Application extends AbstractApplication
+class Application extends AbstractApplication implements ApplicationInterface
 {
 	#region Properties
 	/** @var string Base path of the application. */
@@ -71,6 +77,15 @@ class Application extends AbstractApplication
 
 	/** @var string Unique application identifier. */
 	protected string $id;
+
+	protected array $baseProviders = [
+		ConfigServiceProvider::class,
+		SettingsServiceProvider::class,
+		RouterServiceProvider::class,
+		DatabaseServiceProvider::class,
+		ViewServiceProvider::class,
+		AdminServiceProvider::class
+	];
 	#endregion
 
 	#region Lifecycle
@@ -121,7 +136,24 @@ class Application extends AbstractApplication
 		$this->setBasePath($basePath);
 		$this->appRoot = $basePath;
 
-		parent::__construct($id, $basePath);
+		parent::__construct($id);
+
+		$this->bootstrap();
+	}
+
+	/**
+	 * Bootstrap the application if it has not already been bootstrapped.
+	 *
+	 * Executes the configured bootstrappers, which typically register
+	 * configuration, facades, and service providers into the container.
+	 *
+	 * @return void
+	 */
+	protected function bootstrap(): void
+	{
+		if (!$this->bootstrapped) {
+			$this->bootstrapWith($this->baseProviders);
+		}
 	}
 	#endregion
 
@@ -323,40 +355,4 @@ class Application extends AbstractApplication
 		}
 	}
 	#endregion
-
-	#region Helpers
-	/**
-	 * Get application (bootstrapper) cache path.
-	 *
-	 * default './boostrap/cache/'.
-	 *
-	 * @return string Absolute path to the application bootstrap cache directory.
-	 */
-	public function getApplicationCachePath(): string
-	{
-		$base = rtrim($this->getBasePath(), "/\\");
-
-		return $base . slash(path: '/bootstrap/cache');
-	}
-
-	/**
-	 * Detect application environment.
-	 *
-	 * @return string Current application environment (e.g. "dev", "prod").
-	 */
-	public function getEnvironment(): string
-	{
-		return env('APP_ENV');
-	}
-
-	/**
-	 * Detect application debug enable.
-	 *
-	 * @return bool True when application debug mode is enabled.
-	 */
-	public function isDebugMode(): bool
-	{
-		return env('APP_DEBUG');
-	}
-	#enregion
 }

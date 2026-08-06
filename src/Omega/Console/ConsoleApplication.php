@@ -16,7 +16,11 @@ namespace Omega\Console;
 
 use Exception;
 use Omega\Application\ApplicationInterface;
+use Omega\Config\ConfigServiceProvider;
 use Omega\Console\Attribute\AsCommand;
+use Omega\Database\DatabaseServiceProvider;
+use Omega\Routing\RouterServiceProvider;
+use Omega\Settings\SettingsServiceProvider;
 use ReflectionClass;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -63,12 +67,12 @@ use function str_contains;
 class ConsoleApplication
 {
     /** @ var array<int, class-string> The list of bootstrapper classes to run during initialization. */
-    /**protected array $bootstrappers = [
-        ConfigBootstrapper::class,
-        FacadeBootstrapper::class,
-        RegisterProviders::class,
-        BootProviders::class,
-    ];*/
+    protected array $bootstrappers = [
+        ConfigServiceProvider::class,
+        SettingsServiceProvider::class,
+        RouterServiceProvider::class,
+        DatabaseServiceProvider::class,
+    ];
 
     /**
      * Create a new Console instance.
@@ -94,7 +98,7 @@ class ConsoleApplication
 	 */
     public function handle(array|InputInterface|null $input = null, OutputInterface|null $output = null): int
     {
-        //$this->bootstrap();
+        $this->bootstrap();
 
         $input  = is_array($input) ? new ArgvInput($input) : ($input ?? new ArgvInput());
         $output = $output ?? new ConsoleOutput();
@@ -124,12 +128,12 @@ class ConsoleApplication
      *
      * @return void
      */
-    /**protected function bootstrap(): void
+    protected function bootstrap(): void
     {
         if (!$this->app->bootstrapped) {
             $this->app->bootstrapWith($this->bootstrappers);
         }
-    }*/
+    }
 
     /**
      * Configure the Symfony Console command loader.

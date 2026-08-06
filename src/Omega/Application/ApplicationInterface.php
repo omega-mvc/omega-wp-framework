@@ -38,7 +38,7 @@ use Omega\Settings\SettingsRepository;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-interface ApplicationInterface
+interface ApplicationInterface extends AbstractApplicationInterface
 {
 	#region Lifecycle
 	/**
@@ -108,16 +108,6 @@ interface ApplicationInterface
 	 * @return string Return the plugin file.
 	 */
 	public function getAppFile(): string;
-	#endregion
-
-	#region Container
-	/**
-	 * Register a service provider within the application container.
-	 *
-	 * @param object|string $provider Service provider class name or instance
-	 * @return object|string Registered service provider instance
-	 */
-	public function register(object|string $provider): object|string;
 	#endregion
 
 	#region Routes
