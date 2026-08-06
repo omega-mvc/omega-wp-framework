@@ -102,7 +102,7 @@ final class ConsoleBranding extends SymfonyConsole
     protected function renderHeader(OutputInterface $output): void
     {
         $this->renderLogo($output);
-        //$this->renderRuntimeInfo($output);
+        $this->renderRuntimeInfo($output);
 
         $output->writeln('');
     }

@@ -24,7 +24,9 @@ use ReflectionException;
 
 use function array_filter;
 use function array_map;
+use function Omega\Environment\env;
 use function rtrim;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * Represents a concrete Omega application instance.
@@ -111,8 +113,13 @@ class Application extends AbstractApplication
 
 		$this->id = $id;
 
+		$basePath = rtrim(
+			slash($basePath),
+			DIRECTORY_SEPARATOR
+		);
+
 		$this->setBasePath($basePath);
-		$this->appRoot = rtrim($basePath, '/');
+		$this->appRoot = $basePath;
 
 		parent::__construct($id, $basePath);
 	}
@@ -316,4 +323,40 @@ class Application extends AbstractApplication
 		}
 	}
 	#endregion
+
+	#region Helpers
+	/**
+	 * Get application (bootstrapper) cache path.
+	 *
+	 * default './boostrap/cache/'.
+	 *
+	 * @return string Absolute path to the application bootstrap cache directory.
+	 */
+	public function getApplicationCachePath(): string
+	{
+		$base = rtrim($this->getBasePath(), "/\\");
+
+		return $base . slash(path: '/bootstrap/cache');
+	}
+
+	/**
+	 * Detect application environment.
+	 *
+	 * @return string Current application environment (e.g. "dev", "prod").
+	 */
+	public function getEnvironment(): string
+	{
+		return env('APP_ENV');
+	}
+
+	/**
+	 * Detect application debug enable.
+	 *
+	 * @return bool True when application debug mode is enabled.
+	 */
+	public function isDebugMode(): bool
+	{
+		return env('APP_DEBUG');
+	}
+	#enregion
 }

@@ -105,7 +105,7 @@ class Container implements ContainerInterface
 	 */
 	public function bindClass(string $identifier, string $className): void
 	{
-		$this->bindings[ $identifier ] = fn( $_, ...$parameters ) => $this->resolve( $className, ...$parameters );
+		$this->bindings[$identifier] = fn($_, ...$parameters) => $this->resolve($className, ...$parameters);
 	}
 
 	/**

@@ -202,4 +202,29 @@ interface ApplicationInterface
      */
     public function getHeaderField(string $headerKey): string;
 	#endregion
+
+	#region Helpers
+	/**
+	 * Get application (bootstrapper) cache path.
+	 *
+	 * default './boostrap/cache/'.
+	 *
+	 * @return string Absolute path to the application bootstrap cache directory.
+	 */
+	public function getApplicationCachePath(): string;
+
+	/**
+	 * Detect application environment.
+	 *
+	 * @return string Current application environment (e.g. "dev", "prod").
+	 */
+	public function getEnvironment(): string;
+
+	/**
+	 * Detect application debug enable.
+	 *
+	 * @return bool True when application debug mode is enabled.
+	 */
+	public function isDebugMode(): bool;
+	#endregion
 }

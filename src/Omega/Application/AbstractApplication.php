@@ -182,7 +182,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
 	 *
 	 * @return void
 	 */
-	protected function registerCoreContainerAliases()
+	protected function registerCoreContainerAliases(): void
 	{
 	}
 	#endregion

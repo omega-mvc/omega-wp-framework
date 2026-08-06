@@ -150,11 +150,9 @@ class ConsoleApplication
      */
     protected function configureCommandLoader(Application $console): void
     {
-        //$cacheFile = $this->app->getApplicationCachePath() . 'commands.php';
+        $cacheFile = $this->app->getApplicationCachePath() . 'commands.php';
 
-	    $cacheFile = '';
-
-        $merged = file_exists($cacheFile)
+	    $merged = file_exists($cacheFile)
             ? require $cacheFile
             : $this->discoverCommands();
 
@@ -173,7 +171,7 @@ class ConsoleApplication
     {
         $commandPaths = [
             'Omega\\Console\\Commands\\' => __DIR__ . slash(path: '/Commands'),
-            //'App\\Console\\Commands\\'   => $this->app->get('path.command'),
+            'App\\Console\\Commands\\'   => $this->app->getBasePath() . slash(path: '/App/Commands'),
         ];
 
         $commands = [];
