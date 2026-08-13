@@ -15,7 +15,11 @@ declare(strict_types=1);
 namespace Omega\Config;
 
 use function explode;
+use function is_bool;
+use function is_numeric;
 use function sanitize_text_field;
+use function strtolower;
+use function trim;
 
 /**
  * ConfigRepository
@@ -133,15 +137,38 @@ class ConfigRepository
     /**
      * Retrieve a configuration value and cast it to boolean.
      *
-     * Strict comparison is used against true to determine the boolean value.
+     * Accepts native booleans as well as common string and numeric
+     * representations ("1", "true", "yes", "on") so values coming from
+     * environment sources are not silently misinterpreted.
      *
      * @param string $name Dot-notated configuration key.
-     * @param bool|null $default Default value used if the key is not found.
+     * @param bool|null $default Default value used if the key is not found
+     *                           or cannot be interpreted as a boolean.
      * @return bool The resolved boolean value.
      */
     public function boolean(string $name, ?bool $default = null): bool
     {
-        return $this->get($name, $default) === true;
+        $value = $this->get($name, $default);
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if ($value === null) {
+            return $default ?? false;
+        }
+
+        if (is_numeric($value)) {
+            return (bool) $value;
+        }
+
+        $value = strtolower(trim((string) $value));
+
+        return match ($value) {
+            '1', 'true', 'yes', 'on'  => true,
+            '0', 'false', 'no', 'off' => false,
+            default                   => $default ?? false,
+        };
     }
 
     /**

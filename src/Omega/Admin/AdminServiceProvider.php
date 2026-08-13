@@ -88,7 +88,7 @@ class AdminServiceProvider extends ServiceProvider
     public function init(): void
     {
         $enableTranslation = $this->app->resolve('config')->boolean('app.translation.enable');
-	    $type              = $this->app->resolve('config')->string('app.translation.string');
+	$type              = $this->app->resolve('config')->string('app.translation.type');
 
 
         if ($enableTranslation === true) {
@@ -119,7 +119,7 @@ class AdminServiceProvider extends ServiceProvider
      */
     public function adminSetup(): void
     {
-        $setupClass = $this->app->resolve('config')->string('app.admin_setup');
+        $setupClass = $this->app->resolve('config')->string('app.admin.setup');
 
         if (!class_exists($setupClass)) {
             return;
