@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory="cache/phpunit"
+         executionOrder="depends,defects"
+         defaultTestSuite="Omega WordPress Framework Test Suite"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         testdox="true"
+         testdoxSummary="true"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Omega WordPress Framework Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <coverage pathCoverage="true">
+        <report>
+            <html outputDirectory="cache/coverage-report"/>
+        </report>
+    </coverage>
+    <logging>
+        <testdoxHtml outputFile="cache/coverage-report/testdox.html"/>
+    </logging>
+</phpunit>

@@ -171,7 +171,7 @@ class ConsoleApplication
     {
         $commandPaths = [
             'Omega\\Console\\Commands\\' => __DIR__ . slash(path: '/Commands'),
-            'App\\Console\\Commands\\'   => $this->app->getBasePath() . slash(path: '/App/Commands'),
+            'App\\Console\\Commands\\'   => $this->app->getBasePath() . slash(path: '/app/Commands'),
         ];
 
         $commands = [];
