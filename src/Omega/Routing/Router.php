@@ -168,7 +168,7 @@ class Router
         }
 
         add_submenu_page(
-            "omega-hidden-page",
+            null,
             $this->page,
             $this->page,
             $firstGuard,
@@ -203,7 +203,7 @@ class Router
      * @param string       $uri        Route URI pattern.
      * @param mixed        $action     Controller action [Class, method].
      * @param array        $guards     List of authorization rules (capabilities or callbacks).
-     * @param string       $httpMethod HTTP method (GET, POST, etc.).
+     * @param string|array $httpMethod HTTP method or list of methods (GET, POST, etc.).
      * @return void
      */
     protected function registerRestRoute(
@@ -211,7 +211,7 @@ class Router
         string $uri,
         mixed $action,
         array $guards,
-        string $httpMethod = 'GET'
+        string|array $httpMethod = 'GET'
     ): void {
         register_rest_route(
             $prefix,
@@ -226,7 +226,7 @@ class Router
                         }
                         return rest_ensure_response($response);
                     } catch (Exception $e) {
-                        return new WP_Error('server_error', $e->getMessage(), ['status' => 500]);
+                        return new WP_Error('server_error', 'An unexpected server error occurred.', ['status' => 500]);
                     }
                 },
                 'permission_callback' => function () use ($guards) {
@@ -600,7 +600,7 @@ class Router
     {
         if (!empty($this->prefixStack)) {
             $currentPrefixes = array_filter($this->prefixStack, function ($item) {
-                return $item['depth'] < $this->groupDepth;
+                return $item['depth'] <= $this->groupDepth;
             });
 
             $prefixes = array_map(function ($item) {
@@ -629,14 +629,19 @@ class Router
         }
 
         $currentGuards = array_filter($this->guardStack, function ($item) {
-            return $item['depth'] < $this->groupDepth;
+            return $item['depth'] <= $this->groupDepth;
         });
 
-        $guards = array_map(fn($item) => $item['guards'], $currentGuards);
+        $resolved = [];
+        foreach ($currentGuards as $item) {
+            if (is_array($item['guards'])) {
+                $resolved = array_merge($resolved, $item['guards']);
+            } else {
+                $resolved[] = $item['guards'];
+            }
+        }
 
-        return is_array($guards[0] ?? null)
-            ? array_merge(...$guards)
-            : $guards;
+        return $resolved;
     }
     #endregion
 
