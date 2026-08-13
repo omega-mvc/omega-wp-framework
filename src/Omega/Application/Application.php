@@ -24,7 +24,6 @@ use ReflectionException;
 
 use function array_filter;
 use function array_map;
-use function Omega\Environment\env;
 use function rtrim;
 use const DIRECTORY_SEPARATOR;
 
@@ -342,21 +341,29 @@ class Application extends AbstractApplication
 	/**
 	 * Detect application environment.
 	 *
+	 * The value is resolved from the application configuration file, which
+	 * itself falls back to the APP_ENV environment variable.
+	 *
 	 * @return string Current application environment (e.g. "dev", "prod").
+	 * @throws ReflectionException If the configuration service cannot be resolved.
 	 */
 	public function getEnvironment(): string
 	{
-		return env('APP_ENV');
+		return $this->config()->string('app.environment', 'production');
 	}
 
 	/**
 	 * Detect application debug enable.
 	 *
+	 * The value is resolved from the application configuration file, which
+	 * itself falls back to the APP_DEBUG environment variable.
+	 *
 	 * @return bool True when application debug mode is enabled.
+	 * @throws ReflectionException If the configuration service cannot be resolved.
 	 */
 	public function isDebugMode(): bool
 	{
-		return env('APP_DEBUG');
+		return $this->config()->boolean('app.debug', false);
 	}
-	#enregion
+	#endregion
 }
