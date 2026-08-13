@@ -231,7 +231,6 @@ class Router
                 },
                 'permission_callback' => function () use ($guards) {
                     foreach ($guards as $guard) {
-                        print_r($guards);
                         if (is_callable($guard)) {
                             if (!call_user_func($guard)) {
                                 return false;
