@@ -56,7 +56,7 @@ use function usort;
  *
  * Key features include:
  * - Fluent transformation methods (map, filter, merge, pluck, etc.)
- * - Safe array/object access utilities (data_get-style resolution)
+ * - Safe array/object access utilities (dataGet-style resolution)
  * - Compatibility with PHP native constructs (count(), foreach, array access)
  * - Support for both arrays and object-based datasets
  * - Integration-friendly design for WordPress plugin architecture
@@ -74,7 +74,7 @@ use function usort;
  */
 class Collection implements ArrayAccess, Countable, IteratorAggregate
 {
-	#region Properties
+    #region Properties
     /**
      * Collection constructor.
      *
@@ -86,9 +86,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     public function __construct(public array $items = [])
     {
     }
-	#endregion
+    #endregion
 
-	#region Transformation
+    #region Transformation
     /**
      * Iterate over all items in the collection and execute the given callback for each element.
      *
@@ -113,245 +113,245 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
         return $this;
     }
 
-	/**
-	 * Transform each item in the collection using a callback.
-	 *
-	 * @param callable $callback A function applied to each item and its key
-	 * @return array The transformed items as a plain array
-	 */
-	public function map(callable $callback): array
-	{
-		$keys  = array_keys($this->items);
-		$items = array_map($callback, $this->items, $keys);
+    /**
+     * Transform each item in the collection using a callback.
+     *
+     * @param callable $callback A function applied to each item and its key
+     * @return array The transformed items as a plain array
+     */
+    public function map(callable $callback): array
+    {
+        $keys  = array_keys($this->items);
+        $items = array_map($callback, $this->items, $keys);
 
-		return array_combine($keys, $items);
-	}
+        return array_combine($keys, $items);
+    }
 
-	/**
-	 * Extract values from the collection for a given key, optionally using another key for indexing.
-	 *
-	 * @param string|int $value The key to extract values from each item
-	 * @param string|int|null $key The key to use for indexing the resulting array, or null for numeric indexing
-	 * @return Collection A new collection containing the extracted values
-	 */
-	public function pluck(string|int $value, string|int|null $key = null): Collection
-	{
-		$results = [];
+    /**
+     * Extract values from the collection for a given key, optionally using another key for indexing.
+     *
+     * @param string|int $value The key to extract values from each item
+     * @param string|int|null $key The key to use for indexing the resulting array, or null for numeric indexing
+     * @return Collection A new collection containing the extracted values
+     */
+    public function pluck(string|int $value, string|int|null $key = null): Collection
+    {
+        $results = [];
 
-		foreach ($this->items as $item) {
-			$itemValue = $this->data_get($item, $value);
+        foreach ($this->items as $item) {
+            $itemValue = $this->dataGet($item, $value);
 
-			if (is_null($key)) {
-				$results[] = $itemValue;
-			} else {
-				$itemKey = $this->data_get($item, $key);
-				$results[$itemKey] = $itemValue;
-			}
-		}
+            if (is_null($key)) {
+                $results[] = $itemValue;
+            } else {
+                $itemKey = $this->dataGet($item, $key);
+                $results[$itemKey] = $itemValue;
+            }
+        }
 
-		return new self($results);
-	}
+        return new self($results);
+    }
 
-	/**
-	 * Return a slice of the collection starting at the given offset.
-	 *
-	 * @param int $offset The starting offset for the slice
-	 * @param int|null $length The number of items to include, or null for no limit
-	 * @return Collection A new collection instance containing the sliced items
-	 */
-	public function slice(int $offset, ?int $length = null): Collection
-	{
-		$slicedArray = array_slice($this->items, $offset, $length);
+    /**
+     * Return a slice of the collection starting at the given offset.
+     *
+     * @param int $offset The starting offset for the slice
+     * @param int|null $length The number of items to include, or null for no limit
+     * @return Collection A new collection instance containing the sliced items
+     */
+    public function slice(int $offset, ?int $length = null): Collection
+    {
+        $slicedArray = array_slice($this->items, $offset, $length);
 
-		return new self($slicedArray);
-	}
+        return new self($slicedArray);
+    }
 
-	/**
-	 * Convert the collection into a plain array, recursively converting models when needed.
-	 *
-	 * @return array The collection represented as a plain PHP array
-	 */
-	public function toArray(): array
-	{
-		$items = [];
+    /**
+     * Convert the collection into a plain array, recursively converting models when needed.
+     *
+     * @return array The collection represented as a plain PHP array
+     */
+    public function toArray(): array
+    {
+        $items = [];
 
-		foreach ($this->items as $key => $item) {
-			if ($item instanceof AbstractModel) {
-				$items[$key] = $item->toArray();
-			} else {
-				$items[$key] = $item;
-			}
-		}
+        foreach ($this->items as $key => $item) {
+            if ($item instanceof AbstractModel) {
+                $items[$key] = $item->toArray();
+            } else {
+                $items[$key] = $item;
+            }
+        }
 
-		return $items;
-	}
+        return $items;
+    }
 
-	/**
-	 * Return the raw underlying items of the collection without transformation.
-	 *
-	 * @return array The raw items stored in the collection
-	 */
-	public function getAll(): array
-	{
-		return $this->items;
-	}
-	#endregion
+    /**
+     * Return the raw underlying items of the collection without transformation.
+     *
+     * @return array The raw items stored in the collection
+     */
+    public function getAll(): array
+    {
+        return $this->items;
+    }
+    #endregion
 
-	#region Filtering
-	/**
-	 * Filter the collection using an optional callback.
-	 *
-	 * @param callable|null $callback The filtering condition, or null to remove falsy values
-	 * @return Collection A new collection containing only the filtered items
-	 */
-	public function filter(?callable $callback = null): Collection
-	{
-		$items = array_filter($this->items, $callback);
+    #region Filtering
+    /**
+     * Filter the collection using an optional callback.
+     *
+     * @param callable|null $callback The filtering condition, or null to remove falsy values
+     * @return Collection A new collection containing only the filtered items
+     */
+    public function filter(?callable $callback = null): Collection
+    {
+        $items = array_filter($this->items, $callback);
 
-		return new self($items);
-	}
+        return new self($items);
+    }
 
-	/**
-	 * Return a collection with duplicate values removed based on the given key.
-	 *
-	 * @param string|int $key The key used to determine uniqueness for each item
-	 * @return Collection A new collection containing only unique items
-	 */
-	public function unique(string|int $key): Collection
-	{
-		$uniqueItems = [];
-		$seenKeys    = [];
+    /**
+     * Return a collection with duplicate values removed based on the given key.
+     *
+     * @param string|int $key The key used to determine uniqueness for each item
+     * @return Collection A new collection containing only unique items
+     */
+    public function unique(string|int $key): Collection
+    {
+        $uniqueItems = [];
+        $seenKeys    = [];
 
-		foreach ($this->items as $item) {
-			$itemKey = $this->data_get($item, $key);
+        foreach ($this->items as $item) {
+            $itemKey = $this->dataGet($item, $key);
 
-			if (!in_array($itemKey, $seenKeys, true)) {
-				$seenKeys[] = $itemKey;
-				$uniqueItems[] = $item;
-			}
-		}
+            if (!in_array($itemKey, $seenKeys, true)) {
+                $seenKeys[] = $itemKey;
+                $uniqueItems[] = $item;
+            }
+        }
 
-		return new self($uniqueItems);
-	}
+        return new self($uniqueItems);
+    }
 
-	/**
-	 * Filter the collection and return all items matching the given key/value pair.
-	 *
-	 * @param string|int $key The property or array key to compare against
-	 * @param mixed $value The value to match strictly against each item
-	 * @return array A filtered array of items matching the condition
-	 */
-	public function where(string|int $key, mixed $value): array
-	{
-		$items = [];
+    /**
+     * Filter the collection and return all items matching the given key/value pair.
+     *
+     * @param string|int $key The property or array key to compare against
+     * @param mixed $value The value to match strictly against each item
+     * @return array A filtered array of items matching the condition
+     */
+    public function where(string|int $key, mixed $value): array
+    {
+        $items = [];
 
-		foreach ($this->items as $item) {
-			if (isset($item->$key) && $item->$key === $value) {
-				$items[] = $item;
-			}
-		}
+        foreach ($this->items as $item) {
+            if (isset($item->$key) && $item->$key === $value) {
+                $items[] = $item;
+            }
+        }
 
-		return $items;
-	}
+        return $items;
+    }
 
-	/**
-	 * Retrieve the first item in the collection where the given property
-	 * matches the specified value.
-	 *
-	 * This method is intended for collections of objects and returns the first
-	 * matching item using strict comparison (===). If no matching item is found,
-	 * null is returned.
-	 *
-	 * @param string|int $key The property name (or array key) to inspect on each item.
-	 * @param mixed $value The value to compare against using strict equality.
-	 *
-	 * @return mixed|null The first matching item, or null if no match is found.
-	 */
-	public function firstWhere(string|int $key, mixed $value): mixed
-	{
-		/** @noinspection PhpLoopCanBeConvertedToArrayFindInspection */
-		foreach ($this->items as $item) {
-			if ($item->$key === $value) {
-				return $item;
-			}
-		}
+    /**
+     * Retrieve the first item in the collection where the given property
+     * matches the specified value.
+     *
+     * This method is intended for collections of objects and returns the first
+     * matching item using strict comparison (===). If no matching item is found,
+     * null is returned.
+     *
+     * @param string|int $key The property name (or array key) to inspect on each item.
+     * @param mixed $value The value to compare against using strict equality.
+     *
+     * @return mixed|null The first matching item, or null if no match is found.
+     */
+    public function firstWhere(string|int $key, mixed $value): mixed
+    {
+        /** @noinspection PhpLoopCanBeConvertedToArrayFindInspection */
+        foreach ($this->items as $item) {
+            if ($item->$key === $value) {
+                return $item;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	/**
-	 * Determine whether the collection is empty.
-	 *
-	 * @return bool True if the collection contains no items, false otherwise
-	 */
-	public function isEmpty(): bool
-	{
-		return empty($this->items);
-	}
+    /**
+     * Determine whether the collection is empty.
+     *
+     * @return bool True if the collection contains no items, false otherwise
+     */
+    public function isEmpty(): bool
+    {
+        return empty($this->items);
+    }
 
-	/**
-	 * Return the first item in the collection without applying any filter.
-	 *
-	 * @return mixed|null The first item in the collection, or null if the collection is empty
-	 */
-	public function first(): mixed
-	{
-		return $this->items[0] ?? null;
-	}
+    /**
+     * Return the first item in the collection without applying any filter.
+     *
+     * @return mixed|null The first item in the collection, or null if the collection is empty
+     */
+    public function first(): mixed
+    {
+        return $this->items[0] ?? null;
+    }
 
-	/**
-	 * Determine whether the collection contains at least one item
-	 * where the given property matches the specified value.
-	 *
-	 * This method is primarily designed for collections of objects
-	 * (e.g. WP_Post, stdClass, or custom models) and performs a strict
-	 * comparison (===) on the given property.
-	 *
-	 * @param string|int $key The property name (or array key) to check on each item.
-	 * @param mixed $value The value to compare against using strict equality.
-	 * @return bool True if at least one item matches the condition, false otherwise.
-	 */
-	public function contains(string|int $key, mixed $value): bool
-	{
-		/** @noinspection PhpLoopCanBeConvertedToArrayAnyInspection */
-		foreach ($this->items as $item) {
-			if (isset($item->$key) && $item->$key === $value) {
-				return true;
-			}
-		}
+    /**
+     * Determine whether the collection contains at least one item
+     * where the given property matches the specified value.
+     *
+     * This method is primarily designed for collections of objects
+     * (e.g. WP_Post, stdClass, or custom models) and performs a strict
+     * comparison (===) on the given property.
+     *
+     * @param string|int $key The property name (or array key) to check on each item.
+     * @param mixed $value The value to compare against using strict equality.
+     * @return bool True if at least one item matches the condition, false otherwise.
+     */
+    public function contains(string|int $key, mixed $value): bool
+    {
+        /** @noinspection PhpLoopCanBeConvertedToArrayAnyInspection */
+        foreach ($this->items as $item) {
+            if (isset($item->$key) && $item->$key === $value) {
+                return true;
+            }
+        }
 
-		return false;
-	}
-	#endregion
+        return false;
+    }
+    #endregion
 
-	#region Aggregation
-	/**
-	 * Calculate the sum of a numeric field or computed value from the collection.
-	 *
-	 * @param callable|string $key A callback returning the value to sum, or a key to extract from each item
-	 * @return float|int|string The computed sum of all numeric values in the collection
-	 */
-	public function sum(callable|string $key): float|int|string
-	{
-		$total = 0;
+    #region Aggregation
+    /**
+     * Calculate the sum of a numeric field or computed value from the collection.
+     *
+     * @param callable|string $key A callback returning the value to sum, or a key to extract from each item
+     * @return float|int|string The computed sum of all numeric values in the collection
+     */
+    public function sum(callable|string $key): float|int|string
+    {
+        $total = 0;
 
-		foreach ($this->items as $item) {
-			if (is_callable($key)) {
-				$value = $key($item);
-			} else {
-				$value = $this->data_get($item, $key);
-			}
+        foreach ($this->items as $item) {
+            if (is_callable($key)) {
+                $value = $key($item);
+            } else {
+                $value = $this->dataGet($item, $key);
+            }
 
-			if (is_numeric($value)) {
-				$total += $value;
-			}
-		}
+            if (is_numeric($value)) {
+                $total += $value;
+            }
+        }
 
-		return $total;
-	}
-	#endregion
+        return $total;
+    }
+    #endregion
 
-	#region Mutation
+    #region Mutation
     /**
      * Push one or more items onto the end of the collection.
      *
@@ -383,9 +383,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
         return $this;
     }
 
-	#endregion
+    #endregion
 
-	#region Access
+    #region Access
     /**
      * Retrieve a value from a nested array or object using "dot" notation.
      *
@@ -394,7 +394,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      * @param mixed $default The default value returned if the key does not exist
      * @return mixed The resolved value or the default value if not found
      */
-    public function data_get(mixed $target, ?string $key, mixed $default = null): mixed
+    public function dataGet(mixed $target, ?string $key, mixed $default = null): mixed
     {
         if (is_null($key)) {
             return $target;
@@ -426,9 +426,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
 
         return $target;
     }
-	#endregion
+    #endregion
 
-	#region Sorting
+    #region Sorting
     /**
      * Sort the collection in descending order based on the given key.
      *
@@ -445,9 +445,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
 
         return new self($items);
     }
-	#endregion
+    #endregion
 
-	#region ArrayAccess
+    #region ArrayAccess
     /**
      * Determine whether an item exists at the given offset.
      *
@@ -497,9 +497,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     {
         unset($this->items[$offset]);
     }
-	#endregion
+    #endregion
 
-	#region Countable
+    #region Countable
     /**
      * Count the number of items in the collection.
      *
@@ -509,9 +509,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     {
         return count($this->items);
     }
-	#endregion
+    #endregion
 
-	#region Iterator
+    #region Iterator
     /**
      * Get an iterator for traversing the collection items.
      *
@@ -521,5 +521,5 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     {
         return new ArrayIterator($this->items);
     }
-	#endregion
+    #endregion
 }

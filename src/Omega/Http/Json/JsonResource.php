@@ -48,7 +48,7 @@ use function sprintf;
  */
 class JsonResource
 {
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new resource instance.
      *
@@ -58,9 +58,9 @@ class JsonResource
     public function __construct(public AbstractModel $resource, public array $options = [])
     {
     }
-	#endregion
+    #endregion
 
-	#region Transformation
+    #region Transformation
     /**
      * Create a resource collection from a given dataset.
      *
@@ -88,9 +88,9 @@ class JsonResource
     {
         return [];
     }
-	#endregion
+    #endregion
 
-	#region Resource Proxy
+    #region Resource Proxy
     /**
      * Dynamically access properties on the underlying resource.
      *
@@ -133,5 +133,5 @@ class JsonResource
             get_class($this)
         ));
     }
-	#endregion
+    #endregion
 }

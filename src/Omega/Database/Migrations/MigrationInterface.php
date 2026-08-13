@@ -34,7 +34,7 @@ namespace Omega\Database\Migrations;
  */
 interface MigrationInterface
 {
-	#region Migration
+    #region Migration
     /**
      * Apply the migration.
      *
@@ -54,5 +54,5 @@ interface MigrationInterface
      * @return void
      */
     public function down(): void;
-	#endregion
+    #endregion
 }

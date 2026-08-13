@@ -49,47 +49,47 @@ use function sprintf;
  */
 class ApplicationPlugin extends Application
 {
-	#region Constants
-	/**
-	 * The name of the framework.
-	 *
-	 * This constant defines the official name of the core framework.
-	 * It is used as a stable identifier across the application lifecycle
-	 * and should not be changed at runtime.
-	 *
-	 * @var string
-	 */
-	protected const string NAME = 'Omega Plugin';
+    #region Constants
+    /**
+     * The name of the framework.
+     *
+     * This constant defines the official name of the core framework.
+     * It is used as a stable identifier across the application lifecycle
+     * and should not be changed at runtime.
+     *
+     * @var string
+     */
+    protected const string NAME = 'Omega Plugin';
 
-	/**
-	 * The version of the framework.
-	 *
-	 * This constant defines the current version of the core framework.
-	 * It is used for version tracking, compatibility checks, and internal
-	 * framework identification.
-	 *
-	 * It should be updated only when releasing a new framework version.
-	 *
-	 * @var string
-	 */
-	protected const string VERSION = '1.0.0';
-	#endregion
+    /**
+     * The version of the framework.
+     *
+     * This constant defines the current version of the core framework.
+     * It is used for version tracking, compatibility checks, and internal
+     * framework identification.
+     *
+     * It should be updated only when releasing a new framework version.
+     *
+     * @var string
+     */
+    protected const string VERSION = '1.0.0';
+    #endregion
 
-	#region Lifecycle
-	/**
-	 * Creates a new concrete application instance.
-	 *
-	 * This constructor initializes the application by delegating the full
-	 * bootstrap process to the AbstractApplication layer.
-	 *
-	 * It binds the application identity (ID), configures the base paths,
-	 * and triggers the registration of core service providers, user-defined
-	 * providers, and internal container aliases.
-	 *
-	 * This class does not introduce additional initialization logic because
-	 * its responsibility is limited to defining framework-level metadata
-	 * such as name and version.
-	 *
+    #region Lifecycle
+    /**
+     * Creates a new concrete application instance.
+     *
+     * This constructor initializes the application by delegating the full
+     * bootstrap process to the AbstractApplication layer.
+     *
+     * It binds the application identity (ID), configures the base paths,
+     * and triggers the registration of core service providers, user-defined
+     * providers, and internal container aliases.
+     *
+     * This class does not introduce additional initialization logic because
+     * its responsibility is limited to defining framework-level metadata
+     * such as name and version.
+     *
      * @param string $id Unique identifier of the application instance.
      *                   Must be a non-empty string.
      * @param string $basePath Absolute path to the root directory of the application.
@@ -97,22 +97,23 @@ class ApplicationPlugin extends Application
      * @return void
      * @throws FileNotFoundException Thrown when the plugin entry file is missing in the provided base path,
      */
-	public function __construct(string $id, string $basePath)
-	{
-		parent::__construct($id, $basePath);
+    public function __construct(string $id, string $basePath)
+    {
+        parent::__construct($id, $basePath);
 
         if (!file_exists($basePath . "/$id.php")) {
             throw new FileNotFoundException(
                 sprintf(
-                    "The plugin file for %s does not exist in the specified plugin root, in ApplicationFactory::createPlugin configure application_root.",
+                    "The plugin file for %s does not exist in the specified plugin root, "
+                    . "in ApplicationFactory::createPlugin configure application_root.",
                     $id
                 )
             );
         }
-	}
-	#endregion
+    }
+    #endregion
 
-	#region WordPress Metadata
+    #region WordPress Metadata
     /**
      * {@inheritdoc}
      *
@@ -148,5 +149,5 @@ class ApplicationPlugin extends Application
 
         return $value;
     }
-	#endregion
+    #endregion
 }

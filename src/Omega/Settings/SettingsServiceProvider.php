@@ -48,7 +48,7 @@ use Omega\Container\ServiceProvider;
  */
 class SettingsServiceProvider extends ServiceProvider
 {
-	#region Container
+    #region Container
     /**
      * {@inheritdoc}
      */
@@ -58,5 +58,5 @@ class SettingsServiceProvider extends ServiceProvider
             return new SettingsRepository($app);
         });
     }
-	#endregion
+    #endregion
 }

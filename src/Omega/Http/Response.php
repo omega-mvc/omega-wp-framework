@@ -44,7 +44,7 @@ use function rest_ensure_response;
  */
 class Response
 {
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a JSON REST response or error response.
      *
@@ -88,5 +88,5 @@ class Response
 
         return $response;
     }
-	#endregion
+    #endregion
 }

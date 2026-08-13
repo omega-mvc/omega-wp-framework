@@ -44,35 +44,35 @@ use function add_action;
  */
 class RouterServiceProvider extends ServiceProvider
 {
-	#region Container
+    #region Container
     /**
      * {@inheritdoc}
      */
-	public function register(): void
-	{
-		$this->app->singleton('router', function ($app) {
-			return new RouterBuilder($app);
-		});
+    public function register(): void
+    {
+        $this->app->singleton('router', function ($app) {
+            return new RouterBuilder($app);
+        });
 
-		$this->app->singleton(RouteLoader::class, function ($app) {
-			return new RouteLoader($app);
-		});
-	}
+        $this->app->singleton(RouteLoader::class, function ($app) {
+            return new RouteLoader($app);
+        });
+    }
 
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @throws ReflectionException
-	 */
+    /**
+     * {@inheritdoc}
+     *
+     * @throws ReflectionException
+     */
     public function boot(): void
     {
-	    add_action('rest_api_init', function () {
-		    $this->app->resolve(RouteLoader::class)->loadRestRoutes();
-	    });
+        add_action('rest_api_init', function () {
+            $this->app->resolve(RouteLoader::class)->loadRestRoutes();
+        });
 
-	    add_action('admin_menu', function () {
-		    $this->app->resolve(RouteLoader::class)->loadAdminRoutes();
-	    }, 99);
+        add_action('admin_menu', function () {
+            $this->app->resolve(RouteLoader::class)->loadAdminRoutes();
+        }, 99);
     }
-	#endregion
+    #endregion
 }

@@ -66,7 +66,8 @@ final class ConsoleBranding extends SymfonyConsole
      *
      * Initializes the custom Omega console application with logo and runtime info.
      *
-     * @param ApplicationInterface $app     The Omega application instance, used to retrieve environment, debug mode, and other runtime info.
+     * @param ApplicationInterface $app     The Omega application instance, used to retrieve
+     *                                      environment, debug mode, and other runtime info.
      * @param string               $name    The name of the console application.
      * @param string               $version The version of the console application.
      * @return void
@@ -141,11 +142,14 @@ final class ConsoleBranding extends SymfonyConsole
         $isCached  = file_exists($cacheFile) ? 'YES' : 'NO';
 
         $output->writeln(sprintf(
-            '<fg=gray> Environment:</> <fg=yellow>%s</>  |  <fg=gray>Debug:</> <fg=%s>%s</>  |  <fg=gray>PHP:</> %s  |  <fg=gray>Command Cache:</> <fg=%s>%s</>  |  <fg=gray>Memory:</> %s',
+            '<fg=gray> Environment:</> <fg=yellow>%s</>  |  <fg=gray>Debug:</> <fg=%s>%s</>  |  '
+            . '<fg=gray>PHP:</> %s  |  <fg=gray>Command Cache:</> <fg=%s>%s</>  |  <fg=gray>Memory:</> %s',
             $env,
-            $debug === 'ON' ? 'green' : 'red', $debug,
+            $debug === 'ON' ? 'green' : 'red',
+            $debug,
             $php,
-            $isCached === 'YES' ? 'green' : 'yellow', $isCached,
+            $isCached === 'YES' ? 'green' : 'yellow',
+            $isCached,
             $memory
         ));
     }

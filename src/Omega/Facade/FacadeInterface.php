@@ -32,7 +32,7 @@ use Omega\Facade\Exception\FacadeObjectNotSetException;
  */
 interface FacadeInterface
 {
-	#region Resolution
+    #region Resolution
     /**
      * Get the container binding key for the facade.
      *
@@ -43,5 +43,5 @@ interface FacadeInterface
      * @throws FacadeObjectNotSetException If not implemented by the concrete facade.
      */
     public static function getFacadeAccessor(): string;
-	#endregion
+    #endregion
 }

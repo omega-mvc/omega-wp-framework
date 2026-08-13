@@ -40,24 +40,24 @@ use function array_merge;
  */
 class ResourceCollection
 {
-	#region Properties
+    #region Properties
     /** @var string|null Fully qualified resource class used to transform items. */
     public ?string $collects = null;
 
     /** @var Collection Underlying collection of items to be transformed. */
     public Collection $collection;
 
-	/** @var bool Merge meta into root level instead of nesting under "meta". */
-	public bool $mergeMeta = false;
+    /** @var bool Merge meta into root level instead of nesting under "meta". */
+    public bool $mergeMeta = false;
 
     /** @var array Extra metadata attached to the collection response. */
     protected array $meta = [];
 
     /** @var AbstractModel Model instance used for dynamic attribute resolution. */
     protected AbstractModel $resource;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new ResourceCollection instance.
      *
@@ -86,9 +86,9 @@ class ResourceCollection
             $this->mergeMeta = $options['mergeMeta'];
         }
     }
-	#endregion
+    #endregion
 
-	#region Transformation
+    #region Transformation
     /**
      * Transform the underlying collection into an array of resources.
      *
@@ -110,9 +110,9 @@ class ResourceCollection
 
         return $resources;
     }
-	#endregion
+    #endregion
 
-	#region Metadata
+    #region Metadata
     /**
      * Retrieve metadata associated with the collection.
      *
@@ -144,9 +144,9 @@ class ResourceCollection
 
         return $data;
     }
-	#endregion
+    #endregion
 
-	#region Serialization
+    #region Serialization
     /**
      * Convert the resource collection into a JSON-ready array structure.
      *
@@ -160,9 +160,9 @@ class ResourceCollection
             'data' => $this->collection(),
         ]);
     }
-	#endregion
+    #endregion
 
-	#region Magic Access
+    #region Magic Access
     /**
      * Dynamically access attributes from the underlying model resource.
      *
@@ -180,5 +180,5 @@ class ResourceCollection
 
         return null;
     }
-	#endregion
+    #endregion
 }

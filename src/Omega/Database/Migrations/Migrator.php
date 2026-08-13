@@ -55,7 +55,7 @@ use function sprintf;
  */
 class Migrator
 {
-	#region Properties
+    #region Properties
     /** @var string|array Application identifier used as table prefix. */
     protected string|array $prefix;
 
@@ -70,9 +70,9 @@ class Migrator
 
     /** @var mixed Previous installed application version used for conditional migrations. */
     protected mixed $oldVersion;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new Migrator instance.
      *
@@ -90,9 +90,9 @@ class Migrator
         $this->tableName  = "{$this->prefix}_migrations";
         $this->oldVersion = get_option("{$this->prefix}_version", $app->getHeaderField('Version'));
     }
-	#endregion
+    #endregion
 
-	#region Schema
+    #region Schema
     /**
      * Ensure that the migrations tracking table exists.
      *
@@ -103,35 +103,35 @@ class Migrator
      */
     public function maybeCreateMigrationsTable(): void
     {
-	    if (Database::tableExists($this->tableName)) {
-		    return;
-	    }
+        if (Database::tableExists($this->tableName)) {
+            return;
+        }
 
-	    try {
-		    Schema::create($this->tableName, function (Blueprint $table) {
-			    /** @noinspection PhpRedundantOptionalArgumentInspection */
-			    $table->id('id');
-			    $table->string('name');
-			    $table->string('file');
-			    $table->timestamps();
-		    } );
-	    } catch (Throwable $e) {
-		    // run() is called from a boot hook, so letting this escape would take the whole site
-		    // down on every request. Log it and carry on: without this table run() simply finds
-		    // no applied migrations, which is safe because each migration is itself idempotent.
+        try {
+            Schema::create($this->tableName, function (Blueprint $table) {
+                /** @noinspection PhpRedundantOptionalArgumentInspection */
+                $table->id('id');
+                $table->string('name');
+                $table->string('file');
+                $table->timestamps();
+            });
+        } catch (Throwable $e) {
+            // run() is called from a boot hook, so letting this escape would take the whole site
+            // down on every request. Log it and carry on: without this table run() simply finds
+            // no applied migrations, which is safe because each migration is itself idempotent.
 		    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		    error_log(
-				sprintf(
-					'Omega WP: could not create migrations table %s: %s',
-					$this->tableName,
-					$e->getMessage()
-				)
-		    );
-	    }
+            error_log(
+                sprintf(
+                    'Omega WP: could not create migrations table %s: %s',
+                    $this->tableName,
+                    $e->getMessage()
+                )
+            );
+        }
     }
-	#endregion
+    #endregion
 
-	#region Migration Execution
+    #region Migration Execution
     /**
      * Execute a single migration file.
      *
@@ -143,39 +143,39 @@ class Migrator
      */
     public function processMigrationFile(string $file): bool
     {
-	    /** @var AbstractMigration $migration */
-	    $migration = require $file;
+        /** @var AbstractMigration $migration */
+        $migration = require $file;
 
-	    if ( ! method_exists( $migration, 'up' ) ) {
-		    return false;
-	    }
+        if (! method_exists($migration, 'up')) {
+            return false;
+        }
 
-	    $migration->setOldVersion( $this->oldVersion );
+        $migration->setOldVersion($this->oldVersion);
 
-	    try {
-		    $migration->up();
-	    } catch (Throwable $e) {
-		    // Never report a migration as applied when its schema change failed. run() skips
-		    // anything already recorded, so recording a failure makes it permanent: the table
-		    // or column stays missing and is never retried, and the only symptom is writing
-		    // silently doing nothing.
+        try {
+            $migration->up();
+        } catch (Throwable $e) {
+            // Never report a migration as applied when its schema change failed. run() skips
+            // anything already recorded, so recording a failure makes it permanent: the table
+            // or column stays missing and is never retried, and the only symptom is writing
+            // silently doing nothing.
 		    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		    error_log(sprintf('Omega WP: migration %s failed: %s', basename($file, '.php'), $e->getMessage()));
-		    return false;
-	    }
+            error_log(sprintf('Omega WP: migration %s failed: %s', basename($file, '.php'), $e->getMessage()));
+            return false;
+        }
 
-	    return true;
+        return true;
     }
 
-	/**
-	 * Run all pending migrations.
-	 *
-	 * Scans configured migration directories, filters already executed migrations,
-	 * executes pending ones, and records execution in the migrations table.
-	 *
-	 * @return array<int, string>|null List of applied migration identifiers or null if none found.
-	 * @throws ReflectionException
-	 */
+    /**
+     * Run all pending migrations.
+     *
+     * Scans configured migration directories, filters already executed migrations,
+     * executes pending ones, and records execution in the migrations table.
+     *
+     * @return array<int, string>|null List of applied migration identifiers or null if none found.
+     * @throws ReflectionException
+     */
     public function run(): ?array
     {
         $files = glob("$this->path/database/migrations/*.php");
@@ -190,7 +190,7 @@ class Migrator
         }
 
         if (!$files) {
-			return null;
+            return null;
         }
 
         $this->maybeCreateMigrationsTable();
@@ -224,18 +224,18 @@ class Migrator
 
         return $applied;
     }
-	#endregion
+    #endregion
 
-	#region Rollback
-	/**
-	 * Rollback all applied migrations and re-run them.
-	 *
-	 * Executes the "down" method for all recorded migrations, removes their
-	 * tracking entries, and then re-applies all migrations from scratch.
-	 *
-	 * @return array<int, string>|null List of re-applied migration identifiers or null.
-	 * @throws ReflectionException
-	 */
+    #region Rollback
+    /**
+     * Rollback all applied migrations and re-run them.
+     *
+     * Executes the "down" method for all recorded migrations, removes their
+     * tracking entries, and then re-applies all migrations from scratch.
+     *
+     * @return array<int, string>|null List of re-applied migration identifiers or null.
+     * @throws ReflectionException
+     */
     public function fresh(): ?array
     {
         $model = Database::table($this->tableName);
@@ -249,8 +249,8 @@ class Migrator
 
                     if (method_exists($migration, 'down')) {
                         $migration->down();
-	                    /** @noinspection PhpArrayWriteIsNotUsedInspection */
-	                    $success[] = $mg->name;
+                        /** @noinspection PhpArrayWriteIsNotUsedInspection */
+                        $success[] = $mg->name;
                         $model->where(['id' => $mg->id])->delete();
                     }
                 }
@@ -259,5 +259,5 @@ class Migrator
 
         return $this->run();
     }
-	#endregion
+    #endregion
 }

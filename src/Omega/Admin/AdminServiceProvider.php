@@ -88,24 +88,24 @@ class AdminServiceProvider extends ServiceProvider
     public function init(): void
     {
         $enableTranslation = $this->app->resolve('config')->boolean('app.translation.enable');
-	$type              = $this->app->resolve('config')->string('app.translation.type');
+        $type              = $this->app->resolve('config')->string('app.translation.type');
 
 
         if ($enableTranslation === true) {
-	        match ($type) {
-		        'theme' => load_theme_textdomain(
-			        $this->app->getId(),
-			        $this->app->getBasePath() . '/resources/languages'
-		        ),
-		        'plugin' => load_plugin_textdomain(
-			        $this->app->getId(),
-			        false,
-		        $this->app->getBasePath() . '/resources/languages'
-		        ),
-		        default => throw new InvalidArgumentException(
-			        sprintf('Invalid translation type "%s" configured.', $type)
-		        ),
-	        };
+            match ($type) {
+                'theme' => load_theme_textdomain(
+                    $this->app->getId(),
+                    $this->app->getBasePath() . '/resources/languages'
+                ),
+                'plugin' => load_plugin_textdomain(
+                    $this->app->getId(),
+                    false,
+                    $this->app->getBasePath() . '/resources/languages'
+                ),
+                default => throw new InvalidArgumentException(
+                    sprintf('Invalid translation type "%s" configured.', $type)
+                ),
+            };
         }
     }
 

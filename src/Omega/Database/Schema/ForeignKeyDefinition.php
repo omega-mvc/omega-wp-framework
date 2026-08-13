@@ -43,7 +43,7 @@ use function substr;
  */
 class ForeignKeyDefinition
 {
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new foreign key definition instance.
      *
@@ -59,9 +59,9 @@ class ForeignKeyDefinition
         protected array $attributes = []
     ) {
     }
-	#endregion
+    #endregion
 
-	#region Configuration
+    #region Configuration
     /**
      * Set the referenced column for the foreign key constraint.
      *
@@ -106,23 +106,23 @@ class ForeignKeyDefinition
 
         return $this;
     }
-	#endregion
+    #endregion
 
-	#region Accessors
-	/**
-	 * Get the raw foreign key definition attributes.
-	 *
-	 * Returns the internal configuration used to build the SQL constraint.
-	 *
-	 * @return array<string, mixed> Foreign key attributes.
-	 */
-	public function getAttributes(): array
-	{
-		return $this->attributes;
-	}
-	#endregion
+    #region Accessors
+    /**
+     * Get the raw foreign key definition attributes.
+     *
+     * Returns the internal configuration used to build the SQL constraint.
+     *
+     * @return array<string, mixed> Foreign key attributes.
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+    #endregion
 
-	#region Compilation
+    #region Compilation
     /**
      * Generate the SQL fragment for the foreign key constraint.
      *
@@ -171,5 +171,5 @@ class ForeignKeyDefinition
 
         return $sql;
     }
-	#endregion
+    #endregion
 }

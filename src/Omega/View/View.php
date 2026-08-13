@@ -54,7 +54,7 @@ use const EXTR_SKIP;
  */
 class View implements ViewInterface
 {
-	#region Lyfecycle
+    #region Lyfecycle
     /**
      * Create a new view renderer instance.
      *
@@ -63,35 +63,35 @@ class View implements ViewInterface
     public function __construct(protected ApplicationInterface $app)
     {
     }
-	#endregion
+    #endregion
 
-	#region Rendering
+    #region Rendering
     /**
      * {@inheritdoc}
      */
-	public function render(string $view, array $data = []): string
-	{
-		$viewPath = $this->getViewPath($view);
+    public function render(string $view, array $data = []): string
+    {
+        $viewPath = $this->getViewPath($view);
 
-		if (!file_exists($viewPath)) {
-			throw new ViewFileNotFoundException($view);
-		}
+        if (!file_exists($viewPath)) {
+            throw new ViewFileNotFoundException($view);
+        }
 
-		ob_start();
+        ob_start();
 
-		try {
-			extract($data, EXTR_SKIP);
-			include $viewPath;
-		} catch ( Throwable $e) {
-			ob_end_clean();
-			throw $e;
-		}
+        try {
+            extract($data, EXTR_SKIP);
+            include $viewPath;
+        } catch (Throwable $e) {
+            ob_end_clean();
+            throw $e;
+        }
 
-		return (string) ob_get_clean();
-	}
-	#endregion
+        return (string) ob_get_clean();
+    }
+    #endregion
 
-	#region Resolution
+    #region Resolution
     /**
      * Resolve the absolute path of a view file.
      *
@@ -113,5 +113,5 @@ class View implements ViewInterface
 
         return $this->app->getBasePath() . "/resources/views/$view.php";
     }
-	#endregion
+    #endregion
 }

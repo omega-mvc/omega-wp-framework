@@ -39,7 +39,7 @@ use Omega\Database\ORM\AbstractModel;
  */
 interface CastsAttributesInterface
 {
-	#region Casting
+    #region Casting
     /**
      * Transform the attribute value when retrieving it from the model.
      *
@@ -67,5 +67,5 @@ interface CastsAttributesInterface
      * @return mixed The transformed value suitable for database storage.
      */
     public function set(AbstractModel $model, string $key, mixed $value, array $attributes): mixed;
-	#endregion
+    #endregion
 }

@@ -46,7 +46,7 @@ use const FILTER_VALIDATE_INT;
  */
 class Paginator
 {
-	#region Properties
+    #region Properties
     /** @var int Total number of items before pagination is applied. */
     protected int $total;
 
@@ -64,9 +64,9 @@ class Paginator
 
     /** @var array Additional pagination configuration options. */
     protected array $options = [];
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Paginator constructor.
      *
@@ -98,9 +98,9 @@ class Paginator
         $this->currentPage = $this->setCurrentPage($currentPage);
         $this->items = $items instanceof Collection ? $items : new Collection($items);
     }
-	#endregion
+    #endregion
 
-	#region Validation
+    #region Validation
     /**
      * Resolve and validate the current page number.
      *
@@ -127,9 +127,9 @@ class Paginator
     {
         return $page >= 1 && filter_var($page, FILTER_VALIDATE_INT) !== false;
     }
-	#endregion
+    #endregion
 
-	#region Data
+    #region Data
     /**
      * Get the underlying collection of paginated items.
      *
@@ -139,9 +139,9 @@ class Paginator
     {
         return $this->items;
     }
-	#endregion
+    #endregion
 
-	#region Metadata
+    #region Metadata
     /**
      * Get pagination metadata attributes.
      *
@@ -161,9 +161,9 @@ class Paginator
             'last_page'    => $this->lastPage,
         ];
     }
-	#endregion
+    #endregion
 
-	#region Serialization
+    #region Serialization
     /**
      * Convert the paginator instance into an array structure.
      *
@@ -180,5 +180,5 @@ class Paginator
             ]
         );
     }
-	#endregion
+    #endregion
 }

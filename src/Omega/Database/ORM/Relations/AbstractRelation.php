@@ -44,7 +44,7 @@ use Omega\Database\ORM\AbstractModel;
  */
 abstract class AbstractRelation
 {
-	#region Lifecycle
+    #region Lifecycle
     /**
      * AbstractRelation constructor.
      *
@@ -62,9 +62,9 @@ abstract class AbstractRelation
         protected string $localKey
     ) {
     }
-	#endregion
+    #endregion
 
-	#region Accessors
+    #region Accessors
     /**
      * Get the foreign key used in the relationship.
      *
@@ -104,5 +104,5 @@ abstract class AbstractRelation
     {
         return $this->relatedClass;
     }
-	#endregion
+    #endregion
 }

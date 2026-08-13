@@ -41,7 +41,7 @@ use Omega\Database\ORM\AbstractModel;
  */
 class BooleanCast implements CastsAttributesInterface
 {
-	#region Casting
+    #region Casting
     /**
      * {@inheritdoc}
      */
@@ -57,5 +57,5 @@ class BooleanCast implements CastsAttributesInterface
     {
         return (int)$value;
     }
-	#endregion
+    #endregion
 }

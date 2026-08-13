@@ -43,7 +43,7 @@ use function wp_json_encode;
  */
 class ArrayCast implements CastsAttributesInterface
 {
-	#region Casting
+    #region Casting
     /**
      * {@inheritdoc}
      */
@@ -59,5 +59,5 @@ class ArrayCast implements CastsAttributesInterface
     {
         return wp_json_encode($value);
     }
-	#endregion
+    #endregion
 }

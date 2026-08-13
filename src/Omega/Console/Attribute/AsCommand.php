@@ -35,22 +35,22 @@ use Attribute;
 #[Attribute(Attribute::TARGET_CLASS)]
 class AsCommand
 {
-	/**
-	 * Creates a new command metadata attribute.
-	 *
-	 * Defines the command name, description, arguments, options, aliases,
-	 * and visibility. This metadata is read by the console command loader
-	 * to configure Symfony Console commands automatically.
-	 *
-	 * @param string      $name        Command name used to invoke it (e.g. 'app:user-clean').
-	 * @param string|null $description Short description displayed in the command list.
-	 * @param array       $arguments   Command argument definitions in the format:
-	 *                                 [name => [mode, description, default?]].
-	 * @param array       $options     Command option definitions in the format:
-	 *                                 [name => [shortcut, mode, description, default?, suggestedValues?]].
-	 * @param array       $aliases     Alternative names that can also invoke the command.
-	 * @param bool        $hidden      Whether the command should be hidden from the command list.
-	 */
+    /**
+     * Creates a new command metadata attribute.
+     *
+     * Defines the command name, description, arguments, options, aliases,
+     * and visibility. This metadata is read by the console command loader
+     * to configure Symfony Console commands automatically.
+     *
+     * @param string      $name        Command name used to invoke it (e.g. 'app:user-clean').
+     * @param string|null $description Short description displayed in the command list.
+     * @param array       $arguments   Command argument definitions in the format:
+     *                                 [name => [mode, description, default?]].
+     * @param array       $options     Command option definitions in the format:
+     *                                 [name => [shortcut, mode, description, default?, suggestedValues?]].
+     * @param array       $aliases     Alternative names that can also invoke the command.
+     * @param bool        $hidden      Whether the command should be hidden from the command list.
+     */
     public function __construct(
         public string $name,
         public ?string $description = null,
@@ -58,5 +58,6 @@ class AsCommand
         public array $options = [],
         public array $aliases = [],
         public bool $hidden = false,
-    ) {}
+    ) {
+    }
 }

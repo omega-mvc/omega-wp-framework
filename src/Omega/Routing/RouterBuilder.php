@@ -47,15 +47,15 @@ use function end;
  */
 class RouterBuilder
 {
-	#region Properties
+    #region Properties
     /** @var array<int, Router> Stack of active Router instances created during route building. */
     protected array $instances = [];
 
     /** @var int Current nesting level of route groups. Used to manage grouped routing context. */
     protected int $groupDepth = 0;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * RouterBuilder constructor.
      *
@@ -66,9 +66,9 @@ class RouterBuilder
     public function __construct(protected ApplicationInterface $app)
     {
     }
-	#endregion
+    #endregion
 
-	#region Router Instance Management
+    #region Router Instance Management
     /**
      * Retrieve the current Router instance or create a new one.
      *
@@ -87,9 +87,9 @@ class RouterBuilder
             return $instance;
         }
     }
-	#endregion
+    #endregion
 
-	#region Route Configuration
+    #region Route Configuration
     /**
      * Define a URI prefix for the current route group or router context.
      *
@@ -125,9 +125,9 @@ class RouterBuilder
 
         return $instance;
     }
-	#endregion
+    #endregion
 
-	#region HTTP Route Registration
+    #region HTTP Route Registration
     /**
      * Register a GET route.
      *
@@ -202,9 +202,9 @@ class RouterBuilder
 
         return $instance->addRoute('DELETE', $uri, $action);
     }
-	#endregion
+    #endregion
 
-	#region Group Context Management
+    #region Group Context Management
     /**
      * Increase the routing group nesting level.
      *
@@ -228,5 +228,5 @@ class RouterBuilder
     {
         $this->groupDepth--;
     }
-	#endregion
+    #endregion
 }

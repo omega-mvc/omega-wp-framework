@@ -34,7 +34,7 @@ namespace Omega\Database\Migrations;
  */
 abstract class AbstractMigration implements MigrationInterface
 {
-	#region Properties
+    #region Properties
     /**
      * Previous application or database version at the time of execution.
      *
@@ -44,9 +44,9 @@ abstract class AbstractMigration implements MigrationInterface
      * @var string
      */
     protected string $oldVersion;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Set the previous version of the application.
      *
@@ -60,9 +60,9 @@ abstract class AbstractMigration implements MigrationInterface
     {
         $this->oldVersion = $version;
     }
-	#endregion
+    #endregion
 
-	#region Migration
+    #region Migration
     /**
      *{@inheritdoc}
      */
@@ -72,5 +72,5 @@ abstract class AbstractMigration implements MigrationInterface
      *{@inheritdoc}
      */
     abstract public function down(): void;
-	#endregion
+    #endregion
 }

@@ -48,28 +48,28 @@ use Omega\View\Exception\ViewFileNotFoundException;
  */
 interface ViewInterface
 {
-	#region Rendering
-	/**
-	 * Render a view file.
-	 *
-	 * The provided view name may use dot notation to represent
-	 * nested directories. The supplied data array is extracted
-	 * into individual variables so they become directly available
-	 * inside the included template.
-	 *
-	 * Example:
-	 *
-	 * make('admin.dashboard', ['title' => 'Dashboard']);
-	 *
-	 * makes the variable $title available inside:
-	 *
-	 * resources/views/admin/dashboard.php
-	 *
-	 * @param string $view The logical name of the view using dot notation.
-	 * @param array $data The data to expose to the view file.
-	 * @return string Return the template string.
-	 * @throws ViewFileNotFoundException Thrown when the resolved view file does not exist.
-	 */
-	public function render(string $view, array $data = []): string;
-	#endregion
+    #region Rendering
+    /**
+     * Render a view file.
+     *
+     * The provided view name may use dot notation to represent
+     * nested directories. The supplied data array is extracted
+     * into individual variables so they become directly available
+     * inside the included template.
+     *
+     * Example:
+     *
+     * make('admin.dashboard', ['title' => 'Dashboard']);
+     *
+     * makes the variable $title available inside:
+     *
+     * resources/views/admin/dashboard.php
+     *
+     * @param string $view The logical name of the view using dot notation.
+     * @param array $data The data to expose to the view file.
+     * @return string Return the template string.
+     * @throws ViewFileNotFoundException Thrown when the resolved view file does not exist.
+     */
+    public function render(string $view, array $data = []): string;
+    #endregion
 }

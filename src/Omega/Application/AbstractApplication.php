@@ -45,15 +45,15 @@ use function method_exists;
  */
 abstract class AbstractApplication extends Container implements ApplicationInterface
 {
-	#region Properties
-	/** @var array Registered service provider instances. */
+    #region Properties
+    /** @var array Registered service provider instances. */
     protected array $serviceProviders = [];
 
-	/** @var array<class-string> Service providers defined by the application layer. */
-	protected array $providers = [];
-	#endregion
+    /** @var array<class-string> Service providers defined by the application layer. */
+    protected array $providers = [];
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create and initialize a new application instance.
      *
@@ -90,73 +90,73 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         $this->registerCoreContainerAliases();
     }
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function bootstrap(): void
-	{
-		foreach ($this->serviceProviders as $provider) {
-			if (method_exists($provider, 'boot')) {
-				$provider->boot();
-			}
-		}
-	}
-	#endregion
+    /**
+     * {@inheritdoc}
+     */
+    public function bootstrap(): void
+    {
+        foreach ($this->serviceProviders as $provider) {
+            if (method_exists($provider, 'boot')) {
+                $provider->boot();
+            }
+        }
+    }
+    #endregion
 
-	#region Service providers
-	/**
-	 * Register core container bindings required by the application.
-	 *
-	 * @return void
-	 */
-	protected function registerBaseBindings(): void
-	{
-		$this->bindInstance(ContainerInterface::class, $this);
-		$this->bindInstance(Container::class, $this);
-		$this->bindInstance(ApplicationInterface::class, $this);
-	}
+    #region Service providers
+    /**
+     * Register core container bindings required by the application.
+     *
+     * @return void
+     */
+    protected function registerBaseBindings(): void
+    {
+        $this->bindInstance(ContainerInterface::class, $this);
+        $this->bindInstance(Container::class, $this);
+        $this->bindInstance(ApplicationInterface::class, $this);
+    }
 
-	/**
-	 * Register the default framework service providers.
-	 *
-	 * @return void
-	 */
-	protected function registerBaseServiceProviders(): void
-	{
-		$this->register(new ConfigServiceProvider($this));
-		$this->register(new SettingsServiceProvider($this));
-		$this->register(new RouterServiceProvider($this));
-		$this->register(new DatabaseServiceProvider($this));
-		if (!$this->isCli()) {
-			$this->register( new ViewServiceProvider( $this ) );
-			$this->register( new AdminServiceProvider( $this ) );
-		}
-	}
+    /**
+     * Register the default framework service providers.
+     *
+     * @return void
+     */
+    protected function registerBaseServiceProviders(): void
+    {
+        $this->register(new ConfigServiceProvider($this));
+        $this->register(new SettingsServiceProvider($this));
+        $this->register(new RouterServiceProvider($this));
+        $this->register(new DatabaseServiceProvider($this));
+        if (!$this->isCli()) {
+            $this->register(new ViewServiceProvider($this));
+            $this->register(new AdminServiceProvider($this));
+        }
+    }
 
-	/**
-	 * Register user-defined service providers from configuration file.
-	 *
-	 * @return void
-	 */
-	protected function registerServiceProviders(): void
-	{
-		$providersFile = $this->getBasePath() . '/config/providers.php';
-		if (file_exists($providersFile)) {
-			$providers = include $providersFile;
-			if (is_array($providers)) {
-				foreach ($providers as $provider) {
-					$this->register($provider);
-				}
-			}
-		}
-	}
-	#endregion
+    /**
+     * Register user-defined service providers from configuration file.
+     *
+     * @return void
+     */
+    protected function registerServiceProviders(): void
+    {
+        $providersFile = $this->getBasePath() . '/config/providers.php';
+        if (file_exists($providersFile)) {
+            $providers = include $providersFile;
+            if (is_array($providers)) {
+                foreach ($providers as $provider) {
+                    $this->register($provider);
+                }
+            }
+        }
+    }
+    #endregion
 
-	#region Container
-	/**
-	 * {@inheritdoc}
-	 */
-	public function register(object|string $provider): object|string
+    #region Container
+    /**
+     * {@inheritdoc}
+     */
+    public function register(object|string $provider): object|string
     {
         $class = is_string($provider) ? $provider : get_class($provider);
 
@@ -177,20 +177,20 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         return $provider;
     }
 
-	/**
-	 * Register core container aliases for internal services.
-	 *
-	 * @return void
-	 */
-	protected function registerCoreContainerAliases(): void
-	{
-	}
-	#endregion
+    /**
+     * Register core container aliases for internal services.
+     *
+     * @return void
+     */
+    protected function registerCoreContainerAliases(): void
+    {
+    }
+    #endregion
 
-	#region Questo metodo è provvisorio.
-	private function isCli(): bool
-	{
-		return PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
-	}
-	#endregion
+    #region Questo metodo è provvisorio.
+    private function isCli(): bool
+    {
+        return PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
+    }
+    #endregion
 }

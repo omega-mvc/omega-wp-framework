@@ -48,33 +48,33 @@ use function wp_get_theme;
  */
 class ApplicationTheme extends Application
 {
-	#region Constants
-	/**
-	 * The name of the framework.
-	 *
-	 * This constant defines the official name of the core framework.
-	 * It is used as a stable identifier across the application lifecycle
-	 * and should not be changed at runtime.
-	 *
-	 * @var string
-	 */
-	protected const string NAME = 'Omega Theme';
+    #region Constants
+    /**
+     * The name of the framework.
+     *
+     * This constant defines the official name of the core framework.
+     * It is used as a stable identifier across the application lifecycle
+     * and should not be changed at runtime.
+     *
+     * @var string
+     */
+    protected const string NAME = 'Omega Theme';
 
-	/**
-	 * The version of the framework.
-	 *
-	 * This constant defines the current version of the core framework.
-	 * It is used for version tracking, compatibility checks, and internal
-	 * framework identification.
-	 *
-	 * It should be updated only when releasing a new framework version.
-	 *
-	 * @var string
-	 */
-	protected const string VERSION = '1.0.0';
-	#endregion
+    /**
+     * The version of the framework.
+     *
+     * This constant defines the current version of the core framework.
+     * It is used for version tracking, compatibility checks, and internal
+     * framework identification.
+     *
+     * It should be updated only when releasing a new framework version.
+     *
+     * @var string
+     */
+    protected const string VERSION = '1.0.0';
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create and initialize a new theme application instance.
      *
@@ -100,9 +100,9 @@ class ApplicationTheme extends Application
     {
         parent::__construct($id, $basePath);
     }
-	#endregion
+    #endregion
 
-	#region WordPress Metadata
+    #region WordPress Metadata
     /**
      * {@inheritdoc}
      *
@@ -122,5 +122,5 @@ class ApplicationTheme extends Application
 
         return $value;
     }
-	#endregion
+    #endregion
 }

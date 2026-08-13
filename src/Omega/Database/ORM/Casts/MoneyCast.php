@@ -44,7 +44,7 @@ use function round;
  */
 class MoneyCast implements CastsAttributesInterface
 {
-	#region Casting
+    #region Casting
     /**
      * {@inheritdoc}
      */
@@ -60,5 +60,5 @@ class MoneyCast implements CastsAttributesInterface
     {
         return (int)round($value * 100);
     }
-	#endregion
+    #endregion
 }

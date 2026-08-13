@@ -39,7 +39,7 @@ use Omega\Application\ApplicationInterface;
  */
 class ServiceProvider
 {
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new service provider instance.
      *
@@ -49,9 +49,9 @@ class ServiceProvider
     public function __construct(public ApplicationInterface $app)
     {
     }
-	#endregion
+    #endregion
 
-	#region Registration
+    #region Registration
     /**
      * Register services into the container.
      *
@@ -76,9 +76,9 @@ class ServiceProvider
     public function boot(): void
     {
     }
-	#endregion
+    #endregion
 
-	#region Resources
+    #region Resources
     /**
      * Load route definitions from the given file.
      *
@@ -101,5 +101,5 @@ class ServiceProvider
     {
         $this->app->addMigrationFolder($path);
     }
-	#endregion
+    #endregion
 }

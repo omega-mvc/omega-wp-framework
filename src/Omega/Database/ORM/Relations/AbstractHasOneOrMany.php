@@ -45,7 +45,7 @@ use ReflectionException;
  */
 abstract class AbstractHasOneOrMany extends AbstractRelation
 {
-	#region Persistence
+    #region Persistence
     /**
      * Attach an existing model instance to the parent model.
      *
@@ -96,9 +96,9 @@ abstract class AbstractHasOneOrMany extends AbstractRelation
             $this->parent->{$this->getLocalKey()}
         )->delete();
     }
-	#endregion
+    #endregion
 
-	#region Helpers
+    #region Helpers
     /**
      * Set foreign key attributes on a model before creation or saving.
      *
@@ -113,5 +113,5 @@ abstract class AbstractHasOneOrMany extends AbstractRelation
         $localKey = $this->getLocalKey();
         $model->setAttribute($this->getForeignKey(), $this->parent->$localKey);
     }
-	#endregion
+    #endregion
 }

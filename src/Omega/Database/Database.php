@@ -53,15 +53,15 @@ use function sprintf;
  */
 class Database
 {
-	#region Properties
+    #region Properties
     /** @var wpdb WordPress database connection instance. */
     protected wpdb $wpdb;
 
     /** @var Migrator Database migration manager instance. */
     protected Migrator $migrator;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new database manager instance.
      *
@@ -78,9 +78,9 @@ class Database
         $this->wpdb     = $wpdb;
         $this->migrator = $app->resolve('migrator');
     }
-	#endregion
+    #endregion
 
-	#region Migration
+    #region Migration
     /**
      * Retrieve the database migrator instance.
      *
@@ -90,9 +90,9 @@ class Database
     {
         return $this->migrator;
     }
-	#endregion
+    #endregion
 
-	#region Schema
+    #region Schema
     /**
      * Generate a fully qualified WordPress table name.
      *
@@ -163,29 +163,29 @@ class Database
 
         return $exists !== null;
     }
-	#endregion
+    #endregion
 
-	#region Query Builder
-	/**
-	 * Create a query builder instance for a database table.
-	 *
-	 * This method internally creates a temporary dynamic model
-	 * bound to the specified table.
-	 *
-	 * @param string $table The base table name without prefix.
-	 * @return QueryBuilder A query builder instance for the table.
-	 * @throws ReflectionException If the parent model fails to resolve property or schema metadata via reflection.
-	 */
-	public static function table(string $table): QueryBuilder
-	{
-		$model = new DynamicModel([], self::getTableName($table));
+    #region Query Builder
+    /**
+     * Create a query builder instance for a database table.
+     *
+     * This method internally creates a temporary dynamic model
+     * bound to the specified table.
+     *
+     * @param string $table The base table name without prefix.
+     * @return QueryBuilder A query builder instance for the table.
+     * @throws ReflectionException If the parent model fails to resolve property or schema metadata via reflection.
+     */
+    public static function table(string $table): QueryBuilder
+    {
+        $model = new DynamicModel([], self::getTableName($table));
 
-		return $model->getQueryBuilder();
-	}
-	#endregion
+        return $model->getQueryBuilder();
+    }
+    #endregion
 
-	#region Query Execution
-	/**
+    #region Query Execution
+    /**
      * Prepare a SQL query using WordPress placeholder formatting.
      *
      * Safely escapes and formats query bindings using wpdb::prepare().
@@ -234,9 +234,9 @@ class Database
     {
         return $this->wpdb->get_var($query);
     }
-	#endregion
+    #endregion
 
-	#region Data Manipulation
+    #region Data Manipulation
     /**
      * Delete rows from a database table.
      *
@@ -333,5 +333,5 @@ class Database
             $this->wpdb->prepare($sql, $values)
         );
     }
-	#endregion
+    #endregion
 }

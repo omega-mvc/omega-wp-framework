@@ -40,12 +40,12 @@ use ReflectionException;
  */
 class DynamicModel extends AbstractModel
 {
-	#region Properties
+    #region Properties
     /** @var string Primary key of the underlying table. */
     protected string $primaryKey = 'id';
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * DynamicModel constructor.
      *
@@ -59,9 +59,9 @@ class DynamicModel extends AbstractModel
     {
         parent::__construct($data, $table);
     }
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Get the table name associated with this model instance.
      *
@@ -73,5 +73,5 @@ class DynamicModel extends AbstractModel
     {
         return $this->table;
     }
-	#endregion
+    #endregion
 }

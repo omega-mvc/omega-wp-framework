@@ -35,24 +35,24 @@ use Attribute;
 #[Attribute(Attribute::TARGET_CLASS)]
 class Make
 {
-	/**
-	 * Creates a new file generation metadata attribute.
-	 *
-	 * Defines the template, destination, naming conventions, and placeholder
-	 * mappings used by the make command to generate framework artifacts such
-	 * as controllers, models, commands, or service providers.
-	 *
-	 * @param string $template Path to the stub/template file.
-	 * @param string $path     Container binding or configuration key resolving the base output directory.
-	 * @param string $pattern  Placeholder within the template that will be
-	 *                         replaced with the generated class name.
-	 * @param string $suffix   Suffix appended to the generated file name.
-	 * @param string $target   Logical target used for display messages and destination resolution.
-	 * @param string $info     Success message displayed when generation completes.
-	 * @param string $warning  Warning message displayed when the target file already exists.
-	 * @param array  $vars     Additional template placeholder mappings in the
-	 *                         format [placeholder => transformation].
-	 */
+    /**
+     * Creates a new file generation metadata attribute.
+     *
+     * Defines the template, destination, naming conventions, and placeholder
+     * mappings used by the make command to generate framework artifacts such
+     * as controllers, models, commands, or service providers.
+     *
+     * @param string $template Path to the stub/template file.
+     * @param string $path     Container binding or configuration key resolving the base output directory.
+     * @param string $pattern  Placeholder within the template that will be
+     *                         replaced with the generated class name.
+     * @param string $suffix   Suffix appended to the generated file name.
+     * @param string $target   Logical target used for display messages and destination resolution.
+     * @param string $info     Success message displayed when generation completes.
+     * @param string $warning  Warning message displayed when the target file already exists.
+     * @param array  $vars     Additional template placeholder mappings in the
+     *                         format [placeholder => transformation].
+     */
     public function __construct(
         public string $template,
         public string $path,
@@ -62,5 +62,6 @@ class Make
         public string $info,
         public string $warning,
         public array $vars = []
-    ) {}
+    ) {
+    }
 }

@@ -77,7 +77,7 @@ use function wp_list_pluck;
  */
 class QueryBuilder
 {
-	#region Properties
+    #region Properties
     /** @var string Database table name associated with the model query. */
     protected string $tableName;
 
@@ -208,9 +208,9 @@ class QueryBuilder
      * @var int|null
      */
     private ?int $offset = null;
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * QueryBuilder constructor.
      *
@@ -232,9 +232,9 @@ class QueryBuilder
             $this->whereArray[] = ['column' => 'deleted_at', 'value' => '!#####NULL#####!', 'operator' => 'IS'];
         }
     }
-	#endregion
+    #endregion
 
-	#region Query Building
+    #region Query Building
     /**
      * Define the columns to be selected in the query.
      *
@@ -253,610 +253,610 @@ class QueryBuilder
         return $this;
     }
 
-	/**
-	 * Add a WHERE condition to the query.
-	 *
-	 * Supports multiple input styles:
-	 * - Key/value array of conditions
-	 * - Nested callback conditions
-	 * - Standard column/operator/value syntax
-	 *
-	 * Automatically normalizes operators and supports optional table scoping.
-	 *
-	 * @param array<string, mixed>|Closure|mixed $column Column name, conditions array, or nested callback.
-	 * @param mixed|null $operator SQL operator (e.g. '=', '>', 'IN') or value if omitted.
-	 * @param mixed|null $value Comparison value.
-	 * @param string|null $method Boolean operator (AND/OR) used to join conditions.
-	 * @param string|null $table Optional table name for fully qualified columns.
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function where(
-		mixed $column,
-		mixed $operator = null,
-		mixed $value = null,
-		mixed $method = null,
-		mixed $table = null
-	): static {
-		if (is_array($column)) {
-			foreach ($column as $col => $val) {
-				$this->where($col, $val);
-			}
-			return $this;
-		}
-
-		if ($column instanceof Closure) {
-			$this->whereArray[] = [
-				'type'     => 'Nested',
-				'callback' => $column,
-				'method'   => $method ?? 'AND'
-			];
-			return $this;
-		}
-
-		$where = [
-			'column'   => $column,
-			'value'    => $value ?? $operator,
-			'operator' => isset($value) ? $operator : '='
-		];
-
-		if ($method) {
-			$where['method'] = $method;
-		}
-
-		if ($table) {
-			$where['table'] = $table;
-		}
-
-		$this->whereArray[] = $where;
-
-		return $this;
-	}
-
-	/**
-	 * Add an OR WHERE condition to the query.
-	 *
-	 * Accepts either:
-	 * - a key/value array of conditions
-	 * - a standard column/operator/value expression
-	 *
-	 * Internally delegates to where() using OR as the boolean operator.
-	 *
-	 * @param array<string, mixed>|mixed $column Column name or conditions array.
-	 * @param mixed|null $operator SQL operator or value if omitted.
-	 * @param mixed|null $value Comparison value.
-	 * @return QueryBuilder Returns the current query builder instance for chaining.
-	 */
-	public function orWhere(mixed $column, mixed $operator = null, mixed $value = null): QueryBuilder
-	{
-		if (is_array($column)) {
-			foreach ($column as $col => $val) {
-				$this->orWhere($col, $val);
-			}
-			return $this;
-		}
-
-		return $this->where($column, $operator, $value, 'OR');
-	}
-
-	/**
-	 * Add a WHERE IS NULL condition to the query.
-	 *
-	 * Filters results where the specified column contains a NULL value.
-	 *
-	 * @param string $column Column name to check for NULL.
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function whereNull(string $column): static
-	{
-		$this->where($column, 'IS', '!#####NULL#####!');
-
-		return $this;
-	}
-
-	/**
-	 * Add a WHERE IS NOT NULL condition to the query.
-	 *
-	 * Filters results where the specified column is not NULL.
-	 *
-	 * @param string $column Column name to check for non-NULL values.
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function whereNotNull(string $column): static
-	{
-		$this->where($column, 'IS NOT', '!#####NULL#####!');
-
-		return $this;
-	}
-
-	/**
-	 * Add a raw WHERE clause to the query.
-	 *
-	 * Allows injecting custom SQL fragments directly into the query.
-	 * Bindings are supported to safely inject dynamic values.
-	 *
-	 * @param string $sql Raw SQL condition string.
-	 * @param array<int, mixed> $bindings Optional parameter bindings for prepared statements.
-	 * @param string $boolean Boolean operator used to join conditions (AND/OR).
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): static
-	{
-		$this->whereArray[] = [
-			'type'     => 'Raw',
-			'sql'      => $sql,
-			'bindings' => $bindings,
-			'method'   => $boolean
-		];
-
-		return $this;
-	}
-
-	/**
-	 * Add a raw OR WHERE clause to the query.
-	 *
-	 * Shortcut for whereRaw() using OR as the boolean operator.
-	 *
-	 * @param string $sql Raw SQL condition string.
-	 * @param array<int, mixed> $bindings Optional parameter bindings for prepared statements.
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function orWhereRaw(string $sql, array $bindings = []): static
-	{
-		return $this->whereRaw($sql, $bindings, 'OR');
-	}
-
-	/**
-	 * Add a WHERE IN condition to the query.
-	 *
-	 * Filters results where the given column matches any of the provided values.
-	 *
-	 * @param string $column Column name to filter.
-	 * @param array<int, mixed> $values List of values for the IN condition.
-	 * @return QueryBuilder Returns the current query builder instance for chaining.
-	 */
-	public function whereIn(string $column, array $values = []): QueryBuilder
-	{
-		$this->where($column, 'IN', $values);
-
-		return $this;
-	}
-
-	/**
-	 * Add a column comparison condition to the query.
-	 *
-	 * Compares two columns directly using a SQL operator (e.g. columnA = columnB).
-	 *
-	 * @param string $columnOne First column name.
-	 * @param string|null $operator Comparison operator or second column if omitted.
-	 * @param string|null $columnTwo Second column name.
-	 * @param string $method Boolean operator used to join conditions (AND/OR).
-	 * @return static Returns the current query builder instance for chaining.
-	 */
-	public function whereColumn(
-		string $columnOne,
-		?string $operator = null,
-		?string $columnTwo = null,
-		string $method = 'AND'
-	): static {
-		$this->whereColumnArray[] = [
-			'column_one' => $columnOne,
-			'operator'   => $columnTwo ? $operator : '=',
-			'column_two' => $columnTwo ?? $operator,
-			'method'     => $method
-		];
-
-		return $this;
-	}
-
-	/**
-	 * Add a "WHERE HAS" clause to filter records based on related model existence.
-	 *
-	 * Builds a subquery on the specified relationship and filters the parent query
-	 * to include only records that have at least one matching related record.
-	 *
-	 * An optional callback can be used to further constrain the related query
-	 * before it is converted into an EXISTS subquery.
-	 *
-	 * @param string $relation Name of the relationship method defined on the model.
-	 * @param callable(QueryBuilder): void|null $callback Optional callback to modify the related query.
-	 * @return QueryBuilder Returns the current query builder instance for chaining.
-	 * @throws ReflectionException Thrown when the relationship method cannot be resolved via reflection.
-	 */
-	public function whereHas(string $relation, ?callable $callback = null): QueryBuilder
-	{
-		$reflection   = new ReflectionClass($this->model);
-		$method       = $reflection->getMethod($relation);
-		/** @var AbstractRelation $relation */
-		$relation     = $method->invoke($this->model);
-		$relatedClass = $relation->getRelatedClass();
-		$query        = $relatedClass::query();
-
-		if ($relation instanceof HasMany || $relation instanceof HasOne) {
-			$query->whereColumn(
-				$relation->getForeignKey(),
-				$this->model->getTableName()
-				. '.'
-				. $relation->getLocalKey()
-			);
-		} elseif ($relation instanceof BelongsTo) {
-			$query->whereColumn(
-				$relation->getLocalKey(),
-				$this->model->getTableName()
-				. '.'
-				. $relation->getForeignKey()
-			);
-		}
-
-		if (is_callable($callback)) {
-			call_user_func($callback, $query);
-		}
-
-		$sql = $query->generateQuery();
-
-		$this->existsArray[] = [
-			'sql'    => $sql,
-			'method' => 'AND'
-		];
-
-		return $this;
-	}
-
-	/**
-	 * Add a "WHERE NOT EXISTS" condition for a relationship.
-	 *
-	 * Builds a subquery based on the given relationship method and excludes
-	 * records where the relationship exists, optionally filtered through a callback.
-	 *
-	 * @param string $relation Relationship method name defined on the model.
-	 * @param callable(QueryBuilder): void $callback Callback to customize the related query.
-	 * @return static Returns the current query builder instance for chaining.
-	 * @throws ReflectionException Thrown when the relationship method cannot be resolved via reflection.
-	 */
-	public function whereDoesntHave(string $relation, callable $callback): static
-	{
-		$reflection    = new ReflectionClass($this->model);
-		$method        = $reflection->getMethod($relation);
-		/** @var AbstractRelation $relation */
-		$relation      = $method->invoke($this->model);
-		$relatedClass  = $relation->getRelatedClass();
-		$query         = $relatedClass::query();
-
-		if ($relation instanceof HasMany) {
-			$query->whereColumn(
-				$relation->getForeignKey(),
-				$this->model->getTableName()
-				. '.'
-				. $relation->getLocalKey()
-			);
-		} elseif ($relation instanceof BelongsTo) {
-			$query->whereColumn(
-				$relation->getLocalKey(),
-				$this->model->getTableName()
-				. '.'
-				. $relation->getForeignKey()
-			);
-		}
-
-		if (is_callable($callback)) {
-			call_user_func($callback, $query);
-		}
-
-		$sql = $query->generateQuery();
-
-		$this->existsArray[] = [
-			'sql'    => $sql,
-			'method' => 'AND',
-			'not'    => true,
-		];
-
-		return $this;
-	}
-
-	/**
-	 * Add a WHERE condition based on a relationship join.
-	 *
-	 * Dynamically resolves the given relationship using reflection and builds
-	 * a join + where condition against the related table.
-	 *
-	 * Supports both HasOne and BelongsTo relationships and automatically
-	 * adjusts join keys accordingly.
-	 *
-	 * @param mixed $relation Relationship method name on the model.
-	 * @param mixed $column Column name in the related table.
-	 * @param mixed $valueOrOperator Comparison operator or value.
-	 * @param mixed|null $fieldValue Optional value when using a custom operator.
-	 * @param mixed $queryMethod Boolean operator used to join conditions (AND/OR).
-	 * @return static Returns the current query builder instance for chaining.
-	 * @throws ReflectionException Thrown when the relationship method cannot be resolved.
-	 */
-	public function whereRelation(
-		mixed $relation,
-		mixed $column,
-		mixed $valueOrOperator,
-		mixed $fieldValue = null,
-		mixed $queryMethod = 'AND'
-	): static {
-		//TODO: Verify and refactor this
-		$reflection = new ReflectionClass($this->model);
-		$method     = $reflection->getMethod($relation);
-		$returnType = $method->getReturnType();
-
-		if ($returnType && $relation === $method->getName()) {
-			if ($returnType instanceof ReflectionNamedType && $returnType->getName() === HasOne::class) {
-				/**
-				 * @var HasOne $hasOne
-				 * TODO: Verify not implemented
-				 */
-				$hasOne       = $method->invoke($this->model);
-				$relatedClass = $hasOne->getRelatedClass();
-				$tableName    = $relatedClass::getFullTableName();
-
-				$this->joinArray[] = [
-					'table'       => $tableName,
-					'foreign_key' => $this->model->getForeignKey() . '_id',
-					'local_key'   => 'id',
-				];
-
-				//TODO: Replace by $this->where
-				$this->whereArray[] = [
-					'method'   => $queryMethod,
-					'column'   => "{$column}",
-					'table'    => $tableName,
-					'value'    => $fieldValue ?? $valueOrOperator,
-					'operator' => isset($fieldValue) ? $valueOrOperator : '='
-				];
-
-				if ($relatedClass::isTrashed()) {
-					$this->whereArray[] = [
-						'column'   => 'deleted_at',
-						'table'    => $tableName,
-						'value'    => '!#####NULL#####!',
-						'operator' => 'IS'
-					];
-				}
-			}
-
-			if ($returnType instanceof ReflectionNamedType && $returnType->getName() === BelongsTo::class) {
-				/**
-				 * @var BelongsTo $belongsTo
-				 */
-				$belongsTo    = $method->invoke($this->model);
-				$relatedClass = $belongsTo->getRelatedClass();
-				$tableName    = $relatedClass::getFullTableName();
-
-
-				$this->joinArray[] = [
-					'table'       => $tableName,
-					'foreign_key' => $belongsTo->getLocalKey(),
-					'local_key'   => $belongsTo->getForeignKey()
-				];
-
-				//TODO: Replace by $this->where
-				$this->whereArray[] = [
-					'method'   => $queryMethod,
-					'column'   => "{$column}",
-					'table'    => $tableName,
-					'value'    => $fieldValue ?? $valueOrOperator,
-					'operator' => isset($fieldValue) ? $valueOrOperator : '='
-				];
-
-				if ($relatedClass::isTrashed()) {
-					$this->whereArray[] = [
-						'column'   => 'deleted_at',
-						'table'    => $tableName,
-						'value'    => '!#####NULL#####!',
-						'operator' => 'IS'
-					];
-				}
-			}
-		}
-
-		return $this;
-	}
-
-	/**
-	 * Add an OR WHERE condition based on a relationship constraint.
-	 *
-	 * This is a convenience wrapper around whereRelation() using OR as the boolean operator.
-	 *
-	 * @param mixed $relation Relationship method name on the model.
-	 * @param mixed $column Column name within the related table.
-	 * @param mixed $valueOrOperator Comparison value or operator.
-	 * @param mixed|null $fieldValue Optional comparison value when using a custom operator.
-	 * @return static Returns the current query builder instance for chaining.
-	 * @throws ReflectionException Thrown when the relationship cannot be resolved via reflection.
-	 */
-	public function orWhereRelation(
-		mixed $relation,
-		mixed $column,
-		mixed $valueOrOperator,
-		mixed $fieldValue = null
-	): static {
-		return $this->whereRelation(
-			$relation,
-			$column,
-			$valueOrOperator,
-			$fieldValue,
-			'OR'
-		);
-	}
-
-	/**
-	 * Add GROUP BY clause to the query.
-	 *
-	 * Accepts one or more column names and appends them to the GROUP BY statement.
-	 *
-	 * @param string ...$columns One or more column names to group by.
-	 * @return QueryBuilder Returns the current query builder instance for chaining.
-	 */
-	public function groupBy(string ...$columns): QueryBuilder
-	{
-		foreach ($columns as $column) {
-			$this->groupBy[] = $column;
-		}
-		return $this;
-	}
-
-	/**
-	 * Add an ORDER BY clause to the query.
-	 *
-	 * @param array<string, mixed> $column Column definition (may include nested structure depending on implementation).
-	 * @param string $order Sort direction ("asc" or "desc").
-	 * @return QueryBuilder Current query builder instance for chaining.
-	 */
-	public function orderBy(array $column, string $order = 'asc'): QueryBuilder
-	{
-		$this->orderBy[] = ['column' => $column, 'order' => $order];
-
-		return $this;
-	}
-
-	/**
-	 * Limit the number of results returned by the query.
-	 *
-	 * @param int $limit Maximum number of records to retrieve.
-	 * @return QueryBuilder Current query builder instance for chaining.
-	 */
-	public function limit(int $limit): QueryBuilder
-	{
-		$this->limit = $limit;
-
-		return $this;
-	}
-
-	/**
-	 * Set the query result offset.
-	 *
-	 * @param int $offset Number of records to skip.
-	 * @return QueryBuilder Current query builder instance for chaining.
-	 */
-	public function offset(int $offset): QueryBuilder
-	{
-		$this->offset = $offset;
-
-		return $this;
-	}
-
-	/**
-	 * Specify relationships to eager load with the query.
-	 *
-	 * Accepts a single relationship name or an array of relationships.
-	 * Each relation is resolved and registered for eager loading.
-	 *
-	 * @param string|array<int, string> $relations Relationship name(s) to eager load.
-	 * @return QueryBuilder Returns the current query builder instance for chaining.
-	 */
-	public function with(array|string $relations): QueryBuilder
-	{
-		if (is_string($relations)) {
-			$relations = [$relations];
-		}
-
-		if (!is_array($relations)) {
-			return $this;
-		}
-
-		foreach ($relations as $relation) {
-			$this->addRelationToWith($relation);
-		}
-
-		return $this;
-	}
-
-	/**
-	 * Register a single relationship for eager loading.
-	 *
-	 * Validates the relationship method, resolves its return type,
-	 * and stores the configuration required for eager loading execution.
-	 *
-	 * Invalid or non-existing relationships are silently ignored.
-	 *
-	 * @param string $relation Relationship method name.
-	 * @return void
-	 */
-	private function addRelationToWith(string $relation): void
-	{
-		if (empty($relation)) {
-			return;
-		}
-
-		try {
-			$reflection = new ReflectionClass($this->model);
-
-			if (!$reflection->hasMethod($relation)) {
-				return;
-			}
-
-			$method = $reflection->getMethod($relation);
-
-			if ($relation !== $method->getName()) {
-				return;
-			}
-
-			$returnType = $method->getReturnType();
-			if (!$returnType instanceof ReflectionNamedType) {
-				return;
-			}
-
-			$relationInstance = $method->invoke($this->model);
-			$relatedClass     = $relationInstance->getRelatedClass();
-			$returnTypeName   = $returnType->getName();
-			$relationConfig   = $this->buildRelationConfig($returnTypeName, $relatedClass, $relation);
-
-			if ($relationConfig) {
-				$this->withArray[] = $relationConfig;
-			}
-		} catch (Exception) {
-			// Silently ignore invalid relations
-			return;
-		}
-	}
-
-	/**
-	 * Build the configuration array for an eager-loaded relationship.
-	 *
-	 * Generates metadata required to execute eager loading based on
-	 * the relationship type (HasOne, HasMany, BelongsTo).
-	 *
-	 * @param string $relationTypeName Fully qualified relationship class name.
-	 * @param class-string<AbstractModel> $relatedClass Related model class name.
-	 * @param string $relation Relationship method name.
-	 * @return array<string, mixed>|null Returns relation configuration array or null if unsupported.
-	 */
-	private function buildRelationConfig(
-		string $relationTypeName,
-		string $relatedClass,
-		string $relation
-	): ?array {
-		$baseConfig = [
-			'model'    => $relatedClass,
-			'relation' => $relation,
-			'table'    => $relatedClass::getTable(),
-		];
-
-		return match ($relationTypeName) {
-			HasOne::class    => array_merge($baseConfig, [
-				'foreign_key'   => $this->model->getForeignKey() . '_id',
-				'local_key'     => 'id',
-				'relation_type' => HasOne::class
-			]),
-			BelongsTo::class  => array_merge($baseConfig, [
-				'foreign_key'   => 'id',
-				'local_key'     => $relatedClass::getForeignKeyStatic(),
-				'relation_type' => BelongsTo::class
-			]),
-			HasMany::class   => array_merge($baseConfig, [
-				'foreign_key'   => $this->model->getForeignKey() . '_id',
-				'local_key'     => 'id',
-				'relation_type' => HasMany::class
-			]),
-			default => null,
-		};
-	}
-	#endregion
-
-	#region Retrieval
-	/**
+    /**
+     * Add a WHERE condition to the query.
+     *
+     * Supports multiple input styles:
+     * - Key/value array of conditions
+     * - Nested callback conditions
+     * - Standard column/operator/value syntax
+     *
+     * Automatically normalizes operators and supports optional table scoping.
+     *
+     * @param array<string, mixed>|Closure|mixed $column Column name, conditions array, or nested callback.
+     * @param mixed|null $operator SQL operator (e.g. '=', '>', 'IN') or value if omitted.
+     * @param mixed|null $value Comparison value.
+     * @param string|null $method Boolean operator (AND/OR) used to join conditions.
+     * @param string|null $table Optional table name for fully qualified columns.
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function where(
+        mixed $column,
+        mixed $operator = null,
+        mixed $value = null,
+        mixed $method = null,
+        mixed $table = null
+    ): static {
+        if (is_array($column)) {
+            foreach ($column as $col => $val) {
+                $this->where($col, $val);
+            }
+            return $this;
+        }
+
+        if ($column instanceof Closure) {
+            $this->whereArray[] = [
+                'type'     => 'Nested',
+                'callback' => $column,
+                'method'   => $method ?? 'AND'
+            ];
+            return $this;
+        }
+
+        $where = [
+            'column'   => $column,
+            'value'    => $value ?? $operator,
+            'operator' => isset($value) ? $operator : '='
+        ];
+
+        if ($method) {
+            $where['method'] = $method;
+        }
+
+        if ($table) {
+            $where['table'] = $table;
+        }
+
+        $this->whereArray[] = $where;
+
+        return $this;
+    }
+
+    /**
+     * Add an OR WHERE condition to the query.
+     *
+     * Accepts either:
+     * - a key/value array of conditions
+     * - a standard column/operator/value expression
+     *
+     * Internally delegates to where() using OR as the boolean operator.
+     *
+     * @param array<string, mixed>|mixed $column Column name or conditions array.
+     * @param mixed|null $operator SQL operator or value if omitted.
+     * @param mixed|null $value Comparison value.
+     * @return QueryBuilder Returns the current query builder instance for chaining.
+     */
+    public function orWhere(mixed $column, mixed $operator = null, mixed $value = null): QueryBuilder
+    {
+        if (is_array($column)) {
+            foreach ($column as $col => $val) {
+                $this->orWhere($col, $val);
+            }
+            return $this;
+        }
+
+        return $this->where($column, $operator, $value, 'OR');
+    }
+
+    /**
+     * Add a WHERE IS NULL condition to the query.
+     *
+     * Filters results where the specified column contains a NULL value.
+     *
+     * @param string $column Column name to check for NULL.
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function whereNull(string $column): static
+    {
+        $this->where($column, 'IS', '!#####NULL#####!');
+
+        return $this;
+    }
+
+    /**
+     * Add a WHERE IS NOT NULL condition to the query.
+     *
+     * Filters results where the specified column is not NULL.
+     *
+     * @param string $column Column name to check for non-NULL values.
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function whereNotNull(string $column): static
+    {
+        $this->where($column, 'IS NOT', '!#####NULL#####!');
+
+        return $this;
+    }
+
+    /**
+     * Add a raw WHERE clause to the query.
+     *
+     * Allows injecting custom SQL fragments directly into the query.
+     * Bindings are supported to safely inject dynamic values.
+     *
+     * @param string $sql Raw SQL condition string.
+     * @param array<int, mixed> $bindings Optional parameter bindings for prepared statements.
+     * @param string $boolean Boolean operator used to join conditions (AND/OR).
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): static
+    {
+        $this->whereArray[] = [
+            'type'     => 'Raw',
+            'sql'      => $sql,
+            'bindings' => $bindings,
+            'method'   => $boolean
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Add a raw OR WHERE clause to the query.
+     *
+     * Shortcut for whereRaw() using OR as the boolean operator.
+     *
+     * @param string $sql Raw SQL condition string.
+     * @param array<int, mixed> $bindings Optional parameter bindings for prepared statements.
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function orWhereRaw(string $sql, array $bindings = []): static
+    {
+        return $this->whereRaw($sql, $bindings, 'OR');
+    }
+
+    /**
+     * Add a WHERE IN condition to the query.
+     *
+     * Filters results where the given column matches any of the provided values.
+     *
+     * @param string $column Column name to filter.
+     * @param array<int, mixed> $values List of values for the IN condition.
+     * @return QueryBuilder Returns the current query builder instance for chaining.
+     */
+    public function whereIn(string $column, array $values = []): QueryBuilder
+    {
+        $this->where($column, 'IN', $values);
+
+        return $this;
+    }
+
+    /**
+     * Add a column comparison condition to the query.
+     *
+     * Compares two columns directly using a SQL operator (e.g. columnA = columnB).
+     *
+     * @param string $columnOne First column name.
+     * @param string|null $operator Comparison operator or second column if omitted.
+     * @param string|null $columnTwo Second column name.
+     * @param string $method Boolean operator used to join conditions (AND/OR).
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function whereColumn(
+        string $columnOne,
+        ?string $operator = null,
+        ?string $columnTwo = null,
+        string $method = 'AND'
+    ): static {
+        $this->whereColumnArray[] = [
+            'column_one' => $columnOne,
+            'operator'   => $columnTwo ? $operator : '=',
+            'column_two' => $columnTwo ?? $operator,
+            'method'     => $method
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Add a "WHERE HAS" clause to filter records based on related model existence.
+     *
+     * Builds a subquery on the specified relationship and filters the parent query
+     * to include only records that have at least one matching related record.
+     *
+     * An optional callback can be used to further constrain the related query
+     * before it is converted into an EXISTS subquery.
+     *
+     * @param string $relation Name of the relationship method defined on the model.
+     * @param callable(QueryBuilder): void|null $callback Optional callback to modify the related query.
+     * @return QueryBuilder Returns the current query builder instance for chaining.
+     * @throws ReflectionException Thrown when the relationship method cannot be resolved via reflection.
+     */
+    public function whereHas(string $relation, ?callable $callback = null): QueryBuilder
+    {
+        $reflection   = new ReflectionClass($this->model);
+        $method       = $reflection->getMethod($relation);
+        /** @var AbstractRelation $relation */
+        $relation     = $method->invoke($this->model);
+        $relatedClass = $relation->getRelatedClass();
+        $query        = $relatedClass::query();
+
+        if ($relation instanceof HasMany || $relation instanceof HasOne) {
+            $query->whereColumn(
+                $relation->getForeignKey(),
+                $this->model->getTableName()
+                . '.'
+                . $relation->getLocalKey()
+            );
+        } elseif ($relation instanceof BelongsTo) {
+            $query->whereColumn(
+                $relation->getLocalKey(),
+                $this->model->getTableName()
+                . '.'
+                . $relation->getForeignKey()
+            );
+        }
+
+        if (is_callable($callback)) {
+            call_user_func($callback, $query);
+        }
+
+        $sql = $query->generateQuery();
+
+        $this->existsArray[] = [
+            'sql'    => $sql,
+            'method' => 'AND'
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Add a "WHERE NOT EXISTS" condition for a relationship.
+     *
+     * Builds a subquery based on the given relationship method and excludes
+     * records where the relationship exists, optionally filtered through a callback.
+     *
+     * @param string $relation Relationship method name defined on the model.
+     * @param callable(QueryBuilder): void $callback Callback to customize the related query.
+     * @return static Returns the current query builder instance for chaining.
+     * @throws ReflectionException Thrown when the relationship method cannot be resolved via reflection.
+     */
+    public function whereDoesntHave(string $relation, callable $callback): static
+    {
+        $reflection    = new ReflectionClass($this->model);
+        $method        = $reflection->getMethod($relation);
+        /** @var AbstractRelation $relation */
+        $relation      = $method->invoke($this->model);
+        $relatedClass  = $relation->getRelatedClass();
+        $query         = $relatedClass::query();
+
+        if ($relation instanceof HasMany) {
+            $query->whereColumn(
+                $relation->getForeignKey(),
+                $this->model->getTableName()
+                . '.'
+                . $relation->getLocalKey()
+            );
+        } elseif ($relation instanceof BelongsTo) {
+            $query->whereColumn(
+                $relation->getLocalKey(),
+                $this->model->getTableName()
+                . '.'
+                . $relation->getForeignKey()
+            );
+        }
+
+        if (is_callable($callback)) {
+            call_user_func($callback, $query);
+        }
+
+        $sql = $query->generateQuery();
+
+        $this->existsArray[] = [
+            'sql'    => $sql,
+            'method' => 'AND',
+            'not'    => true,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Add a WHERE condition based on a relationship join.
+     *
+     * Dynamically resolves the given relationship using reflection and builds
+     * a join + where condition against the related table.
+     *
+     * Supports both HasOne and BelongsTo relationships and automatically
+     * adjusts join keys accordingly.
+     *
+     * @param mixed $relation Relationship method name on the model.
+     * @param mixed $column Column name in the related table.
+     * @param mixed $valueOrOperator Comparison operator or value.
+     * @param mixed|null $fieldValue Optional value when using a custom operator.
+     * @param mixed $queryMethod Boolean operator used to join conditions (AND/OR).
+     * @return static Returns the current query builder instance for chaining.
+     * @throws ReflectionException Thrown when the relationship method cannot be resolved.
+     */
+    public function whereRelation(
+        mixed $relation,
+        mixed $column,
+        mixed $valueOrOperator,
+        mixed $fieldValue = null,
+        mixed $queryMethod = 'AND'
+    ): static {
+        //TODO: Verify and refactor this
+        $reflection = new ReflectionClass($this->model);
+        $method     = $reflection->getMethod($relation);
+        $returnType = $method->getReturnType();
+
+        if ($returnType && $relation === $method->getName()) {
+            if ($returnType instanceof ReflectionNamedType && $returnType->getName() === HasOne::class) {
+                /**
+                 * @var HasOne $hasOne
+                 * TODO: Verify not implemented
+                 */
+                $hasOne       = $method->invoke($this->model);
+                $relatedClass = $hasOne->getRelatedClass();
+                $tableName    = $relatedClass::getFullTableName();
+
+                $this->joinArray[] = [
+                    'table'       => $tableName,
+                    'foreign_key' => $this->model->getForeignKey() . '_id',
+                    'local_key'   => 'id',
+                ];
+
+                //TODO: Replace by $this->where
+                $this->whereArray[] = [
+                    'method'   => $queryMethod,
+                    'column'   => "{$column}",
+                    'table'    => $tableName,
+                    'value'    => $fieldValue ?? $valueOrOperator,
+                    'operator' => isset($fieldValue) ? $valueOrOperator : '='
+                ];
+
+                if ($relatedClass::isTrashed()) {
+                    $this->whereArray[] = [
+                        'column'   => 'deleted_at',
+                        'table'    => $tableName,
+                        'value'    => '!#####NULL#####!',
+                        'operator' => 'IS'
+                    ];
+                }
+            }
+
+            if ($returnType instanceof ReflectionNamedType && $returnType->getName() === BelongsTo::class) {
+                /**
+                 * @var BelongsTo $belongsTo
+                 */
+                $belongsTo    = $method->invoke($this->model);
+                $relatedClass = $belongsTo->getRelatedClass();
+                $tableName    = $relatedClass::getFullTableName();
+
+
+                $this->joinArray[] = [
+                    'table'       => $tableName,
+                    'foreign_key' => $belongsTo->getLocalKey(),
+                    'local_key'   => $belongsTo->getForeignKey()
+                ];
+
+                //TODO: Replace by $this->where
+                $this->whereArray[] = [
+                    'method'   => $queryMethod,
+                    'column'   => "{$column}",
+                    'table'    => $tableName,
+                    'value'    => $fieldValue ?? $valueOrOperator,
+                    'operator' => isset($fieldValue) ? $valueOrOperator : '='
+                ];
+
+                if ($relatedClass::isTrashed()) {
+                    $this->whereArray[] = [
+                        'column'   => 'deleted_at',
+                        'table'    => $tableName,
+                        'value'    => '!#####NULL#####!',
+                        'operator' => 'IS'
+                    ];
+                }
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Add an OR WHERE condition based on a relationship constraint.
+     *
+     * This is a convenience wrapper around whereRelation() using OR as the boolean operator.
+     *
+     * @param mixed $relation Relationship method name on the model.
+     * @param mixed $column Column name within the related table.
+     * @param mixed $valueOrOperator Comparison value or operator.
+     * @param mixed|null $fieldValue Optional comparison value when using a custom operator.
+     * @return static Returns the current query builder instance for chaining.
+     * @throws ReflectionException Thrown when the relationship cannot be resolved via reflection.
+     */
+    public function orWhereRelation(
+        mixed $relation,
+        mixed $column,
+        mixed $valueOrOperator,
+        mixed $fieldValue = null
+    ): static {
+        return $this->whereRelation(
+            $relation,
+            $column,
+            $valueOrOperator,
+            $fieldValue,
+            'OR'
+        );
+    }
+
+    /**
+     * Add GROUP BY clause to the query.
+     *
+     * Accepts one or more column names and appends them to the GROUP BY statement.
+     *
+     * @param string ...$columns One or more column names to group by.
+     * @return QueryBuilder Returns the current query builder instance for chaining.
+     */
+    public function groupBy(string ...$columns): QueryBuilder
+    {
+        foreach ($columns as $column) {
+            $this->groupBy[] = $column;
+        }
+        return $this;
+    }
+
+    /**
+     * Add an ORDER BY clause to the query.
+     *
+     * @param array<string, mixed> $column Column definition (may include nested structure depending on implementation).
+     * @param string $order Sort direction ("asc" or "desc").
+     * @return QueryBuilder Current query builder instance for chaining.
+     */
+    public function orderBy(array $column, string $order = 'asc'): QueryBuilder
+    {
+        $this->orderBy[] = ['column' => $column, 'order' => $order];
+
+        return $this;
+    }
+
+    /**
+     * Limit the number of results returned by the query.
+     *
+     * @param int $limit Maximum number of records to retrieve.
+     * @return QueryBuilder Current query builder instance for chaining.
+     */
+    public function limit(int $limit): QueryBuilder
+    {
+        $this->limit = $limit;
+
+        return $this;
+    }
+
+    /**
+     * Set the query result offset.
+     *
+     * @param int $offset Number of records to skip.
+     * @return QueryBuilder Current query builder instance for chaining.
+     */
+    public function offset(int $offset): QueryBuilder
+    {
+        $this->offset = $offset;
+
+        return $this;
+    }
+
+    /**
+     * Specify relationships to eager load with the query.
+     *
+     * Accepts a single relationship name or an array of relationships.
+     * Each relation is resolved and registered for eager loading.
+     *
+     * @param string|array<int, string> $relations Relationship name(s) to eager load.
+     * @return QueryBuilder Returns the current query builder instance for chaining.
+     */
+    public function with(array|string $relations): QueryBuilder
+    {
+        if (is_string($relations)) {
+            $relations = [$relations];
+        }
+
+        if (!is_array($relations)) {
+            return $this;
+        }
+
+        foreach ($relations as $relation) {
+            $this->addRelationToWith($relation);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Register a single relationship for eager loading.
+     *
+     * Validates the relationship method, resolves its return type,
+     * and stores the configuration required for eager loading execution.
+     *
+     * Invalid or non-existing relationships are silently ignored.
+     *
+     * @param string $relation Relationship method name.
+     * @return void
+     */
+    private function addRelationToWith(string $relation): void
+    {
+        if (empty($relation)) {
+            return;
+        }
+
+        try {
+            $reflection = new ReflectionClass($this->model);
+
+            if (!$reflection->hasMethod($relation)) {
+                return;
+            }
+
+            $method = $reflection->getMethod($relation);
+
+            if ($relation !== $method->getName()) {
+                return;
+            }
+
+            $returnType = $method->getReturnType();
+            if (!$returnType instanceof ReflectionNamedType) {
+                return;
+            }
+
+            $relationInstance = $method->invoke($this->model);
+            $relatedClass     = $relationInstance->getRelatedClass();
+            $returnTypeName   = $returnType->getName();
+            $relationConfig   = $this->buildRelationConfig($returnTypeName, $relatedClass, $relation);
+
+            if ($relationConfig) {
+                $this->withArray[] = $relationConfig;
+            }
+        } catch (Exception) {
+            // Silently ignore invalid relations
+            return;
+        }
+    }
+
+    /**
+     * Build the configuration array for an eager-loaded relationship.
+     *
+     * Generates metadata required to execute eager loading based on
+     * the relationship type (HasOne, HasMany, BelongsTo).
+     *
+     * @param string $relationTypeName Fully qualified relationship class name.
+     * @param class-string<AbstractModel> $relatedClass Related model class name.
+     * @param string $relation Relationship method name.
+     * @return array<string, mixed>|null Returns relation configuration array or null if unsupported.
+     */
+    private function buildRelationConfig(
+        string $relationTypeName,
+        string $relatedClass,
+        string $relation
+    ): ?array {
+        $baseConfig = [
+            'model'    => $relatedClass,
+            'relation' => $relation,
+            'table'    => $relatedClass::getTable(),
+        ];
+
+        return match ($relationTypeName) {
+            HasOne::class    => array_merge($baseConfig, [
+                'foreign_key'   => $this->model->getForeignKey() . '_id',
+                'local_key'     => 'id',
+                'relation_type' => HasOne::class
+            ]),
+            BelongsTo::class  => array_merge($baseConfig, [
+                'foreign_key'   => 'id',
+                'local_key'     => $relatedClass::getForeignKeyStatic(),
+                'relation_type' => BelongsTo::class
+            ]),
+            HasMany::class   => array_merge($baseConfig, [
+                'foreign_key'   => $this->model->getForeignKey() . '_id',
+                'local_key'     => 'id',
+                'relation_type' => HasMany::class
+            ]),
+            default => null,
+        };
+    }
+    #endregion
+
+    #region Retrieval
+    /**
      * Retrieve a single record by primary key.
      *
      * Internally builds a WHERE clause using the model's primary key
@@ -870,64 +870,64 @@ class QueryBuilder
         return $this->where($this->model->primaryKey, $id)->first();
     }
 
-	/**
-	 * Execute the query and return a collection of hydrated model instances.
-	 *
-	 * Also resolves eager-loaded relations if defined via `with()`.
-	 *
-	 * @return Collection<int, AbstractModel> Collection of hydrated model instances.
-	 */
-	public function get(): Collection
-	{
-		$results = $this->db->getResults($this->generateQuery());
-		$relations = $this->getWithRelations($results);
-		$items = [];
-		foreach ($results as $result) {
-			$primaryKey = $this->model->getPrimaryKey();
-			if (isset($result->$primaryKey)) {
-				$relation = $relations[$result->$primaryKey] ?? [];
-				$result = array_merge((array)$result, $relation);
-			}
-			$itemModel = new $this->model((array)$result, $this->model->getTableName());
-			$itemModel->setWasRetrieved(true);
+    /**
+     * Execute the query and return a collection of hydrated model instances.
+     *
+     * Also resolves eager-loaded relations if defined via `with()`.
+     *
+     * @return Collection<int, AbstractModel> Collection of hydrated model instances.
+     */
+    public function get(): Collection
+    {
+        $results = $this->db->getResults($this->generateQuery());
+        $relations = $this->getWithRelations($results);
+        $items = [];
+        foreach ($results as $result) {
+            $primaryKey = $this->model->getPrimaryKey();
+            if (isset($result->$primaryKey)) {
+                $relation = $relations[$result->$primaryKey] ?? [];
+                $result = array_merge((array)$result, $relation);
+            }
+            $itemModel = new $this->model((array)$result, $this->model->getTableName());
+            $itemModel->setWasRetrieved(true);
 
-			$items[] = $itemModel;
-		}
+            $items[] = $itemModel;
+        }
 
-		return new Collection($items);
-	}
+        return new Collection($items);
+    }
 
-	/**
-	 * Retrieve the first record matching the query constraints.
-	 *
-	 * @return AbstractModel|null First matching model instance or null if none found.
-	 */
-	public function first(): ?AbstractModel
-	{
-		$results = $this->get();
-		return $results[0] ?? null;
-	}
+    /**
+     * Retrieve the first record matching the query constraints.
+     *
+     * @return AbstractModel|null First matching model instance or null if none found.
+     */
+    public function first(): ?AbstractModel
+    {
+        $results = $this->get();
+        return $results[0] ?? null;
+    }
 
-	/**
-	 * Retrieve the first record or throw an exception if none is found.
-	 *
-	 * This method behaves like "first()", but enforces the existence of a result.
-	 * It is commonly used when the absence of a record is considered an error
-	 * condition rather than a valid outcome.
-	 *
-	 * @return AbstractModel First matching model instance.
-	 * @throws ModelNotFoundException If no record matches the query constraints.
-	 */
-	public function firstOrFail(): AbstractModel
-	{
-		$result = $this->first();
+    /**
+     * Retrieve the first record or throw an exception if none is found.
+     *
+     * This method behaves like "first()", but enforces the existence of a result.
+     * It is commonly used when the absence of a record is considered an error
+     * condition rather than a valid outcome.
+     *
+     * @return AbstractModel First matching model instance.
+     * @throws ModelNotFoundException If no record matches the query constraints.
+     */
+    public function firstOrFail(): AbstractModel
+    {
+        $result = $this->first();
 
-		if (!$result) {
-			throw new ModelNotFoundException('No record found for the given query.');
-		}
+        if (!$result) {
+            throw new ModelNotFoundException('No record found for the given query.');
+        }
 
-		return $result;
-	}
+        return $result;
+    }
 
     /**
      * Count all records matching the current query constraints.
@@ -953,29 +953,29 @@ class QueryBuilder
         return $this->count() > 0;
     }
 
-	/**
-	 * Paginate the query results.
-	 *
-	 * Executes the query with LIMIT and OFFSET based on the current page,
-	 * and returns a paginator instance containing results and metadata.
-	 *
-	 * @param int $perPage Number of items per page.
-	 * @param string $queryPageKey Query string key used to determine current page number.
-	 * @return Paginator Paginated result set with metadata (total, per-page, current page).
-	 */
-	public function paginate(mixed $perPage, string $queryPageKey = 'page'): Paginator
-	{
-		$currentPage = (int)($_GET[$queryPageKey] ?? 1);
-		$total       = $this->count();
-		$items       = $this->offset(($currentPage - 1) * $perPage)
-		                    ->limit($perPage)
-		                    ->get();
+    /**
+     * Paginate the query results.
+     *
+     * Executes the query with LIMIT and OFFSET based on the current page,
+     * and returns a paginator instance containing results and metadata.
+     *
+     * @param int $perPage Number of items per page.
+     * @param string $queryPageKey Query string key used to determine current page number.
+     * @return Paginator Paginated result set with metadata (total, per-page, current page).
+     */
+    public function paginate(mixed $perPage, string $queryPageKey = 'page'): Paginator
+    {
+        $currentPage = (int)($_GET[$queryPageKey] ?? 1);
+        $total       = $this->count();
+        $items       = $this->offset(($currentPage - 1) * $perPage)
+                            ->limit($perPage)
+                            ->get();
 
-		return new Paginator($items->getAll(), $total, $perPage, $currentPage);
-	}
-	#endregion
+        return new Paginator($items->getAll(), $total, $perPage, $currentPage);
+    }
+    #endregion
 
-	#region Data Manipulation
+    #region Data Manipulation
     /**
      * Delete records matching the current query constraints.
      *
@@ -1051,9 +1051,9 @@ class QueryBuilder
 
         return $this->db->query($preparedQuery);
     }
-	#endregion
+    #endregion
 
-	#region SQL Generation
+    #region SQL Generation
     /**
      * Generate the SQL query string for the current builder state.
      *
@@ -1218,9 +1218,9 @@ class QueryBuilder
 
         return implode(' ', $placeholders);
     }
-	#endregion
+    #endregion
 
-	#region Relations
+    #region Relations
     /**
      * Hydrate model results with their eager-loaded relations.
      *
@@ -1279,9 +1279,9 @@ class QueryBuilder
 
         return $relations;
     }
-	#endregion
+    #endregion
 
-	#region Getters
+    #region Getters
     /**
      * Retrieve the underlying model instance associated with this query builder.
      *
@@ -1291,5 +1291,5 @@ class QueryBuilder
     {
         return $this->model;
     }
-	#endregion
+    #endregion
 }

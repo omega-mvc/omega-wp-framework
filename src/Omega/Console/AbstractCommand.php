@@ -62,9 +62,9 @@ abstract class AbstractCommand extends Command
     protected Terminal $terminal;
 
     /** @var ApplicationInterface The Omega application instance */
-    public ApplicationInterface $app {
-        set(ApplicationInterface $app) {
-            $this->app = $app;
+    public ApplicationInterface $app { // phpcs:ignore PSR2.Classes.PropertyDeclaration -- PHP 8.4 property hook
+        set(ApplicationInterface $app) { // phpcs:ignore PSR2.Classes.PropertyDeclaration -- PHP 8.4 property hook
+            $this->app = $app; // phpcs:ignore PSR2.Classes.PropertyDeclaration -- PHP 8.4 property hook
         }
     }
 
@@ -162,13 +162,14 @@ abstract class AbstractCommand extends Command
         foreach ($settings->arguments as $name => $config) {
             if (!is_array($config) || count($config) < 2 || count($config) > 3) {
                 throw new InvalidArgumentException(
-                    "Argument configuration for '$name' must be an array with 2 or 3 elements: [mode:int, description:string, default?]"
+                    "Argument configuration for '$name' must be an array with 2 or 3 elements: "
+                    . "[mode:int, description:string, default?]"
                 );
             }
 
             [$mode, $description] = $config;
-	        /** @noinspection PhpUnusedLocalVariableInspection */
-	        $default = $config[2] ?? null;
+            /** @noinspection PhpUnusedLocalVariableInspection */
+            $default = $config[2] ?? null;
 
             if (!is_int($mode)) {
                 throw new InvalidArgumentException("Argument '$name': mode must be an integer.");
@@ -183,15 +184,17 @@ abstract class AbstractCommand extends Command
         foreach ($settings->options as $name => $config) {
             if (!is_array($config) || count($config) < 3 || count($config) > 5) {
                 throw new InvalidArgumentException(
-                    "Option configuration for '$name' must be an array with 3-5 elements: [shortcut:string|array|null, mode:int, description:string, default?, suggestedValues?]"
+                    "Option configuration for '$name' must be an array with 3-5 elements: "
+                    . "[shortcut:string|array|null, mode:int, description:string, default?, "
+                    . "suggestedValues?]"
                 );
             }
 
             $shortcut = $config[0];
             $mode = $config[1];
             $description = $config[2];
-	        /** @noinspection PhpUnusedLocalVariableInspection */
-	        $default         = $config[3] ?? null;
+            /** @noinspection PhpUnusedLocalVariableInspection */
+            $default         = $config[3] ?? null;
             $suggestedValues = $config[4] ?? [];
 
             if (!is_int($mode)) {

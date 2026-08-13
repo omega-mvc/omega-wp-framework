@@ -80,18 +80,18 @@ class ConsoleApplication
     {
     }
 
-	/**
-	 * Handle a console request.
-	 *
-	 * This method bootstraps the application (if not already bootstrapped),
-	 * prepares input and output instances, registers all configured commands,
-	 * and delegates execution to the Symfony Console application.
-	 *
-	 * @param array<int, string>|InputInterface|null $input Raw CLI arguments or a pre-built input instance.
-	 * @param OutputInterface|null $output Output instance; defaults to ConsoleOutput if null.
-	 * @return int Exit status code returned by the console application.
-	 * @throws Exception
-	 */
+    /**
+     * Handle a console request.
+     *
+     * This method bootstraps the application (if not already bootstrapped),
+     * prepares input and output instances, registers all configured commands,
+     * and delegates execution to the Symfony Console application.
+     *
+     * @param array<int, string>|InputInterface|null $input Raw CLI arguments or a pre-built input instance.
+     * @param OutputInterface|null $output Output instance; defaults to ConsoleOutput if null.
+     * @return int Exit status code returned by the console application.
+     * @throws Exception
+     */
     public function handle(array|InputInterface|null $input = null, OutputInterface|null $output = null): int
     {
         //$this->bootstrap();
@@ -152,7 +152,7 @@ class ConsoleApplication
     {
         $cacheFile = $this->app->getApplicationCachePath() . 'commands.php';
 
-	    $merged = file_exists($cacheFile)
+        $merged = file_exists($cacheFile)
             ? require $cacheFile
             : $this->discoverCommands();
 
@@ -177,14 +177,18 @@ class ConsoleApplication
         $commands = [];
 
         foreach ($commandPaths as $namespace => $path) {
-            if (!is_dir($path)) continue;
+            if (!is_dir($path)) {
+                continue;
+            }
 
             $finder = new Finder();
             $finder->files()->name('*Command.php')->in($path);
 
             foreach ($finder as $file) {
                 $className = $namespace . $file->getBasename('.php');
-                if (!class_exists($className)) continue;
+                if (!class_exists($className)) {
+                    continue;
+                }
 
                 $reflection = new ReflectionClass($className);
                 $attribute = $reflection->getAttributes(AsCommand::class)[0] ?? null;

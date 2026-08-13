@@ -54,7 +54,7 @@ use function is_array;
  */
 class Blueprint
 {
-	#region Properties
+    #region Properties
     /** @var ColumnDefinition[] Registered column definitions for the current table blueprint. */
     protected array $columns = [];
 
@@ -63,9 +63,9 @@ class Blueprint
 
     /** @var array Registered schema commands and foreign key definitions. */
     protected array $commands = [];
-	#endregion
+    #endregion
 
-	#region Lifecycle
+    #region Lifecycle
     /**
      * Create a new schema blueprint instance.
      *
@@ -79,21 +79,21 @@ class Blueprint
     {
     }
 
-	/**
-	 * Mark the blueprint as a table creation operation.
-	 *
-	 * Changes the internal command state from "alter" to "create",
-	 * causing the blueprint to generate a CREATE TABLE statement.
-	 *
-	 * @return void
-	 */
-	public function setCreate(): void
-	{
-		$this->command = 'create';
-	}
-	#endregion
+    /**
+     * Mark the blueprint as a table creation operation.
+     *
+     * Changes the internal command state from "alter" to "create",
+     * causing the blueprint to generate a CREATE TABLE statement.
+     *
+     * @return void
+     */
+    public function setCreate(): void
+    {
+        $this->command = 'create';
+    }
+    #endregion
 
-	#region Primary Keys
+    #region Primary Keys
     /**
      * Create a new auto-incrementing primary key column.
      *
@@ -107,9 +107,9 @@ class Blueprint
     {
         return $this->bigIncrements($column)->primary();
     }
-	#endregion
+    #endregion
 
-	#region Column Genertion
+    #region Column Genertion
     /**
      * Generate the SQL definition for a single column.
      *
@@ -231,18 +231,18 @@ class Blueprint
                     $columnsSql[] = $command->getForeignKeySql();
                 }
 
-                if ( is_array( $command ) && in_array( $command[0], [ 'index', 'unique' ], true ) ) {
+                if (is_array($command) && in_array($command[0], [ 'index', 'unique' ], true)) {
                     $keyword = 'unique' === $command[0] ? 'UNIQUE KEY' : 'KEY';
-                    $columnsSql[] = "$keyword `{$command[1]}` (" . $this->quoteIndexColumns( $command[2] ) . ")";
+                    $columnsSql[] = "$keyword `{$command[1]}` (" . $this->quoteIndexColumns($command[2]) . ")";
                 }
             }
         }
 
         return $columnsSql;
     }
-	#endregion
+    #endregion
 
-	#region Schema Inspection
+    #region Schema Inspection
     /**
      * Determine whether a database table exists.
      *
@@ -298,93 +298,94 @@ class Blueprint
 
         return $exists !== null;
     }
-	#endregion
+    #endregion
 
-	#region Schema Execution
-	/**
-	 * Execute the schema blueprint against the database.
-	 *
-	 * Depending on the current command state, this method generates
-	 * and executes either CREATE TABLE or ALTER TABLE statements.
-	 *
-	 * Existing tables and columns are automatically checked before
-	 * attempting schema modifications.
-	 *
-	 * @return void
-	 */
-	public function run(): void
-	{
-		global $wpdb;
+    #region Schema Execution
+    /**
+     * Execute the schema blueprint against the database.
+     *
+     * Depending on the current command state, this method generates
+     * and executes either CREATE TABLE or ALTER TABLE statements.
+     *
+     * Existing tables and columns are automatically checked before
+     * attempting schema modifications.
+     *
+     * @return void
+     */
+    public function run(): void
+    {
+        global $wpdb;
 
-		if ($this->command === 'create') {
+        if ($this->command === 'create') {
+            $tableName = $wpdb->prefix . $this->table;
 
-			$tableName = $wpdb->prefix . $this->table;
+            if ($this->tableExists($tableName)) {
+                return;
+            }
 
-			if ($this->tableExists( $tableName)) {
-				return;
-			}
+            $columnsSql = $this->prepareColumns();
 
-			$columnsSql = $this->prepareColumns();
+            $columnsDef = implode(",\n  ", $columnsSql);
 
-			$columnsDef = implode( ",\n  ", $columnsSql );
+            // Pin the engine instead of inheriting the server default: foreign keys are silently
+            // ignored by MyISAM, and a table created on a MyISAM-defaulting host can never be
+            // referenced by one, which fails the child's CREATE with errno 150.
+            $sql = "CREATE TABLE `$tableName` (\n  $columnsDef\n) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-			// Pin the engine instead of inheriting the server default: foreign keys are silently
-			// ignored by MyISAM, and a table created on a MyISAM-defaulting host can never be
-			// referenced by one, which fails the child's CREATE with errno 150.
-			$sql = "CREATE TABLE `$tableName` (\n  $columnsDef\n) ENGINE=InnoDB {$wpdb->get_charset_collate()};";
-			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $this->query($sql, $tableName);
+        } else {
+            $tableName = $wpdb->prefix . $this->table;
 
-			$this->query( $sql, $tableName );
-		} else {
-			$tableName = $wpdb->prefix . $this->table;
+            $this->runAlterCommands($tableName);
 
-			$this->runAlterCommands($tableName);
+            foreach ($this->columns as $column) {
+                $columnName = $column->getName();
 
-			foreach ($this->columns as $column) {
-				$columnName = $column->getName();
+                if (!$this->columnExists($tableName, $columnName)) {
+                    $columnSql = $this->generateSingleColumnSql($column);
 
-				if (!$this->columnExists($tableName, $columnName)) {
-					$columnSql = $this->generateSingleColumnSql($column);
+                    $afterColumn = $column->getAfter();
+                    $sql = "ALTER TABLE `$tableName` ADD $columnSql"
+                        . ($afterColumn ? " AFTER `$afterColumn`" : "")
+                        . ";";
+                    $this->query($sql, $tableName);
+                }
+            }
 
-					$afterColumn = $column->getAfter();
-					$sql = "ALTER TABLE `$tableName` ADD $columnSql" . ($afterColumn ? " AFTER `$afterColumn`" : "") . ";";
-					$this->query( $sql, $tableName );
-				}
-			}
+            $this->runIndexCommands($tableName);
+        }
+    }
 
-			$this->runIndexCommands($tableName);
-		}
-	}
-
-	/**
-	 * Execute a schema SQL statement and fail fast if the database reports an error.
-	 *
-	 * WordPress database operations normally signal failure by returning false instead
-	 * of throwing an exception. Without checking that return value, failed CREATE or
-	 * ALTER statements would be silently ignored and the current migration could still
-	 * be recorded as successfully applied, leaving the database schema permanently out
-	 * of sync. This helper converts database failures into exceptions so the migration
-	 * is never marked as completed unless every schema operation succeeds.
-	 *
-	 * @param string $sql SQL statement to execute.
-	 * @param string $tableName Database table involved in the operation.
-	 * @return void
-	 * @throws SchemaQueryException When the SQL statement cannot be executed.
-	 */
-	private function query(string $sql, string $tableName): void
-	{
-		global $wpdb;
+    /**
+     * Execute a schema SQL statement and fail fast if the database reports an error.
+     *
+     * WordPress database operations normally signal failure by returning false instead
+     * of throwing an exception. Without checking that return value, failed CREATE or
+     * ALTER statements would be silently ignored and the current migration could still
+     * be recorded as successfully applied, leaving the database schema permanently out
+     * of sync. This helper converts database failures into exceptions so the migration
+     * is never marked as completed unless every schema operation succeeds.
+     *
+     * @param string $sql SQL statement to execute.
+     * @param string $tableName Database table involved in the operation.
+     * @return void
+     * @throws SchemaQueryException When the SQL statement cannot be executed.
+     */
+    private function query(string $sql, string $tableName): void
+    {
+        global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		if ( false === $wpdb->query( $sql ) ) {
-			throw new SchemaQueryException(
-				sprintf( 'Schema statement failed for table %s: %s', $tableName, $wpdb->last_error )
-			);
-		}
-	}
-	#endregion
+        if (false === $wpdb->query($sql)) {
+            throw new SchemaQueryException(
+                sprintf('Schema statement failed for table %s: %s', $tableName, $wpdb->last_error)
+            );
+        }
+    }
+    #endregion
 
-	#region Alter Commands
+    #region Alter Commands
     /**
      * Execute queued ALTER TABLE commands.
      *
@@ -435,14 +436,18 @@ class Blueprint
 
                 if (!$this->indexExists($tableName, $indexName)) {
                     $keyword = 'unique' === $command[0] ? 'UNIQUE INDEX' : 'INDEX';
-                    $wpdb->query("ALTER TABLE `$tableName` ADD $keyword `$indexName` (" . $this->quoteIndexColumns($command[2]) . ");");
+                    $wpdb->query(
+                        "ALTER TABLE `$tableName` ADD $keyword `$indexName` ("
+                        . $this->quoteIndexColumns($command[2])
+                        . ");"
+                    );
                 }
             }
         }
     }
-	#endregion
+    #endregion
 
-	#region Column Definitions
+    #region Column Definitions
     /**
      * Create a new auto-incrementing unsigned big integer column.
      *
@@ -485,160 +490,160 @@ class Blueprint
         return $this->integer($column, $autoIncrement, true);
     }
 
-	/**
-	 * Create a new timestamp column.
-	 *
-	 * If no precision is provided, the default schema precision
-	 * configured by the blueprint will be applied.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @param int|null $precision Optional fractional seconds precision.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function timestamp(string $column, ?int $precision = null): ColumnDefinition
-	{
-		$precision ??= $this->defaultTimePrecision();
+    /**
+     * Create a new timestamp column.
+     *
+     * If no precision is provided, the default schema precision
+     * configured by the blueprint will be applied.
+     *
+     * @param string $column Name of the column to create.
+     * @param int|null $precision Optional fractional seconds precision.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function timestamp(string $column, ?int $precision = null): ColumnDefinition
+    {
+        $precision ??= $this->defaultTimePrecision();
 
-		return $this->addColumn('timestamp', $column, compact('precision'));
-	}
+        return $this->addColumn('timestamp', $column, compact('precision'));
+    }
 
-	/**
-	 * Create a new datetime column.
-	 *
-	 * If no precision is provided, the default schema precision
-	 * configured by the blueprint will be applied.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @param int|null $precision Optional fractional seconds precision.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function dateTime(string $column, ?int $precision = null): ColumnDefinition
-	{
-		$precision ??= $this->defaultTimePrecision();
+    /**
+     * Create a new datetime column.
+     *
+     * If no precision is provided, the default schema precision
+     * configured by the blueprint will be applied.
+     *
+     * @param string $column Name of the column to create.
+     * @param int|null $precision Optional fractional seconds precision.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function dateTime(string $column, ?int $precision = null): ColumnDefinition
+    {
+        $precision ??= $this->defaultTimePrecision();
 
-		return $this->addColumn('dateTime', $column, compact('precision'));
-	}
+        return $this->addColumn('dateTime', $column, compact('precision'));
+    }
 
-	/**
-	 * Create a new text column.
-	 *
-	 * The generated column is suitable for medium-length textual content.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function text(string $column): ColumnDefinition
-	{
-		return $this->addColumn('text', $column);
-	}
+    /**
+     * Create a new text column.
+     *
+     * The generated column is suitable for medium-length textual content.
+     *
+     * @param string $column Name of the column to create.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function text(string $column): ColumnDefinition
+    {
+        return $this->addColumn('text', $column);
+    }
 
-	/**
-	 * Create a new long text column.
-	 *
-	 * The generated column is suitable for storing large textual content.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function longText(string $column): ColumnDefinition
-	{
-		return $this->addColumn('longText', $column);
-	}
+    /**
+     * Create a new long text column.
+     *
+     * The generated column is suitable for storing large textual content.
+     *
+     * @param string $column Name of the column to create.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function longText(string $column): ColumnDefinition
+    {
+        return $this->addColumn('longText', $column);
+    }
 
-	/**
-	 * Create a new JSON column.
-	 *
-	 * The generated column is intended for storing structured JSON data.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function json(string $column): ColumnDefinition
-	{
-		return $this->addColumn('json', $column);
-	}
+    /**
+     * Create a new JSON column.
+     *
+     * The generated column is intended for storing structured JSON data.
+     *
+     * @param string $column Name of the column to create.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function json(string $column): ColumnDefinition
+    {
+        return $this->addColumn('json', $column);
+    }
 
-	/**
-	 * Create a new boolean column.
-	 *
-	 * Internally the column is represented using a tiny integer type.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function boolean(string $column): ColumnDefinition
-	{
-		return $this->addColumn('boolean', $column);
-	}
+    /**
+     * Create a new boolean column.
+     *
+     * Internally the column is represented using a tiny integer type.
+     *
+     * @param string $column Name of the column to create.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function boolean(string $column): ColumnDefinition
+    {
+        return $this->addColumn('boolean', $column);
+    }
 
-	/**
-	 * Create a new UUID column.
-	 *
-	 * UUID values are stored internally as fixed-length string columns
-	 * with a length of 36 characters.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function uuid(string $column): ColumnDefinition
-	{
-		return $this->addColumn('string', $column, ['length' => 36]);
-	}
+    /**
+     * Create a new UUID column.
+     *
+     * UUID values are stored internally as fixed-length string columns
+     * with a length of 36 characters.
+     *
+     * @param string $column Name of the column to create.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function uuid(string $column): ColumnDefinition
+    {
+        return $this->addColumn('string', $column, ['length' => 36]);
+    }
 
-	/**
-	 * Create a new big integer column.
-	 *
-	 * Supports optional unsigned and auto-increment modifiers.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @param bool $autoIncrement Indicates whether the column should auto increment.
-	 * @param bool $unsigned Indicates whether the column should be unsigned.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function bigInteger(
-		string $column,
-		bool $autoIncrement = false,
-		bool $unsigned = false
-	): ColumnDefinition {
-		return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
-	}
+    /**
+     * Create a new big integer column.
+     *
+     * Supports optional unsigned and auto-increment modifiers.
+     *
+     * @param string $column Name of the column to create.
+     * @param bool $autoIncrement Indicates whether the column should auto increment.
+     * @param bool $unsigned Indicates whether the column should be unsigned.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function bigInteger(
+        string $column,
+        bool $autoIncrement = false,
+        bool $unsigned = false
+    ): ColumnDefinition {
+        return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
+    }
 
-	/**
-	 * Create a new integer column.
-	 *
-	 * Supports optional unsigned and auto-increment modifiers.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @param bool $autoIncrement Indicates whether the column should auto increment.
-	 * @param bool $unsigned Indicates whether the column should be unsigned.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function integer(
-		string $column,
-		bool $autoIncrement = false,
-		bool $unsigned = false
-	): ColumnDefinition {
-		return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
-	}
+    /**
+     * Create a new integer column.
+     *
+     * Supports optional unsigned and auto-increment modifiers.
+     *
+     * @param string $column Name of the column to create.
+     * @param bool $autoIncrement Indicates whether the column should auto increment.
+     * @param bool $unsigned Indicates whether the column should be unsigned.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function integer(
+        string $column,
+        bool $autoIncrement = false,
+        bool $unsigned = false
+    ): ColumnDefinition {
+        return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
+    }
 
-	/**
-	 * Create a new string column.
-	 *
-	 * If no length is provided, a default length of 255 characters is used.
-	 *
-	 * @param string $column Name of the column to create.
-	 * @param int|null $length Maximum length of the string column.
-	 * @return ColumnDefinition The configured column definition instance.
-	 */
-	public function string(string $column, ?int $length = null): ColumnDefinition
-	{
-		$length = $length ?: 255;
+    /**
+     * Create a new string column.
+     *
+     * If no length is provided, a default length of 255 characters is used.
+     *
+     * @param string $column Name of the column to create.
+     * @param int|null $length Maximum length of the string column.
+     * @return ColumnDefinition The configured column definition instance.
+     */
+    public function string(string $column, ?int $length = null): ColumnDefinition
+    {
+        $length = $length ?: 255;
 
-		return $this->addColumn('string', $column, compact('length'));
-	}
-	#endregion
+        return $this->addColumn('string', $column, compact('length'));
+    }
+    #endregion
 
-	#region Time Helpers
+    #region Time Helpers
     /**
      * Add nullable created_at and updated_at datetime columns.
      *
@@ -669,9 +674,9 @@ class Blueprint
     {
         return 0;
     }
-	#endregion
+    #endregion
 
-	#region Foreign Keys
+    #region Foreign Keys
     /**
      * Define a foreign key constraint for the table.
      *
@@ -700,27 +705,27 @@ class Blueprint
         ]);
     }
 
-	/**
-	 * Create a new unsigned foreign ID column.
-	 *
-	 * The generated column is configured as an unsigned big integer
-	 * intended for use with foreign key constraints.
-	 *
-	 * @param string $column Name of the foreign ID column.
-	 * @return ForeignIdColumnDefinition|ColumnDefinition The configured column definition instance.
-	 */
-	public function foreignId(string $column): ForeignIdColumnDefinition|ColumnDefinition
-	{
-		return $this->addColumnDefinition(new ForeignIdColumnDefinition($this, [
-			'type'          => 'bigInteger',
-			'name'          => $column,
-			'autoIncrement' => false,
-			'unsigned'      => true,
-		]));
-	}
-	#endregion
+    /**
+     * Create a new unsigned foreign ID column.
+     *
+     * The generated column is configured as an unsigned big integer
+     * intended for use with foreign key constraints.
+     *
+     * @param string $column Name of the foreign ID column.
+     * @return ForeignIdColumnDefinition|ColumnDefinition The configured column definition instance.
+     */
+    public function foreignId(string $column): ForeignIdColumnDefinition|ColumnDefinition
+    {
+        return $this->addColumnDefinition(new ForeignIdColumnDefinition($this, [
+            'type'          => 'bigInteger',
+            'name'          => $column,
+            'autoIncrement' => false,
+            'unsigned'      => true,
+        ]));
+    }
+    #endregion
 
-	#region Indexes
+    #region Indexes
     /**
      * Specify an index for the table.
      *
@@ -730,7 +735,7 @@ class Blueprint
      */
     public function index(string|array $columns, ?string $name = null): static
     {
-        return $this->indexCommand( 'index', $columns, $name );
+        return $this->indexCommand('index', $columns, $name);
     }
 
     /**
@@ -740,9 +745,9 @@ class Blueprint
      * @param  string|null  $name
      * @return $this
      */
-    public function unique(string|array  $columns, ?string $name = null): static
+    public function unique(string|array $columns, ?string $name = null): static
     {
-        return $this->indexCommand( 'unique', $columns, $name );
+        return $this->indexCommand('unique', $columns, $name);
     }
 
     /**
@@ -757,7 +762,7 @@ class Blueprint
     {
         $columns = (array) $columns;
 
-        $index = $index ?: $this->createIndexName( $type, $columns );
+        $index = $index ?: $this->createIndexName($type, $columns);
 
         $this->commands[] = [ $type, $index, $columns ];
 
@@ -771,11 +776,11 @@ class Blueprint
      * @param  array  $columns
      * @return string
      */
-    protected function createIndexName(string $type, array $columns ): string
+    protected function createIndexName(string $type, array $columns): string
     {
-        $index = strtolower( $this->table . '_' . implode( '_', $columns ) . '_' . $type );
+        $index = strtolower($this->table . '_' . implode('_', $columns) . '_' . $type);
 
-        return str_replace( [ '-', '.', '(', ')' ], [ '_', '_', '_', '' ], $index );
+        return str_replace([ '-', '.', '(', ')' ], [ '_', '_', '_', '' ], $index);
     }
 
     /**
@@ -784,23 +789,23 @@ class Blueprint
      * @param  array  $columns
      * @return string
      */
-    private function quoteIndexColumns( array $columns ): string
+    private function quoteIndexColumns(array $columns): string
     {
         $quoted = [];
 
-        foreach ( $columns as $column ) {
-            if ( preg_match( '/^(\w+)\s*\((\d+)\)$/', $column, $matches ) ) {
+        foreach ($columns as $column) {
+            if (preg_match('/^(\w+)\s*\((\d+)\)$/', $column, $matches)) {
                 $quoted[] = "`{$matches[1]}`({$matches[2]})";
             } else {
                 $quoted[] = "`$column`";
             }
         }
 
-        return implode( ', ', $quoted );
+        return implode(', ', $quoted);
     }
-	#endregion
+    #endregion
 
-	#region Column Registration
+    #region Column Registration
     /**
      * Add a new column definition to the blueprint.
      *
@@ -834,9 +839,9 @@ class Blueprint
 
         return $definition;
     }
-	#endregion
+    #endregion
 
-	#region Drop Operations
+    #region Drop Operations
     /**
      * Queue a column drop operation for the table.
      *
@@ -861,7 +866,7 @@ class Blueprint
      */
     public function dropIndex(string|array $index): static
     {
-        return $this->dropIndexCommand( 'dropIndex', 'index', $index );
+        return $this->dropIndexCommand('dropIndex', 'index', $index);
     }
 
     /**
@@ -875,7 +880,7 @@ class Blueprint
      */
     public function dropUnique(string $index): static
     {
-        return $this->dropIndexCommand( 'dropUnique', 'unique', $index );
+        return $this->dropIndexCommand('dropUnique', 'unique', $index);
     }
 
     /**
@@ -888,28 +893,28 @@ class Blueprint
      */
     protected function dropIndexCommand(string $command, string $type, string|array $index): static
     {
-        if ( is_array( $index ) ) {
-            $index = $this->createIndexName( $type, $index );
+        if (is_array($index)) {
+            $index = $this->createIndexName($type, $index);
         }
 
         $this->commands[] = [ $command, $index ];
 
         return $this;
     }
-	#endregion
+    #endregion
 
-	#region Accessors
-	/**
-	 * Get the table name associated with the blueprint.
-	 *
-	 * Returns the raw table name configured for the schema operation,
-	 * without applying any database prefix.
-	 *
-	 * @return string The blueprint table name.
-	 */
-	public function getTable(): string
-	{
-		return $this->table;
-	}
-	#endregion
+    #region Accessors
+    /**
+     * Get the table name associated with the blueprint.
+     *
+     * Returns the raw table name configured for the schema operation,
+     * without applying any database prefix.
+     *
+     * @return string The blueprint table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+    #endregion
 }

@@ -33,15 +33,15 @@ use function sprintf;
  */
 class NotInstantiableException extends AbstractContainerException
 {
-	/**
-	 * Create a new exception instance.
-	 *
-	 * @param string $className Non-instantiable class or interface.
-	 */
-	public function __construct(string $className)
-	{
-		parent::__construct(
-			sprintf('Class "%s" is not instantiable.', $className)
-		);
-	}
+    /**
+     * Create a new exception instance.
+     *
+     * @param string $className Non-instantiable class or interface.
+     */
+    public function __construct(string $className)
+    {
+        parent::__construct(
+            sprintf('Class "%s" is not instantiable.', $className)
+        );
+    }
 }

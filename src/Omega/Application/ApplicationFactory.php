@@ -50,12 +50,12 @@ use function str_contains;
  */
 class ApplicationFactory
 {
-	#region Properties
+    #region Properties
     /** @var array<string, ApplicationPlugin|ApplicationTheme> Omega Application Container. */
     private static array $apps = [];
-	#endregion
+    #endregion
 
-	#region Factory
+    #region Factory
     /**
      * Create and initialize a new Plugin application instance.
      *
@@ -110,7 +110,7 @@ class ApplicationFactory
      *
      * @return ApplicationTheme Fully initialized and bootstrapped theme application instance.
      */
-    public static function createTheme(string $id, string$basePath): ApplicationTheme
+    public static function createTheme(string $id, string $basePath): ApplicationTheme
     {
         self::$apps[$id] = new ApplicationTheme(id: $id, basePath: $basePath);
 
@@ -118,9 +118,9 @@ class ApplicationFactory
 
         return self::$apps[$id];
     }
-	#endregion
+    #endregion
 
-	#region Resolver
+    #region Resolver
     /**
      * Get an app instance or a service from a specific app.
      *
@@ -150,7 +150,7 @@ class ApplicationFactory
                 foreach (self::$apps as $id => $app) {
                     $composerJson = $app->getAppRoot() . '/composer.json';
                     if (file_exists($composerJson)) {
-                        $data = json_decode( file_get_contents($composerJson), true);
+                        $data = json_decode(file_get_contents($composerJson), true);
                         $psr4 = array_keys($data['autoload']['psr-4'] ?? []);
                         if (isset($psr4[0]) && $service && Str::startsWith($service, $psr4[0])) {
                             $appId = $id;
@@ -171,5 +171,5 @@ class ApplicationFactory
 
         return self::$apps[$appId]->resolve($service);
     }
-	#endregion
+    #endregion
 }

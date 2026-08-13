@@ -43,7 +43,7 @@ namespace Omega\Database\Schema;
  */
 class Schema
 {
-	#region Schema Operation
+    #region Schema Operation
     /**
      * Create a new database table.
      *
@@ -79,8 +79,8 @@ class Schema
     {
         global $wpdb;
 
-	    /** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-	    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}$table");
+        /** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
+        $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}$table");
     }
 
     /**
@@ -103,5 +103,5 @@ class Schema
         $callback($blueprint);
         $blueprint->run();
     }
-	#endregion
+    #endregion
 }

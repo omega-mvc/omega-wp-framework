@@ -45,7 +45,7 @@ use function is_dir;
  */
 class ConfigServiceProvider extends ServiceProvider
 {
-	#region Container
+    #region Container
     /**
      * {@inheritdoc}
      */
@@ -53,7 +53,7 @@ class ConfigServiceProvider extends ServiceProvider
     {
         $this->app->singleton('config', function () {
             $configPath = $this->app->getBasePath() . '/config';
-			$config     = [];
+            $config     = [];
             if (is_dir($configPath)) {
                 foreach (glob($configPath . '/*.php') as $file) {
                     $key          = basename($file, '.php');
@@ -64,5 +64,5 @@ class ConfigServiceProvider extends ServiceProvider
             return new ConfigRepository($config);
         });
     }
-	#endregion
+    #endregion
 }
