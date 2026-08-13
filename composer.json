@@ -31,7 +31,10 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/Tests"
-        }
+        },
+        "files": [
+            "tests/Tests/Routing/helper.php"
+        ]
     },
     "minimum-stability": "stable"
 }
