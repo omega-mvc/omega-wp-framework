@@ -205,10 +205,10 @@ class SettingsRepository
      * Retrieve a configuration value using dot notation.
      *
      * @param string $name The configuration key path (dot-separated).
-     * @param string|null $default Default value returned if the key does not exist.
+     * @param mixed $default Default value returned if the key does not exist.
      * @return mixed The resolved configuration value or default if not found.
      */
-    public function get(string $name, ?string $default = null): mixed
+    public function get(string $name, mixed $default = null): mixed
     {
         $names = explode('.', $name);
         $config = $this->config;
