@@ -24,6 +24,7 @@ use ReflectionException;
 
 use function array_filter;
 use function array_map;
+use function array_values;
 use function rtrim;
 use const DIRECTORY_SEPARATOR;
 
@@ -220,10 +221,10 @@ class Application extends AbstractApplication
      */
     public function getRestRouteFiles(): array
     {
-        return array_map(
+        return array_values(array_map(
             fn($route) => $route['path'],
             array_filter($this->routeFiles, fn($route) => $route['type'] === 'api')
-        );
+        ));
     }
 
     /**
@@ -231,10 +232,10 @@ class Application extends AbstractApplication
      */
     public function getAdminRouteFiles(): array
     {
-        return array_map(
+        return array_values(array_map(
             fn($route) => $route['path'],
             array_filter($this->routeFiles, fn($route) => $route['type'] === 'admin')
-        );
+        ));
     }
     #endregion
 

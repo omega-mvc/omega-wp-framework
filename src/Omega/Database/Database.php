@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Database;
 
 use Omega\Application\ApplicationInterface;
+use Omega\Application\Exception\WordPressEnvironmentException;
 use Omega\Database\Migrations\Migrator;
 use Omega\Database\ORM\QueryBuilder;
 use ReflectionException;
@@ -69,11 +70,19 @@ class Database
      * the migration manager from the application container.
      *
      * @param ApplicationInterface $app The current application container instance.
+     * @throws WordPressEnvironmentException Thrown when the WordPress database
+     *                                       object is not available.
      * @throws ReflectionException Thrown when the migrator service cannot be resolved.
      */
     public function __construct(ApplicationInterface $app)
     {
         global $wpdb;
+
+        if (!$wpdb instanceof wpdb) {
+            throw new WordPressEnvironmentException(
+                'The WordPress database object ($wpdb) is not available.'
+            );
+        }
 
         $this->wpdb     = $wpdb;
         $this->migrator = $app->resolve('migrator');

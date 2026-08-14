@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace Tests\Routing;
 
+use Tests\Routing\Support\WPTheme;
+
 /**
  * In-memory registry for the WordPress runtime stubs used by the routing tests.
  *
@@ -57,6 +59,39 @@ final class WordPressRuntime
     public static bool $capabilities = true;
 
     /**
+     * Option values returned by the get_option() stub, keyed by option name.
+     *
+     * @var array<string, mixed>
+     */
+    public static array $options = [];
+
+    /**
+     * Recorded calls to update_option(): [name, value, autoload].
+     *
+     * @var list<array{0:string,1:mixed,2:bool}>
+     */
+    public static array $optionUpdates = [];
+
+    /**
+     * Plugin header values returned by the get_file_data() stub, keyed by header.
+     *
+     * @var array<string, string>
+     */
+    public static array $fileHeaders = [];
+
+    /**
+     * Theme instance returned by the wp_get_theme() stub.
+     */
+    public static ?WPTheme $theme = null;
+
+    /**
+     * Recorded calls to add_filter(): list of positional argument arrays.
+     *
+     * @var list<array<int, mixed>>
+     */
+    public static array $filters = [];
+
+    /**
      * Resets every registry value between tests.
      */
     public static function reset(): void
@@ -65,5 +100,10 @@ final class WordPressRuntime
         self::$menus = [];
         self::$submenus = [];
         self::$capabilities = true;
+        self::$options = [];
+        self::$optionUpdates = [];
+        self::$fileHeaders = [];
+        self::$theme = null;
+        self::$filters = [];
     }
 }

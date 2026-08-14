@@ -17,3 +17,8 @@ if (!class_exists('WP_REST_Request', false)) {
 if (!class_exists('WP_REST_Response', false)) {
     class_alias(\Tests\Routing\Support\WPRestResponse::class, 'WP_REST_Response');
 }
+
+if (!class_exists('wpdb', false)) {
+    class_alias(\Tests\Routing\Support\WPDB::class, 'wpdb');
+    $GLOBALS['wpdb'] = new \wpdb();
+}
