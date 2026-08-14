@@ -18,18 +18,30 @@ namespace Tests\Routing\Support;
 class WPError
 {
     /**
-     * Stored error message.
+     * Stored error code.
      */
-    private string $message;
+    private mixed $code = '';
 
     /**
-     * @param string $code    Error code
+     * Stored error message.
+     */
+    private string $message = '';
+
+    /**
+     * Stored error data.
+     */
+    private mixed $data = '';
+
+    /**
+     * @param mixed $code    Error code
      * @param mixed  $message Error message
      * @param mixed  $data    Optional error data
      */
-    public function __construct(string $code = '', mixed $message = '', mixed $data = '')
+    public function __construct(mixed $code = '', mixed $message = '', mixed $data = '')
     {
+        $this->code = $code;
         $this->message = (string) $message;
+        $this->data = $data;
     }
 
     /**
@@ -38,5 +50,29 @@ class WPError
     public function getErrorMessage(): string
     {
         return $this->message;
+    }
+
+    /**
+     * @return mixed The stored error code
+     */
+    public function get_error_code(): mixed
+    {
+        return $this->code;
+    }
+
+    /**
+     * @return string The stored error message
+     */
+    public function get_error_message(): string
+    {
+        return $this->message;
+    }
+
+    /**
+     * @return mixed The stored error data
+     */
+    public function get_error_data(): mixed
+    {
+        return $this->data;
     }
 }

@@ -21,6 +21,7 @@
 declare(strict_types=1);
 
 use Tests\Routing\Support\WPError;
+use Tests\Routing\Support\WPRestResponse;
 use Tests\Routing\Support\WPTheme;
 use Tests\Routing\WordPressRuntime;
 
@@ -86,12 +87,19 @@ function current_user_can(string $capability): bool
 /**
  * Stub for rest_ensure_response().
  *
+ * Wraps raw payloads into a WPRestResponse instance, mirroring WordPress,
+ * and passes already-built responses through unchanged.
+ *
  * @param mixed $response Raw response payload
- * @return mixed The payload unchanged
+ * @return WPRestResponse The response instance
  */
 function rest_ensure_response(mixed $response): mixed
 {
-    return $response;
+    if ($response instanceof WPRestResponse) {
+        return $response;
+    }
+
+    return new WPRestResponse($response);
 }
 
 /**
