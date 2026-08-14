@@ -105,13 +105,17 @@ class Paginator
      * Resolve and validate the current page number.
      *
      * Ensures the page is a valid integer and falls back to page 1
-     * if the provided value is invalid.
+     * if the provided value is invalid or omitted.
      *
-     * @param int $currentPage Requested page number
+     * @param int|null $currentPage Requested page number, or null to use page 1
      * @return int Validated page number
      */
-    protected function setCurrentPage(int $currentPage): int
+    protected function setCurrentPage(?int $currentPage): int
     {
+        if ($currentPage === null) {
+            return 1;
+        }
+
         return $this->isValidPageNumber($currentPage) ? $currentPage : 1;
     }
 
