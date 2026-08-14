@@ -15,7 +15,7 @@ declare(strict_types=1);
 namespace Tests\Environment;
 
 use Omega\Environment\Env;
-use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -37,7 +37,7 @@ use function putenv;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-#[CoversNothing]
+#[CoversFunction('Omega\Environment\env')]
 final class EnvHelperTest extends TestCase
 {
     protected function setUp(): void
@@ -59,6 +59,18 @@ final class EnvHelperTest extends TestCase
     {
         $valuesProp = (new ReflectionClass(Env::class))->getProperty('values');
         $valuesProp->setValue(null, $values);
+    }
+
+    /**
+     * Test the namespaced helper is always declared.
+     *
+     * Regression: the former `function_exists('env')` guard checked the
+     * *global* scope, so if a global `env()` happened to exist the namespaced
+     * `Omega\Environment\env` was silently never declared.
+     */
+    public function testHelperIsDeclared(): void
+    {
+        $this->assertTrue(function_exists('Omega\Environment\env'));
     }
 
     /**

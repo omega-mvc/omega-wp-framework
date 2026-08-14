@@ -37,6 +37,18 @@ use const DIRECTORY_SEPARATOR;
 final class HelperTest extends TestCase
 {
     /**
+     * Test the namespaced helper is always declared.
+     *
+     * Regression: the former `function_exists('slash')` guard checked the
+     * *global* scope, so if a global `slash()` happened to exist the namespaced
+     * `Omega\Application\slash` was silently never declared.
+     */
+    public function testHelperIsDeclared(): void
+    {
+        $this->assertTrue(function_exists('Omega\Application\slash'));
+    }
+
+    /**
      * Test string paths are normalized to the platform separator.
      */
     public function testStringPathIsNormalized(): void
