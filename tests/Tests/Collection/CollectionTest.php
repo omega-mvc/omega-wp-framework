@@ -97,6 +97,22 @@ final class CollectionTest extends TestCase
     }
 
     /**
+     * Test each() on an empty collection performs no iterations and returns the same instance.
+     */
+    public function testEachOnEmptyCollection(): void
+    {
+        $collection = new Collection();
+        $visited    = [];
+
+        $result = $collection->each(function ($item) use (&$visited): void {
+            $visited[] = $item;
+        });
+
+        $this->assertSame([], $visited);
+        $this->assertSame($collection, $result);
+    }
+
+    /**
      * Test map() transforms items, keeps keys, and returns a plain array.
      */
     public function testMapTransformsItemsAndKeepsKeys(): void
@@ -179,6 +195,20 @@ final class CollectionTest extends TestCase
     }
 
     /**
+     * Test toArray() preserves associative keys while converting models.
+     */
+    public function testToArrayPreservesAssociativeKeys(): void
+    {
+        $model      = new FakeModel(['name' => 'Ada']);
+        $collection = new Collection(['first' => $model, 'second' => 'plain']);
+
+        $this->assertSame(
+            ['first' => ['name' => 'Ada'], 'second' => 'plain'],
+            $collection->toArray()
+        );
+    }
+
+    /**
      * Test getAll() returns the raw underlying items.
      */
     public function testGetAllReturnsRawItems(): void
@@ -229,6 +259,25 @@ final class CollectionTest extends TestCase
     }
 
     /**
+     * Test unique() resolves uniqueness through nested dot-notated keys.
+     */
+    public function testUniqueWithNestedKey(): void
+    {
+        $items = [
+            (object) ['user' => (object) ['id' => 1]],
+            (object) ['user' => (object) ['id' => 1]],
+            (object) ['user' => (object) ['id' => 2]],
+        ];
+
+        $result = (new Collection($items))->unique('user.id');
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertCount(2, $result);
+        $this->assertSame(1, $result->getAll()[0]->user->id);
+        $this->assertSame(2, $result->getAll()[1]->user->id);
+    }
+
+    /**
      * Test where() returns matching objects using strict comparison.
      */
     public function testWhereReturnsMatchingObjectsStrictly(): void
@@ -241,6 +290,19 @@ final class CollectionTest extends TestCase
 
         $this->assertSame([$admin, $admin2], $result);
         $this->assertIsArray($result);
+    }
+
+    /**
+     * Test where() skips items that do not carry the given property.
+     */
+    public function testWhereIgnoresItemsWithoutProperty(): void
+    {
+        $admin  = (object) ['role' => 'admin', 'name' => 'Ada'];
+        $editor = (object) ['name' => 'Grace'];
+
+        $result = (new Collection([$admin, $editor]))->where('role', 'admin');
+
+        $this->assertSame([$admin], $result);
     }
 
     /**
@@ -290,6 +352,19 @@ final class CollectionTest extends TestCase
     }
 
     /**
+     * Test contains() skips items that do not carry the given property.
+     */
+    public function testContainsIgnoresItemsWithoutProperty(): void
+    {
+        $items = [
+            (object) ['name' => 'Ada'],
+            (object) ['role' => 'admin'],
+        ];
+
+        $this->assertTrue((new Collection($items))->contains('role', 'admin'));
+    }
+
+    /**
      * Test sum() totals numeric values extracted by key.
      */
     public function testSumByKeyTotalsNumericValues(): void
@@ -311,6 +386,14 @@ final class CollectionTest extends TestCase
         $result = (new Collection([1, 2, 3]))->sum(fn ($item) => $item * 2);
 
         $this->assertSame(12, $result);
+    }
+
+    /**
+     * Test sum() over an empty collection returns zero.
+     */
+    public function testSumWithEmptyCollection(): void
+    {
+        $this->assertSame(0, (new Collection())->sum('price'));
     }
 
     /**
@@ -384,6 +467,7 @@ final class CollectionTest extends TestCase
         $collection = new Collection();
 
         $this->assertSame('Ada', $collection->dataGet(new ArrayObject(['name' => 'Ada']), 'name'));
+        $this->assertSame('fallback', $collection->dataGet(new ArrayObject(['name' => 'Ada']), 'missing', 'fallback'));
     }
 
     /**
@@ -394,6 +478,28 @@ final class CollectionTest extends TestCase
         $target = ['name' => 'Ada'];
 
         $this->assertSame($target, (new Collection())->dataGet($target, null));
+    }
+
+    /**
+     * Test dataGet() returns the default when the target is a scalar.
+     */
+    public function testDataGetReturnsDefaultForScalarTarget(): void
+    {
+        $collection = new Collection();
+
+        $this->assertSame('fallback', $collection->dataGet('plain-string', 'user.name', 'fallback'));
+        $this->assertNull($collection->dataGet(42, 'user.name'));
+    }
+
+    /**
+     * Test dataGet() traverses a null-valued array segment and returns the default.
+     */
+    public function testDataGetTraversesNullValuedArraySegment(): void
+    {
+        $collection = new Collection();
+        $target     = ['user' => null];
+
+        $this->assertSame('fallback', $collection->dataGet($target, 'user.name', 'fallback'));
     }
 
     /**

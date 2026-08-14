@@ -21,14 +21,18 @@ use IteratorAggregate;
 use Omega\Database\ORM\AbstractModel;
 use ReturnTypeWillChange;
 
+use function array_any;
 use function array_combine;
+use function array_find;
 use function array_filter;
 use function array_key_exists;
 use function array_keys;
 use function array_map;
 use function array_merge;
 use function array_push;
+use function array_reduce;
 use function array_slice;
+use function array_values;
 use function count;
 use function explode;
 use function in_array;
@@ -37,6 +41,7 @@ use function is_callable;
 use function is_null;
 use function is_numeric;
 use function is_object;
+use function iterator_apply;
 use function usort;
 
 /**
@@ -104,11 +109,9 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function each(callable $callback): static
     {
-        foreach ($this->items as $key => $item) {
-            if ($callback($item, $key) === false) {
-                break;
-            }
-        }
+        $iterator = $this->getIterator();
+
+        iterator_apply($iterator, fn () => $callback($iterator->current(), $iterator->key()) !== false);
 
         return $this;
     }
@@ -136,20 +139,21 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function pluck(string|int $value, string|int|null $key = null): Collection
     {
-        $results = [];
+        $values = array_map(
+            fn (mixed $item): mixed => $this->dataGet($item, $value),
+            $this->items
+        );
 
-        foreach ($this->items as $item) {
-            $itemValue = $this->dataGet($item, $value);
-
-            if (is_null($key)) {
-                $results[] = $itemValue;
-            } else {
-                $itemKey = $this->dataGet($item, $key);
-                $results[$itemKey] = $itemValue;
-            }
+        if (is_null($key)) {
+            return new self(array_values($values));
         }
 
-        return new self($results);
+        $keys = array_map(
+            fn (mixed $item): mixed => $this->dataGet($item, $key),
+            $this->items
+        );
+
+        return new self(array_combine($keys, $values));
     }
 
     /**
@@ -173,17 +177,10 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function toArray(): array
     {
-        $items = [];
-
-        foreach ($this->items as $key => $item) {
-            if ($item instanceof AbstractModel) {
-                $items[$key] = $item->toArray();
-            } else {
-                $items[$key] = $item;
-            }
-        }
-
-        return $items;
+        return array_map(
+            fn (mixed $item): mixed => $item instanceof AbstractModel ? $item->toArray() : $item,
+            $this->items
+        );
     }
 
     /**
@@ -219,19 +216,24 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function unique(string|int $key): Collection
     {
-        $uniqueItems = [];
-        $seenKeys    = [];
+        $seenKeys = [];
 
-        foreach ($this->items as $item) {
-            $itemKey = $this->dataGet($item, $key);
+        $uniqueItems = array_filter(
+            $this->items,
+            function (mixed $item) use ($key, &$seenKeys): bool {
+                $itemKey = $this->dataGet($item, $key);
 
-            if (!in_array($itemKey, $seenKeys, true)) {
+                if (in_array($itemKey, $seenKeys, true)) {
+                    return false;
+                }
+
                 $seenKeys[] = $itemKey;
-                $uniqueItems[] = $item;
-            }
-        }
 
-        return new self($uniqueItems);
+                return true;
+            }
+        );
+
+        return new self(array_values($uniqueItems));
     }
 
     /**
@@ -243,15 +245,10 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function where(string|int $key, mixed $value): array
     {
-        $items = [];
-
-        foreach ($this->items as $item) {
-            if (isset($item->$key) && $item->$key === $value) {
-                $items[] = $item;
-            }
-        }
-
-        return $items;
+        return array_values(array_filter(
+            $this->items,
+            fn (mixed $item): bool => isset($item->$key) && $item->$key === $value
+        ));
     }
 
     /**
@@ -269,14 +266,10 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function firstWhere(string|int $key, mixed $value): mixed
     {
-        /** @noinspection PhpLoopCanBeConvertedToArrayFindInspection */
-        foreach ($this->items as $item) {
-            if ($item->$key === $value) {
-                return $item;
-            }
-        }
-
-        return null;
+        return array_find(
+            $this->items,
+            fn (mixed $item): bool => $item->$key === $value
+        );
     }
 
     /**
@@ -313,14 +306,10 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function contains(string|int $key, mixed $value): bool
     {
-        /** @noinspection PhpLoopCanBeConvertedToArrayAnyInspection */
-        foreach ($this->items as $item) {
-            if (isset($item->$key) && $item->$key === $value) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(
+            $this->items,
+            fn (mixed $item): bool => isset($item->$key) && $item->$key === $value
+        );
     }
     #endregion
 
@@ -333,21 +322,15 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function sum(callable|string $key): float|int|string
     {
-        $total = 0;
+        return array_reduce(
+            $this->items,
+            function (float|int|string $total, mixed $item) use ($key): float|int|string {
+                $value = is_callable($key) ? $key($item) : $this->dataGet($item, $key);
 
-        foreach ($this->items as $item) {
-            if (is_callable($key)) {
-                $value = $key($item);
-            } else {
-                $value = $this->dataGet($item, $key);
-            }
-
-            if (is_numeric($value)) {
-                $total += $value;
-            }
-        }
-
-        return $total;
+                return is_numeric($value) ? $total + $value : $total;
+            },
+            0
+        );
     }
     #endregion
 
@@ -400,31 +383,25 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
             return $target;
         }
 
-        foreach (explode('.', $key) as $segment) {
-            if (is_array($target)) {
-                if (!array_key_exists($segment, $target)) {
-                    return $default;
+        return array_reduce(
+            explode('.', $key),
+            function (mixed $carry, string $segment) use ($default): mixed {
+                if (is_array($carry)) {
+                    return array_key_exists($segment, $carry) ? $carry[$segment] : $default;
                 }
 
-                $target = $target[$segment];
-            } elseif ($target instanceof ArrayAccess) {
-                if (!isset($target[$segment])) {
-                    return $default;
+                if ($carry instanceof ArrayAccess) {
+                    return isset($carry[$segment]) ? $carry[$segment] : $default;
                 }
 
-                $target = $target[$segment];
-            } elseif (is_object($target)) {
-                if (!isset($target->{$segment})) {
-                    return $default;
+                if (is_object($carry)) {
+                    return isset($carry->{$segment}) ? $carry->{$segment} : $default;
                 }
 
-                $target = $target->{$segment};
-            } else {
                 return $default;
-            }
-        }
-
-        return $target;
+            },
+            $target
+        );
     }
     #endregion
 
