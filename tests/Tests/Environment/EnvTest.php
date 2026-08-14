@@ -45,6 +45,11 @@ final class EnvTest extends TestCase
 
     private string $fixturePath;
 
+    /**
+     * @var string[] Keys loaded from the .env.test fixture.
+     */
+    private const FIXTURE_KEYS = ['APP_NAME', 'APP_DEBUG', 'APP_TIMEOUT', 'APP_EMPTY', 'APP_NULL'];
+
     protected function setUp(): void
     {
         $this->fixturePath = $this->setFixturePath('/fixtures/environment/');
@@ -57,6 +62,10 @@ final class EnvTest extends TestCase
         /** @noinspection PhpExpressionResultUnusedInspection */
         $valuesProp->setAccessible(true);
         $valuesProp->setValue(null, []);
+
+        foreach (self::FIXTURE_KEYS as $key) {
+            unset($_ENV[$key], $_SERVER[$key]);
+        }
     }
 
     /**
@@ -69,6 +78,25 @@ final class EnvTest extends TestCase
         Env::load($this->fixturePath, '.env.test');
 
         $this->assertSame('Omega', Env::get('APP_NAME'));
+    }
+
+    /**
+     * Test loading the same file twice preserves the previously loaded values.
+     *
+     * Regression test: Dotenv's immutable loader only returns the variables
+     * that were not already defined in the process environment, so a second
+     * load used to replace the whole store with an empty/partial array.
+     */
+    public function testItPreservesValuesWhenLoadedTwice(): void
+    {
+        Env::load($this->fixturePath, '.env.test');
+        Env::load($this->fixturePath, '.env.test');
+
+        $this->assertSame('Omega', Env::get('APP_NAME'));
+        $this->assertTrue(Env::get('APP_DEBUG'));
+        $this->assertSame(42, Env::get('APP_TIMEOUT'));
+        $this->assertSame('', Env::get('APP_EMPTY'));
+        $this->assertNull(Env::get('APP_NULL'));
     }
 
     /**

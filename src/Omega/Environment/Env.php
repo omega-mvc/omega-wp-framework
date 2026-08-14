@@ -17,6 +17,7 @@ namespace Omega\Environment;
 use Dotenv\Dotenv;
 
 use function array_key_exists;
+use function array_merge;
 use function is_numeric;
 use function strtolower;
 
@@ -44,6 +45,11 @@ class Env
     /**
      * Load environment variables from a given path and file.
      *
+     * Values are merged into the already-loaded store instead of replacing it,
+     * so calling this method more than once in the same process is safe:
+     * previously loaded keys are preserved (re-loading the same file only adds
+     * keys that are not already present, matching the immutable Dotenv loader).
+     *
      * @param string $path The directory path containing the environment file.
      * @param string $file The environment filename, defaults to '.env'.
      * @return void
@@ -51,7 +57,7 @@ class Env
     public static function load(string $path, string $file = '.env'): void
     {
         $dotenv = Dotenv::createImmutable($path, $file);
-        self::$values = $dotenv->load();
+        self::$values = array_merge(self::$values, $dotenv->load());
     }
 
     /**
