@@ -34,4 +34,18 @@ use InvalidArgumentException;
  */
 final class FileNotFoundException extends InvalidArgumentException
 {
+    /**
+     * @param string $message       The exception message: either a ready-to-use
+     *                              string or a printf-style format string.
+     * @param mixed  ...$parameters Optional parameters used to format the
+     *                              message via sprintf.
+     */
+    public function __construct(string $message, mixed ...$parameters)
+    {
+        if ($parameters !== []) {
+            $message = sprintf($message, ...$parameters);
+        }
+
+        parent::__construct($message);
+    }
 }

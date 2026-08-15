@@ -102,5 +102,9 @@ final class ApplicationThemeTest extends ApplicationTestCase
         $this->assertTrue(class_exists(HeaderNotFoundException::class));
         $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
         $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
+        $this->assertSame(
+            'Theme header "Theme Name" not found.',
+            (new HeaderNotFoundException('Theme header "%s" not found.', 'Theme Name'))->getMessage()
+        );
     }
 }

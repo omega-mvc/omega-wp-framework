@@ -115,9 +115,7 @@ class ApplicationTheme extends Application
         $value = (string) $theme->get($headerKey);
 
         if ($value === '') {
-            throw new HeaderNotFoundException(
-                sprintf('Theme header "%s" not found.', $headerKey)
-            );
+            throw new HeaderNotFoundException('Theme header "%s" not found.', $headerKey);
         }
 
         return $value;

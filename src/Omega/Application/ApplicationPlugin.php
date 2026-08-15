@@ -103,11 +103,9 @@ class ApplicationPlugin extends Application
 
         if (!file_exists($basePath . "/$id.php")) {
             throw new FileNotFoundException(
-                sprintf(
-                    "The plugin file for %s does not exist in the specified plugin root, "
-                    . "in ApplicationFactory::createPlugin configure application_root.",
-                    $id
-                )
+                "The plugin file for %s does not exist in the specified plugin root, "
+                . "in ApplicationFactory::createPlugin configure application_root.",
+                $id
             );
         }
     }
@@ -142,9 +140,7 @@ class ApplicationPlugin extends Application
         $value = $data[$headerKey] ?? '';
 
         if ($value === '') {
-            throw new HeaderNotFoundException(
-                sprintf('Plugin header "%s" not found.', $headerKey)
-            );
+            throw new HeaderNotFoundException('Plugin header "%s" not found.', $headerKey);
         }
 
         return $value;

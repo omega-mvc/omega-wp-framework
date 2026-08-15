@@ -117,6 +117,10 @@ final class ApplicationPluginTest extends ApplicationTestCase
         $this->assertTrue(class_exists(FileNotFoundException::class));
         $this->assertInstanceOf(InvalidArgumentException::class, new FileNotFoundException('sample'));
         $this->assertSame('sample', (new FileNotFoundException('sample'))->getMessage());
+        $this->assertSame(
+            'The file "sample.php" was not found.',
+            (new FileNotFoundException('The file "%s" was not found.', 'sample.php'))->getMessage()
+        );
     }
 
     /**
@@ -128,6 +132,10 @@ final class ApplicationPluginTest extends ApplicationTestCase
         $this->assertTrue(class_exists(HeaderNotFoundException::class));
         $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
         $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
+        $this->assertSame(
+            'Plugin header "Version" not found.',
+            (new HeaderNotFoundException('Plugin header "%s" not found.', 'Version'))->getMessage()
+        );
     }
 
     /**
@@ -139,5 +147,9 @@ final class ApplicationPluginTest extends ApplicationTestCase
         $this->assertTrue(class_exists(WordPressEnvironmentException::class));
         $this->assertInstanceOf(RuntimeException::class, new WordPressEnvironmentException('sample'));
         $this->assertSame('sample', (new WordPressEnvironmentException('sample'))->getMessage());
+        $this->assertSame(
+            'WordPress environment "test" is not available.',
+            (new WordPressEnvironmentException('WordPress environment "%s" is not available.', 'test'))->getMessage()
+        );
     }
 }

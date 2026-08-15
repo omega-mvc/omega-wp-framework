@@ -355,5 +355,9 @@ final class ApplicationTest extends ApplicationTestCase
         $this->assertTrue(class_exists(MissingParameterException::class));
         $this->assertInstanceOf(InvalidArgumentException::class, new MissingParameterException('sample'));
         $this->assertSame('sample', (new MissingParameterException('sample'))->getMessage());
+        $this->assertSame(
+            'Parameter "id" is required.',
+            (new MissingParameterException('Parameter "%s" is required.', 'id'))->getMessage()
+        );
     }
 }
