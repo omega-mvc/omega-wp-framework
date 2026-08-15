@@ -22,7 +22,6 @@ use function defined;
 use function file_exists;
 use function function_exists;
 use function get_file_data;
-use function sprintf;
 
 /**
  * Concrete implementation of the Omega application.
@@ -120,16 +119,10 @@ class ApplicationPlugin extends Application
      */
     public function getHeaderField(string $headerKey): string
     {
-        $pluginFile =  "{$this->getAppRoot()}/{$this->getId()}.php";
+        $pluginFile = "{$this->getAppRoot()}/{$this->getId()}.php";
 
-        if (!function_exists('get_file_data')) {
-            if (defined('ABSPATH')) {
-                require_once ABSPATH . 'wp-admin/includes/plugin.php';
-            } else {
-                throw new WordPressEnvironmentException(
-                    'WordPress environment is not available.'
-                );
-            }
+        if (!$this->isFileDataParserLoaded()) {
+            $this->loadFileDataParser();
         }
 
         $data = get_file_data(
@@ -144,6 +137,35 @@ class ApplicationPlugin extends Application
         }
 
         return $value;
+    }
+
+    /**
+     * Whether the WordPress plugin-data parser (get_file_data) is already loaded.
+     *
+     * @return bool True when the parser function is available.
+     */
+    protected function isFileDataParserLoaded(): bool
+    {
+        return function_exists('get_file_data');
+    }
+
+    /**
+     * Loads the WordPress plugin-data parser.
+     *
+     * When the parser is missing and the WordPress runtime root (ABSPATH) is
+     * available, the wp-admin plugin helper file is loaded. Otherwise the
+     * WordPress runtime is considered unavailable.
+     *
+     * @return void
+     * @throws WordPressEnvironmentException if no WordPress runtime is available.
+     */
+    protected function loadFileDataParser(): void
+    {
+        if (!defined('ABSPATH')) {
+            throw new WordPressEnvironmentException('WordPress environment is not available.');
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
     }
     #endregion
 }

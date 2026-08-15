@@ -19,6 +19,8 @@ use Omega\Application\Exceptions\FileNotFoundException;
 use Omega\Application\Exceptions\HeaderNotFoundException;
 use Omega\Application\Exceptions\WordPressEnvironmentException;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use Tests\Application\Support\FileDataParserDisabledStub;
 use Tests\Routing\WordPressRuntime;
 use InvalidArgumentException;
 use RuntimeException;
@@ -102,6 +104,67 @@ final class ApplicationPluginTest extends ApplicationTestCase
         WordPressRuntime::$fileHeaders = ['Version' => ''];
 
         $app = new ApplicationPlugin('sample', $this->pluginBasePath());
+
+        $this->expectException(HeaderNotFoundException::class);
+
+        $app->getHeaderField('Version');
+    }
+
+    /**
+     * Test getHeaderField throws when the WordPress parser is missing and
+     * no WordPress runtime root is available.
+     */
+    public function testGetHeaderFieldThrowsWhenWordPressEnvironmentIsMissing(): void
+    {
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
+
+        $this->expectException(WordPressEnvironmentException::class);
+        $this->expectExceptionMessage('WordPress environment is not available.');
+
+        $app->getHeaderField('Version');
+    }
+
+    /**
+     * Test getHeaderField loads the WordPress parser file when ABSPATH is
+     * present and then reads the header value.
+     */
+    #[RunInSeparateProcess]
+    public function testGetHeaderFieldLoadsFileDataParserWhenWordPressIsPresent(): void
+    {
+        // Load the class before ABSPATH is defined so the branch opcodes stay
+        // identical across PHPUnit processes (PHP constant-folds
+        // `defined('ABSPATH')` when the constant is already known at compile
+        // time), keeping branch coverage mergeable across processes.
+        class_exists(FileDataParserDisabledStub::class);
+
+        define('ABSPATH', $this->setFixturePath('/fixtures/app/plugin/wp/'));
+
+        WordPressRuntime::$fileHeaders = ['Version' => '1.2.3'];
+
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
+
+        $this->assertSame('1.2.3', $app->getHeaderField('Version'));
+        $this->assertTrue(defined('OMEGA_FIXTURE_PLUGIN_PARSER_LOADED'));
+    }
+
+    /**
+     * Test getHeaderField loads the WordPress parser file when ABSPATH is
+     * present and still reports an empty header value.
+     */
+    #[RunInSeparateProcess]
+    public function testGetHeaderFieldLoadsFileDataParserAndThrowsOnEmptyHeader(): void
+    {
+        // Load the class before ABSPATH is defined so the branch opcodes stay
+        // identical across PHPUnit processes (PHP constant-folds
+        // `defined('ABSPATH')` when the constant is already known at compile
+        // time), keeping branch coverage mergeable across processes.
+        class_exists(FileDataParserDisabledStub::class);
+
+        define('ABSPATH', $this->setFixturePath('/fixtures/app/plugin/wp/'));
+
+        WordPressRuntime::$fileHeaders = ['Version' => ''];
+
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
 
         $this->expectException(HeaderNotFoundException::class);
 
