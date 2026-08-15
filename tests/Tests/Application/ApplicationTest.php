@@ -30,6 +30,8 @@ use Omega\Settings\SettingsRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversClassesThatImplementInterface;
 use Tests\Application\Support\FakeProvider;
+use Tests\Routing\Support\WPTheme;
+use Tests\Routing\WordPressRuntime;
 
 use function rtrim;
 
@@ -187,13 +189,37 @@ final class ApplicationTest extends ApplicationTestCase
     }
 
     /**
-     * Test the application file points to the plugin entry file.
+     * Test the application file points to the theme stylesheet when a theme
+     * matching the application id is installed.
      */
-    public function testGetAppFileReturnsPluginEntryPath(): void
+    public function testGetAppFileReturnsThemeStylesheetWhenThemeExists(): void
     {
+        WordPressRuntime::$theme = new WPTheme([], true);
+        $app = new Application('sample', $this->themeBasePath());
+
+        $this->assertSame($this->themeBasePath() . '/style.css', $app->getAppFile());
+    }
+
+    /**
+     * Test the application file points to the plugin entry file when no theme
+     * matches the application id.
+     */
+    public function testGetAppFileReturnsPluginEntryFileWhenNoThemeMatches(): void
+    {
+        WordPressRuntime::$theme = new WPTheme([], false);
         $app = new Application('sample', $this->themeBasePath());
 
         $this->assertSame($this->themeBasePath() . '/sample.php', $app->getAppFile());
+    }
+
+    /**
+     * Test the settings service resolves the settings repository.
+     */
+    public function testSettingsResolvesSettingsRepository(): void
+    {
+        $app = new Application('sample', $this->themeBasePath());
+
+        $this->assertInstanceOf(SettingsRepository::class, $app->settings());
     }
 
     /**

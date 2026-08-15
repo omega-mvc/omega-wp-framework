@@ -14,7 +14,7 @@ declare(strict_types=1);
 
 namespace Tests\Application;
 
-use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\TestCase;
 
 use function Omega\Application\slash;
@@ -33,7 +33,7 @@ use const DIRECTORY_SEPARATOR;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-#[CoversNothing]
+#[CoversFunction('Omega\Application\slash')]
 final class HelperTest extends TestCase
 {
     /**

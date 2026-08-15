@@ -32,8 +32,9 @@ final class WPTheme
 {
     /**
      * @param array<string, string> $headers Theme header values.
+     * @param bool                  $exists  Whether the theme is installed.
      */
-    public function __construct(private array $headers = [])
+    public function __construct(private array $headers = [], private bool $exists = true)
     {
     }
 
@@ -51,10 +52,10 @@ final class WPTheme
     /**
      * Determine whether the theme exists.
      *
-     * @return bool Always true for stubbed themes.
+     * @return bool True when the theme is installed.
      */
     public function exists(): bool
     {
-        return true;
+        return $this->exists;
     }
 }

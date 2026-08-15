@@ -26,6 +26,7 @@ use function array_filter;
 use function array_map;
 use function array_values;
 use function rtrim;
+use function wp_get_theme;
 use const DIRECTORY_SEPARATOR;
 
 /**
@@ -192,15 +193,26 @@ class Application extends AbstractApplication
      */
     public function getAppFile(): string
     {
-        if (
-            function_exists('wp_get_theme')
-            && class_exists('WP_Theme')
-            && wp_get_theme($this->id)->exists()
-        ) {
+        if ($this->isThemeApplication()) {
             return "{$this->getAppRoot()}/style.css";
         }
 
         return "{$this->getAppRoot()}/{$this->getId()}.php";
+    }
+
+    /**
+     * Determine whether the application is registered as an installed theme.
+     *
+     * The decision is delegated to the WordPress theme API: when a theme
+     * matching the application id exists, the application entry file is
+     * `style.css`; otherwise the plugin entry file is returned by
+     * {@see getAppFile()}.
+     *
+     * @return bool True when a theme matching the application id is installed.
+     */
+    protected function isThemeApplication(): bool
+    {
+        return wp_get_theme($this->id)->exists();
     }
     #endregion
 
