@@ -15,10 +15,13 @@ declare(strict_types=1);
 namespace Tests\Application;
 
 use Omega\Application\ApplicationPlugin;
-use Omega\Application\Exception\FileNotFoundException;
-use Omega\Application\Exception\HeaderNotFoundException;
+use Omega\Application\Exceptions\FileNotFoundException;
+use Omega\Application\Exceptions\HeaderNotFoundException;
+use Omega\Application\Exceptions\WordPressEnvironmentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Routing\WordPressRuntime;
+use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Tests the ApplicationPlugin class behavior.
@@ -34,6 +37,7 @@ use Tests\Routing\WordPressRuntime;
 #[CoversClass(ApplicationPlugin::class)]
 #[CoversClass(FileNotFoundException::class)]
 #[CoversClass(HeaderNotFoundException::class)]
+#[CoversClass(WordPressEnvironmentException::class)]
 final class ApplicationPluginTest extends ApplicationTestCase
 {
     /**
@@ -102,5 +106,38 @@ final class ApplicationPluginTest extends ApplicationTestCase
         $this->expectException(HeaderNotFoundException::class);
 
         $app->getHeaderField('Version');
+    }
+
+    /**
+     * Test the FileNotFoundException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testFileNotFoundExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(FileNotFoundException::class));
+        $this->assertInstanceOf(InvalidArgumentException::class, new FileNotFoundException('sample'));
+        $this->assertSame('sample', (new FileNotFoundException('sample'))->getMessage());
+    }
+
+    /**
+     * Test the HeaderNotFoundException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testHeaderNotFoundExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(HeaderNotFoundException::class));
+        $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
+        $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
+    }
+
+    /**
+     * Test the WordPressEnvironmentException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testWordPressEnvironmentExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(WordPressEnvironmentException::class));
+        $this->assertInstanceOf(RuntimeException::class, new WordPressEnvironmentException('sample'));
+        $this->assertSame('sample', (new WordPressEnvironmentException('sample'))->getMessage());
     }
 }

@@ -15,10 +15,11 @@ declare(strict_types=1);
 namespace Tests\Application;
 
 use Omega\Application\ApplicationTheme;
-use Omega\Application\Exception\HeaderNotFoundException;
+use Omega\Application\Exceptions\HeaderNotFoundException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Routing\Support\WPTheme;
 use Tests\Routing\WordPressRuntime;
+use RuntimeException;
 
 /**
  * Tests the ApplicationTheme class behavior.
@@ -90,5 +91,16 @@ final class ApplicationThemeTest extends ApplicationTestCase
         $this->expectException(HeaderNotFoundException::class);
 
         $app->getHeaderField('Theme Name');
+    }
+
+    /**
+     * Test the HeaderNotFoundException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testHeaderNotFoundExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(HeaderNotFoundException::class));
+        $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
+        $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
     }
 }

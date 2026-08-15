@@ -16,8 +16,8 @@ namespace Tests\Application;
 
 use Omega\Application\Application;
 use Omega\Application\ApplicationInterface;
-use Omega\Application\Exception\MissingParameterException;
-use Omega\Application\Exception\WordPressEnvironmentException;
+use Omega\Application\Exceptions\MissingParameterException;
+use Omega\Application\Exceptions\WordPressEnvironmentException;
 use Omega\Config\ConfigRepository;
 use Omega\Container\Container;
 use Omega\Container\ContainerInterface;
@@ -32,6 +32,7 @@ use PHPUnit\Framework\Attributes\CoversClassesThatImplementInterface;
 use Tests\Application\Support\FakeProvider;
 use Tests\Routing\Support\WPTheme;
 use Tests\Routing\WordPressRuntime;
+use InvalidArgumentException;
 
 use function rtrim;
 
@@ -343,5 +344,16 @@ final class ApplicationTest extends ApplicationTestCase
         } finally {
             $wpdb = $savedWpdb;
         }
+    }
+
+    /**
+     * Test the MissingParameterException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testMissingParameterExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(MissingParameterException::class));
+        $this->assertInstanceOf(InvalidArgumentException::class, new MissingParameterException('sample'));
+        $this->assertSame('sample', (new MissingParameterException('sample'))->getMessage());
     }
 }

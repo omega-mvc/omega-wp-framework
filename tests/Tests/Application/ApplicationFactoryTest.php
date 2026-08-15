@@ -17,7 +17,7 @@ namespace Tests\Application;
 use Omega\Application\ApplicationFactory;
 use Omega\Application\ApplicationPlugin;
 use Omega\Application\ApplicationTheme;
-use Omega\Application\Exception\FileNotFoundException;
+use Omega\Application\Exceptions\FileNotFoundException;
 use Omega\Config\ConfigRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionProperty;

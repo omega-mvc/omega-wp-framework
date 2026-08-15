@@ -12,16 +12,17 @@
 
 declare(strict_types=1);
 
-namespace Omega\Application\Exception;
+namespace Omega\Application\Exceptions;
 
-use InvalidArgumentException;
+use RuntimeException;
 
 /**
- * Exception thrown when a required application file cannot be found.
+ * Exception thrown when the required WordPress runtime environment is unavailable.
  *
- * This exception is used when the main plugin file or the theme stylesheet
- * is missing or not accessible in the expected location. It typically
- * indicates a misconfigured or incomplete application structure.
+ * This exception indicates that an operation depends on WordPress core being
+ * fully loaded, but the required runtime context or functions are not available.
+ * It is typically raised when framework code is executed outside a valid
+ * WordPress environment.
  *
  * @category   Omega
  * @package    Application
@@ -32,6 +33,6 @@ use InvalidArgumentException;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  */
-final class FileNotFoundException extends InvalidArgumentException
+final class WordPressEnvironmentException extends RuntimeException
 {
 }

@@ -14,7 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Application;
 
-use Omega\Application\Exception\HeaderNotFoundException;
+use Omega\Application\Exceptions\HeaderNotFoundException;
 
 use function sprintf;
 use function wp_get_theme;

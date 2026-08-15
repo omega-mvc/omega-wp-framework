@@ -15,7 +15,7 @@ declare(strict_types=1);
 namespace Omega\Database;
 
 use Omega\Application\ApplicationInterface;
-use Omega\Application\Exception\WordPressEnvironmentException;
+use Omega\Application\Exceptions\WordPressEnvironmentException;
 use Omega\Database\Migrations\Migrator;
 use Omega\Database\ORM\QueryBuilder;
 use ReflectionException;

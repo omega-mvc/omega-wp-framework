@@ -12,16 +12,16 @@
 
 declare(strict_types=1);
 
-namespace Omega\Application\Exception;
+namespace Omega\Application\Exceptions;
 
 use InvalidArgumentException;
 
 /**
- * Exception thrown when a required parameter is missing during application creation.
+ * Exception thrown when a required application file cannot be found.
  *
- * This exception is used by the ApplicationFactory when essential configuration
- * values, such as the application ID or base path, are not provided or are empty.
- * It indicates an invalid or incomplete initialization state.
+ * This exception is used when the main plugin file or the theme stylesheet
+ * is missing or not accessible in the expected location. It typically
+ * indicates a misconfigured or incomplete application structure.
  *
  * @category   Omega
  * @package    Application
@@ -32,6 +32,6 @@ use InvalidArgumentException;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  */
-final class MissingParameterException extends InvalidArgumentException
+final class FileNotFoundException extends InvalidArgumentException
 {
 }

@@ -12,17 +12,16 @@
 
 declare(strict_types=1);
 
-namespace Omega\Application\Exception;
+namespace Omega\Application\Exceptions;
 
-use RuntimeException;
+use InvalidArgumentException;
 
 /**
- * Exception thrown when the required WordPress runtime environment is unavailable.
+ * Exception thrown when a required parameter is missing during application creation.
  *
- * This exception indicates that an operation depends on WordPress core being
- * fully loaded, but the required runtime context or functions are not available.
- * It is typically raised when framework code is executed outside a valid
- * WordPress environment.
+ * This exception is used by the ApplicationFactory when essential configuration
+ * values, such as the application ID or base path, are not provided or are empty.
+ * It indicates an invalid or incomplete initialization state.
  *
  * @category   Omega
  * @package    Application
@@ -33,6 +32,6 @@ use RuntimeException;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  */
-final class WordPressEnvironmentException extends RuntimeException
+final class MissingParameterException extends InvalidArgumentException
 {
 }

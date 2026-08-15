@@ -12,7 +12,7 @@
 
 declare(strict_types=1);
 
-namespace Omega\Application\Exception;
+namespace Omega\Application\Exceptions;
 
 use RuntimeException;
 

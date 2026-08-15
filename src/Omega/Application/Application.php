@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 namespace Omega\Application;
 
-use Omega\Application\Exception\MissingParameterException;
+use Omega\Application\Exceptions\MissingParameterException;
 use Omega\Config\ConfigRepository;
 use Omega\Settings\SettingsRepository;
 use Omega\Str\Str;

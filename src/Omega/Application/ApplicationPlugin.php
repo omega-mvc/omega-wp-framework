@@ -14,9 +14,9 @@ declare(strict_types=1);
 
 namespace Omega\Application;
 
-use Omega\Application\Exception\FileNotFoundException;
-use Omega\Application\Exception\HeaderNotFoundException;
-use Omega\Application\Exception\WordPressEnvironmentException;
+use Omega\Application\Exceptions\FileNotFoundException;
+use Omega\Application\Exceptions\HeaderNotFoundException;
+use Omega\Application\Exceptions\WordPressEnvironmentException;
 
 use function defined;
 use function file_exists;
