@@ -23,8 +23,11 @@ use Omega\Routing\RouterServiceProvider;
 use Omega\Settings\SettingsServiceProvider;
 use Omega\View\ViewServiceProvider;
 
+use function array_filter;
+use function array_map;
 use function file_exists;
 use function get_class;
+use function in_array;
 use function is_array;
 use function is_string;
 use function method_exists;
@@ -95,11 +98,10 @@ abstract class AbstractApplication extends Container implements ApplicationInter
      */
     public function bootstrap(): void
     {
-        foreach ($this->serviceProviders as $provider) {
-            if (method_exists($provider, 'boot')) {
-                $provider->boot();
-            }
-        }
+        array_map(
+            fn($provider) => $provider->boot(),
+            array_filter($this->serviceProviders, fn($provider) => method_exists($provider, 'boot'))
+        );
     }
     #endregion
 
@@ -144,9 +146,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         if (file_exists($providersFile)) {
             $providers = include $providersFile;
             if (is_array($providers)) {
-                foreach ($providers as $provider) {
-                    $this->register($provider);
-                }
+                array_map(fn($provider) => $this->register($provider), $providers);
             }
         }
     }
@@ -164,17 +164,26 @@ abstract class AbstractApplication extends Container implements ApplicationInter
             return $this->serviceProviders[$class];
         }
 
-        if (is_string($provider)) {
-            $provider = new $provider($this);
+        $instance = $this->newProviderInstance($provider);
+
+        $this->serviceProviders[$class] = $instance;
+
+        if (method_exists($instance, 'register')) {
+            $instance->register();
         }
 
-        $this->serviceProviders[$class] = $provider;
+        return $instance;
+    }
 
-        if (method_exists($provider, 'register')) {
-            $provider->register();
-        }
-
-        return $provider;
+    /**
+     * Resolve a service provider instance from a class-string or an existing object.
+     *
+     * @param object|string $provider Service provider class name or instance.
+     * @return object Resolved service provider instance.
+     */
+    private function newProviderInstance(object|string $provider): object
+    {
+        return is_string($provider) ? new $provider($this) : $provider;
     }
 
     /**
@@ -188,9 +197,9 @@ abstract class AbstractApplication extends Container implements ApplicationInter
     #endregion
 
     #region Questo metodo è provvisorio.
-    private function isCli(): bool
+    protected function isCli(): bool
     {
-        return PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
+        return in_array(PHP_SAPI, ['cli', 'phpdbg'], true);
     }
     #endregion
 }
