@@ -86,17 +86,29 @@ class Str
             return $data[$key] ?? $default;
         }
 
-        $keys = explode('.', $key);
-        $value = $data;
+        $keys   = explode('.', $key);
+        $value  = $data;
+        $exists = true;
 
-        foreach ($keys as $segment) {
-            if (!is_array($value) || !array_key_exists($segment, $value)) {
-                return $default;
+        array_walk($keys, function (string $segment) use (&$value, &$exists): void {
+            if (!$exists) {
+                return;
             }
-            $value = $value[$segment];
-        }
 
-        return $value;
+            if (!is_array($value)) {
+                $exists = false;
+                return;
+            }
+
+            if (!array_key_exists($segment, $value)) {
+                $exists = false;
+                return;
+            }
+
+            $value = $value[$segment];
+        });
+
+        return $exists ? $value : $default;
     }
 
     /**
@@ -119,19 +131,14 @@ class Str
             return;
         }
 
-        $keys = explode('.', $key);
-        $current = &$data;
+        $keys   = array_reverse(explode('.', $key));
+        $nested = $value;
 
-        foreach ($keys as $i => $segment) {
-            if ($i === count($keys) - 1) {
-                $current[$segment] = $value;
-            } else {
-                if (!isset($current[$segment]) || !is_array($current[$segment])) {
-                    $current[$segment] = [];
-                }
-                $current = &$current[$segment];
-            }
-        }
+        array_walk($keys, function (string $segment) use (&$nested): void {
+            $nested = [$segment => $nested];
+        });
+
+        $data = array_replace_recursive($data, $nested);
     }
     #endregion
 

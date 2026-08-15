@@ -74,6 +74,26 @@ final class StrTest extends TestCase
     }
 
     /**
+     * Test a missing nested key falls back to the default value.
+     */
+    public function testGetNestedValueReturnsDefaultForMissingNestedKey(): void
+    {
+        $data = ['user' => ['name' => 'Ada']];
+
+        $this->assertSame('fallback', Str::getNestedValue($data, 'user.email', 'fallback'));
+    }
+
+    /**
+     * Test traversal stops early when a middle segment is missing.
+     */
+    public function testGetNestedValueReturnsDefaultWhenMiddleSegmentIsMissing(): void
+    {
+        $data = ['a' => ['b' => 'x']];
+
+        $this->assertSame('fallback', Str::getNestedValue($data, 'a.missing.deep', 'fallback'));
+    }
+
+    /**
      * Test falsy values are returned as-is instead of the default.
      */
     public function testGetNestedValueReturnsFalsyValues(): void

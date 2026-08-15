@@ -28,6 +28,7 @@ use Omega\Routing\RouteLoader;
 use Omega\Routing\RouterBuilder;
 use Omega\Settings\SettingsRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\CoversClassesThatImplementInterface;
 use Tests\Application\Support\FakeProvider;
 
 use function rtrim;
@@ -47,6 +48,7 @@ use const DIRECTORY_SEPARATOR;
  */
 #[CoversClass(Application::class)]
 #[CoversClass(MissingParameterException::class)]
+#[CoversClassesThatImplementInterface(ApplicationInterface::class)]
 final class ApplicationTest extends ApplicationTestCase
 {
     /**
