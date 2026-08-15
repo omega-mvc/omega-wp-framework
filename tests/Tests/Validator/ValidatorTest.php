@@ -425,4 +425,177 @@ final class ValidatorTest extends TestCase
         $validator->{'user.city'} = 'Terni';
         $this->assertSame('Terni', $validator->get('user.city'));
     }
+
+    /**
+     * Test rules that accept null values skip validation without errors.
+     */
+    public function testRulesIgnoreNullValues(): void
+    {
+        $rules = [
+            'min:3'      => 'name',
+            'max:3'      => 'name',
+            'size:3'     => 'code',
+            'integer'    => 'age',
+            'in:a,b'     => 'role',
+            'numeric'    => 'price',
+            'string'     => 'name',
+            'date'       => 'birth',
+        ];
+
+        foreach ($rules as $rule => $field) {
+            $validator = Validator::make([$field => null], [$field => $rule]);
+            $validator->validate();
+            $this->assertFalse($validator->fails(), $rule . ' should ignore null values.');
+        }
+    }
+
+    /**
+     * Test an unknown rule with parameters is silently ignored.
+     */
+    public function testUnknownRuleWithParametersIsIgnored(): void
+    {
+        $validator = Validator::make(['name' => 'Ada'], ['name' => 'unknown_rule:param']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['name' => 'Ada'], $validator->validated());
+    }
+
+    /**
+     * Test the standalone nullable rule skips its own method without errors.
+     */
+    public function testNullableRuleWithNonEmptyValueStillDeclaresField(): void
+    {
+        $validator = Validator::make(['phone' => '123'], ['phone' => 'nullable']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['phone' => '123'], $validator->validated());
+    }
+
+    /**
+     * Test the nullable rule with parameters is still recognized.
+     */
+    public function testNullableRuleWithParametersIsAccepted(): void
+    {
+        $validator = Validator::make(['phone' => '123'], ['phone' => 'nullable:param']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['phone' => '123'], $validator->validated());
+    }
+
+    /**
+     * Test a field whose key is missing passes rules but is not validated.
+     */
+    public function testValidationSkipsFieldWhoseKeyIsMissing(): void
+    {
+        $validator = Validator::make([], ['email' => 'email']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame([], $validator->validated());
+    }
+
+    /**
+     * Test an existing field holding null is included when its rules pass.
+     */
+    public function testValidatedIncludesNullValuedExistingField(): void
+    {
+        $validator = Validator::make(['email' => null], ['email' => 'email']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['email' => null], $validator->validated());
+    }
+
+    /**
+     * Test an empty string field is included when its rules pass.
+     */
+    public function testValidatedIncludesEmptyStringFieldWhenRulePasses(): void
+    {
+        $validator = Validator::make(['name' => ''], ['name' => 'string']);
+        $validator->validate();
+
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['name' => ''], $validator->validated());
+    }
+
+    /**
+     * Test a failing rule excludes a null-valued existing field.
+     */
+    public function testFailingRuleExcludesNullValuedExistingField(): void
+    {
+        $validator = Validator::make(['name' => null], ['name' => 'required']);
+        $validator->validate();
+
+        $this->assertTrue($validator->fails());
+        $this->assertSame([], $validator->validated());
+    }
+
+    /**
+     * Test has() returns false when a nested path traverses a scalar.
+     */
+    public function testHasReturnsFalseWhenNestedPathTraversesScalar(): void
+    {
+        $validator = Validator::make(['profile' => ['city' => 'Terni']], []);
+
+        $this->assertFalse($validator->has('profile.city.name'));
+    }
+
+    /**
+     * Test has() returns false when a middle segment is missing.
+     */
+    public function testHasReturnsFalseWhenMiddleSegmentIsMissing(): void
+    {
+        $validator = Validator::make(['profile' => ['city' => 'Terni']], []);
+
+        $this->assertFalse($validator->has('profile.missing.deep'));
+    }
+
+    /**
+     * Test the protected merge() method adds nested fields.
+     */
+    public function testMergeAddsNestedFieldsViaReflection(): void
+    {
+        $validator = Validator::make([], []);
+        $method = new \ReflectionMethod($validator, 'merge');
+        $method->invoke($validator, ['profile.city' => 'Terni']);
+
+        $this->assertSame('Terni', $validator->get('profile.city'));
+    }
+
+    /**
+     * Test the protected getData() method returns the raw input.
+     */
+    public function testGetDataReturnsRawInputViaReflection(): void
+    {
+        $validator = Validator::make(['name' => 'Ada'], []);
+        $method = new \ReflectionMethod($validator, 'getData');
+
+        $this->assertSame(['name' => 'Ada'], $method->invoke($validator));
+    }
+
+    /**
+     * Test the protected getFieldValue() method resolves a nested key.
+     */
+    public function testGetFieldValueResolvesNestedKeyViaReflection(): void
+    {
+        $validator = Validator::make(['user' => ['name' => 'Ada']], []);
+        $method = new \ReflectionMethod($validator, 'getFieldValue');
+
+        $this->assertSame('Ada', $method->invoke($validator, 'user.name'));
+    }
+
+    /**
+     * Test the nullable() method is a no-op placeholder.
+     */
+    public function testNullableMethodIsNoOpViaReflection(): void
+    {
+        $validator = Validator::make([], []);
+        $method = new \ReflectionMethod($validator, 'nullable');
+        $method->invoke($validator, 'phone');
+
+        $this->assertFalse($validator->fails());
+    }
 }

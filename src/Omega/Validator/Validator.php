@@ -197,44 +197,93 @@ class Validator
         $rules               = $this->rules();
         $this->validatedData = [];
 
-        foreach ($rules as $field => $rule) {
-            $fieldRules = explode('|', $rule);
-            $fieldValid = true;
+        array_walk($rules, function ($rule, $field): void {
+            $this->validateField($field, $rule);
+        });
+    }
 
-            $isNullable = in_array('nullable', $fieldRules);
-            $fieldValue = Str::getNestedValue($this->data, $field);
+    /**
+     * Validate a single field against its rule definition.
+     *
+     * @param string $field Field name using dot notation
+     * @param string $rule Pipe-separated list of rules for the field
+     * @return void
+     */
+    private function validateField(string $field, string $rule): void
+    {
+        $fieldRules  = explode('|', $rule);
+        $fieldValid  = true;
+        $isNullable  = in_array('nullable', $fieldRules);
+        $fieldValue  = Str::getNestedValue($this->data, $field);
 
-            if ($isNullable && ($fieldValue === null || $fieldValue === '')) {
-                continue;
+        if ($fieldValue === null) {
+            if ($isNullable) {
+                return;
             }
 
-            foreach ($fieldRules as $singleRule) {
-                $ruleParts  = explode(':', $singleRule);
-                $method     = $ruleParts[0];
-                $parameters = isset($ruleParts[1]) ? explode(',', $ruleParts[1]) : [];
+            $fieldValid = $this->applyFieldRules($field, $fieldRules, $fieldValid);
 
-                if ($method === 'nullable') {
-                    continue;
-                }
-
-                if (!method_exists($this, $method)) {
-                    continue;
-                }
-
-                $errorCountBefore = count($this->errors);
-
-                call_user_func_array([$this, $method], [$field, ...$parameters]);
-
-                $errorCountAfter  = count($this->errors);
-
-                if ($errorCountAfter > $errorCountBefore) {
-                    $fieldValid = false;
+            if (!$this->hasNestedKey($this->data, $field)) {
+                return;
+            }
+        } else {
+            if ($fieldValue === '') {
+                if ($isNullable) {
+                    return;
                 }
             }
 
-            if ($fieldValid && $this->hasNestedKey($this->data, $field)) {
-                Str::setNestedValue($this->validatedData, $field, $fieldValue);
-            }
+            $fieldValid = $this->applyFieldRules($field, $fieldRules, $fieldValid);
+        }
+
+        if ($fieldValid) {
+            Str::setNestedValue($this->validatedData, $field, $fieldValue);
+        }
+    }
+
+    /**
+     * Apply every rule of a field definition and report whether it stayed valid.
+     *
+     * @param string $field Field name using dot notation
+     * @param string[] $fieldRules Rules to apply
+     * @param bool $fieldValid Whether the field is still considered valid
+     * @return bool
+     */
+    private function applyFieldRules(string $field, array $fieldRules, bool $fieldValid): bool
+    {
+        array_walk($fieldRules, function ($singleRule) use (&$fieldValid, $field): void {
+            $this->applySingleRule($field, $singleRule, $fieldValid);
+        });
+
+        return $fieldValid;
+    }
+
+    /**
+     * Apply a single rule of a field rule definition.
+     *
+     * @param string $field Field name using dot notation
+     * @param string $singleRule Single rule with optional colon-separated parameters
+     * @param bool $fieldValid Whether the field is still considered valid (modified by reference)
+     * @return void
+     */
+    private function applySingleRule(string $field, string $singleRule, bool &$fieldValid): void
+    {
+        $ruleParts  = explode(':', $singleRule);
+        $method     = $ruleParts[0];
+        $parameters = isset($ruleParts[1]) ? explode(',', $ruleParts[1]) : [];
+
+        if ($method === 'nullable') {
+            return;
+        }
+
+        if (!method_exists($this, $method)) {
+            return;
+        }
+
+        $errorCountBefore = count($this->errors);
+        call_user_func_array([$this, $method], [$field, ...$parameters]);
+        if (count($this->errors) > $errorCountBefore) {
+            $fieldValid = false;
         }
     }
 
@@ -313,7 +362,12 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value === null || $value === '') {
+        if ($value === null) {
+            $this->errors[$field] = "The field {$field} is required.";
+            return;
+        }
+
+        if ($value === '') {
             $this->errors[$field] = "The field {$field} is required.";
         }
     }
@@ -328,7 +382,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
             $this->errors[$field] = "The field {$field} must be a valid email address.";
         }
     }
@@ -359,7 +417,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && strlen((string)$value) < $length) {
+        if ($value === null) {
+            return;
+        }
+
+        if (strlen((string) $value) < $length) {
             $this->errors[$field] = "The field {$field} must be at least {$length} characters.";
         }
     }
@@ -375,7 +437,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && strlen((string)$value) > $length) {
+        if ($value === null) {
+            return;
+        }
+
+        if (strlen((string) $value) > $length) {
             $this->errors[$field] = "The field {$field} may not be greater than {$length} characters.";
         }
     }
@@ -391,7 +457,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && strlen((string)$value) !== (int)$size) {
+        if ($value === null) {
+            return;
+        }
+
+        if (strlen((string) $value) !== (int) $size) {
             $this->errors[$field] = "The field must be {$size} characters.";
         }
     }
@@ -406,7 +476,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !filter_var($value, FILTER_VALIDATE_INT)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_INT)) {
             $this->errors[$field] = "The field {$field} must be an integer.";
         }
     }
@@ -436,7 +510,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !in_array($value, $values, true)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!in_array($value, $values, true)) {
             $validValues = implode(', ', $values);
             $this->errors[$field] = "The field {$field} must be one of: {$validValues}.";
         }
@@ -452,7 +530,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !is_numeric($value)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!is_numeric($value)) {
             $this->errors[$field] = "The field {$field} must be numeric.";
         }
     }
@@ -467,7 +549,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !is_string($value)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!is_string($value)) {
             $this->errors[$field] = "The field {$field} must be a string.";
         }
     }
@@ -482,7 +568,11 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value !== null && !strtotime($value)) {
+        if ($value === null) {
+            return;
+        }
+
+        if (!strtotime($value)) {
             $this->errors[$field] = "The field {$field} must be a valid date.";
         }
     }
@@ -497,9 +587,9 @@ class Validator
      */
     protected function merge(array $fields): void
     {
-        foreach ($fields as $key => $value) {
+        array_walk($fields, function ($value, $key): void {
             Str::setNestedValue($this->data, $key, $value);
-        }
+        });
     }
 
     /**
@@ -598,18 +688,29 @@ class Validator
             return array_key_exists($key, $data);
         }
 
-        $keys = explode('.', $key);
+        $keys    = explode('.', $key);
         $current = $data;
+        $exists  = true;
 
-        foreach ($keys as $segment) {
-            if (!is_array($current) || !array_key_exists($segment, $current)) {
-                return false;
+        array_walk($keys, function (string $segment) use (&$current, &$exists): void {
+            if (!$exists) {
+                return;
+            }
+
+            if (!is_array($current)) {
+                $exists = false;
+                return;
+            }
+
+            if (!array_key_exists($segment, $current)) {
+                $exists = false;
+                return;
             }
 
             $current = $current[$segment];
-        }
+        });
 
-        return true;
+        return $exists;
     }
 
     /**
