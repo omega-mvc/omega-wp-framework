@@ -127,10 +127,49 @@ function esc_html(string $text): string
 /**
  * Stub for add_action().
  *
+ * Records the call in the runtime registry and returns.
+ *
  * @param mixed ...$args Hook registration arguments
  */
 function add_action(mixed ...$args): void
 {
+    WordPressRuntime::$actions[] = $args;
+}
+
+/**
+ * Stub for load_plugin_textdomain().
+ *
+ * Records the call in the runtime registry.
+ *
+ * @param string      $domain       Text domain to load
+ * @param string|false $deprecated   Unused legacy argument
+ * @param string|false $pluginRelPath Path relative to WP_PLUGIN_DIR
+ * @return bool Always true
+ */
+function load_plugin_textdomain(
+    string $domain,
+    string|false $deprecated = false,
+    string|false $pluginRelPath = false
+): bool {
+    WordPressRuntime::$textdomains[] = ['plugin', $domain, $deprecated, $pluginRelPath];
+
+    return true;
+}
+
+/**
+ * Stub for load_theme_textdomain().
+ *
+ * Records the call in the runtime registry.
+ *
+ * @param string       $domain Text domain to load
+ * @param string|false $path   Absolute path to the languages directory
+ * @return bool Always true
+ */
+function load_theme_textdomain(string $domain, string|false $path = false): bool
+{
+    WordPressRuntime::$textdomains[] = ['theme', $domain, $path];
+
+    return true;
 }
 
 /**

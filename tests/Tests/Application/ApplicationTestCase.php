@@ -77,4 +77,30 @@ abstract class ApplicationTestCase extends TestCase
     {
         return $this->setFixturePath('/fixtures/app');
     }
+
+    /**
+     * Base path of the resolver plugin fixture, including its entry file.
+     *
+     * This fixture declares a PSR-4 autoload mapping in its composer.json
+     * and hosts the resolve.php backtrace helper inside its root directory.
+     *
+     * @return string Absolute resolver fixture path
+     */
+    protected function resolverBasePath(): string
+    {
+        return $this->setFixturePath('/fixtures/app/plugin/resolver');
+    }
+
+    /**
+     * Base path of the locale plugin fixture, including its entry file.
+     *
+     * This fixture enables plugin translation through its configuration and
+     * hosts the resources directory expected by the localization loader.
+     *
+     * @return string Absolute locale fixture path
+     */
+    protected function localeBasePath(): string
+    {
+        return $this->setFixturePath('/fixtures/app/plugin/locale');
+    }
 }

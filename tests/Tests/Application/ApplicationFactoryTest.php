@@ -149,6 +149,59 @@ final class ApplicationFactoryTest extends ApplicationTestCase
     }
 
     /**
+     * Test app() resolves the owning application from the execution stack
+     * when a backtrace frame points into an application root directory.
+     */
+    public function testAppResolvesApplicationByBacktrace(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
+
+        $resolved = require $this->resolverBasePath() . '/resolve.php';
+
+        $this->assertInstanceOf(ConfigRepository::class, $resolved);
+        $this->assertSame('resolver', $resolved->string('app.environment', ''));
+    }
+
+    /**
+     * Test app() resolves the application by its composer PSR-4 namespace
+     * when no backtrace frame matches an application root.
+     */
+    public function testAppResolvesServiceByPsr4Namespace(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
+
+        $this->assertSame('resolver-thing', ApplicationFactory::app('Resolver\Contracts\Thing'));
+    }
+
+    /**
+     * Test app() falls back to the first registered application when no
+     * backtrace frame and no composer namespace match the service name.
+     */
+    public function testAppFallsBackToFirstApplicationWhenNoNamespaceMatches(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
+
+        $this->assertSame('fake', ApplicationFactory::app('fake.service'));
+    }
+
+    /**
+     * Test app() resolves a service from a non-first application when the
+     * PSR-4 namespace matches it and an earlier app declares no mapping.
+     */
+    public function testAppResolvesServiceFromNonFirstApplicationByPsr4Namespace(): void
+    {
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
+
+        $this->assertSame('resolver-thing', ApplicationFactory::app('Resolver\Contracts\Thing'));
+    }
+
+    /**
      * Reset the shared applications registry via reflection.
      */
     private function resetFactory(): void

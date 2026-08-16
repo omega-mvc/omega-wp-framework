@@ -19,6 +19,7 @@ use Omega\Config\ConfigServiceProvider;
 use Omega\Container\Container;
 use Omega\Container\ContainerInterface;
 use Omega\Database\DatabaseServiceProvider;
+use Omega\Localization\LocalizationServiceProvider;
 use Omega\Routing\RouterServiceProvider;
 use Omega\Settings\SettingsServiceProvider;
 use Omega\View\ViewServiceProvider;
@@ -131,6 +132,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         $this->register(new DatabaseServiceProvider($this));
         if (!$this->isCli()) {
             $this->register(new ViewServiceProvider($this));
+            $this->register(new LocalizationServiceProvider($this));
             $this->register(new AdminServiceProvider($this));
         }
     }

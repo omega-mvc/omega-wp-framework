@@ -14,7 +14,6 @@ declare(strict_types=1);
 
 namespace Omega\Admin;
 
-use InvalidArgumentException;
 use Omega\Admin\Features\FeaturesInterface;
 use Omega\Admin\Features\WooCommerce;
 use Omega\Admin\Menu\AbstractMenuBuilder;
@@ -23,14 +22,12 @@ use ReflectionException;
 
 use function add_action;
 use function class_exists;
-use function load_plugin_textdomain;
-use function load_theme_textdomain;
 
 /**
  * Service provider responsible for bootstrapping Omega admin features.
  *
- * Registers admin-related services, initializes integrations, loads translations,
- * and configures admin setup and menu builders from application configuration.
+ * Registers admin-related services and configures admin setup and menu
+ * builders from application configuration.
  *
  * @category  Omega
  * @package   Admin
@@ -68,45 +65,12 @@ class AdminServiceProvider extends ServiceProvider
     {
         add_action('admin_menu', [$this, 'adminMenu']);
         add_action('admin_init', [$this, 'adminSetup']);
-        add_action('init', [$this, 'init']);
 
         foreach ($this->features as $feature) {
             $this->app->resolve($feature)->init();
         }
 
         $this->app->resolve('admin.manager')->init();
-    }
-
-    /**
-     * Initialize admin translations and localization support.
-     *
-     * Loads the plugin text domain when translations are enabled in configuration.
-     *
-     * @return void
-     * @throws ReflectionException Thrown when a configured class cannot be resolved or instantiated.
-     */
-    public function init(): void
-    {
-        $enableTranslation = $this->app->resolve('config')->boolean('app.translation.enable');
-        $type              = $this->app->resolve('config')->string('app.translation.type');
-
-
-        if ($enableTranslation === true) {
-            match ($type) {
-                'theme' => load_theme_textdomain(
-                    $this->app->getId(),
-                    $this->app->getBasePath() . '/resources/languages'
-                ),
-                'plugin' => load_plugin_textdomain(
-                    $this->app->getId(),
-                    false,
-                    $this->app->getBasePath() . '/resources/languages'
-                ),
-                default => throw new InvalidArgumentException(
-                    sprintf('Invalid translation type "%s" configured.', $type)
-                ),
-            };
-        }
     }
 
     /**

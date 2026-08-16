@@ -1,0 +1,8 @@
+{
+    "name": "omega-test/resolver",
+    "autoload": {
+        "psr-4": {
+            "Resolver\\": "src/"
+        }
+    }
+}

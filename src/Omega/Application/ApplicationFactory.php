@@ -17,8 +17,12 @@ namespace Omega\Application;
 use Omega\Str\Str;
 use ReflectionException;
 
+use function array_find_key;
+use function array_filter;
 use function array_key_first;
 use function array_keys;
+use function array_map;
+use function array_values;
 use function class_exists;
 use function count;
 use function debug_backtrace;
@@ -131,38 +135,8 @@ class ApplicationFactory
      */
     public static function app(?string $service = null, ?string $appId = null): mixed
     {
-
-        if (!$appId && count(self::$apps) > 1 && class_exists('Omega\Console\ConsoleApplication')) {
-            $trace = debug_backtrace();
-            foreach ($trace as $frame) {
-                if (isset($frame['file'])) {
-                    foreach (array_keys(self::$apps) as $id) {
-                        $pluginFile = self::$apps[$id]->getAppRoot();
-                        if (str_contains($frame['file'], $pluginFile)) {
-                            $appId = $id;
-                            break 2;
-                        }
-                    }
-                }
-            }
-
-            if (!$appId) {
-                foreach (self::$apps as $id => $app) {
-                    $composerJson = $app->getAppRoot() . '/composer.json';
-                    if (file_exists($composerJson)) {
-                        $data = json_decode(file_get_contents($composerJson), true);
-                        $psr4 = array_keys($data['autoload']['psr-4'] ?? []);
-                        if (isset($psr4[0]) && $service && Str::startsWith($service, $psr4[0])) {
-                            $appId = $id;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
         if (!$appId) {
-            $appId = array_key_first(self::$apps);
+            $appId = self::resolveAppId($service);
         }
 
         if (!$service) {
@@ -170,6 +144,131 @@ class ApplicationFactory
         }
 
         return self::$apps[$appId]->resolve($service);
+    }
+
+    /**
+     * Resolve the application id for the current execution context.
+     *
+     * When the registry holds a single app the first registered app is
+     * returned directly. Otherwise the backtrace scan takes precedence over
+     * the service-namespace scan, and the first registered app is the final
+     * fallback.
+     *
+     * @param string|null $service Service name.
+     * @return string The resolved application id.
+     */
+    private static function resolveAppId(?string $service): string
+    {
+        if (!self::needsResolution()) {
+            return (string) array_key_first(self::$apps);
+        }
+
+        return self::appIdByTrace() ?? self::appIdByNamespace($service) ?? (string) array_key_first(self::$apps);
+    }
+
+    /**
+     * Whether the application registry holds more than one app and the
+     * Console package is available, requiring execution-context resolution.
+     *
+     * @return bool True when the app id must be resolved from the context.
+     */
+    private static function needsResolution(): bool
+    {
+        return count(self::$apps) > 1 && class_exists('Omega\Console\ConsoleApplication');
+    }
+
+    /**
+     * Find the application whose root directory contains the first backtrace file.
+     *
+     * @return string|null The matching application id, or null when no stack
+     *                     frame points into an application root.
+     */
+    private static function appIdByTrace(): ?string
+    {
+        $matches = array_filter(
+            array_map(
+                static fn(string $file): ?string => self::matchingAppId($file),
+                array_column(debug_backtrace(), 'file')
+            ),
+            static fn(?string $id): bool => $id !== null
+        );
+
+        return array_values($matches)[0] ?? null;
+    }
+
+    /**
+     * Find the first application whose root is contained in the given file path.
+     *
+     * @param string $file Absolute path of a stack frame file.
+     * @return string|null The matching application id, or null when no root matches.
+     */
+    private static function matchingAppId(string $file): ?string
+    {
+        return array_find_key(
+            self::$apps,
+            static fn(ApplicationPlugin|ApplicationTheme $app): bool =>
+                str_contains($file, $app->getAppRoot())
+        );
+    }
+
+    /**
+     * Resolve the application id by the service namespace prefix declared in
+     * each application composer.json file.
+     *
+     * @param string|null $service Service name.
+     * @return string|null The matching application id, or null when no prefix matches.
+     */
+    private static function appIdByNamespace(?string $service): ?string
+    {
+        if ($service === null) {
+            return null;
+        }
+
+        $matches = array_filter(
+            array_map(
+                static fn(ApplicationPlugin|ApplicationTheme $app, string $id): ?string =>
+                    self::matchesNamespace($app, $service) ? $id : null,
+                self::$apps,
+                array_keys(self::$apps)
+            ),
+            static fn(?string $id): bool => $id !== null
+        );
+
+        return array_values($matches)[0] ?? null;
+    }
+
+    /**
+     * Whether the service name belongs to the application PSR-4 namespace.
+     *
+     * @param ApplicationPlugin|ApplicationTheme $app Application instance.
+     * @param string $service Service name.
+     * @return bool True when the service starts with the application prefix.
+     */
+    private static function matchesNamespace(ApplicationPlugin|ApplicationTheme $app, string $service): bool
+    {
+        $prefix = self::psr4Prefix($app);
+
+        return $prefix !== null && Str::startsWith($service, $prefix);
+    }
+
+    /**
+     * Read the first PSR-4 prefix declared by the application composer.json.
+     *
+     * @param ApplicationPlugin|ApplicationTheme $app Application instance.
+     * @return string|null The first PSR-4 prefix, or null when no composer
+     *                     autoload mapping is declared.
+     */
+    private static function psr4Prefix(ApplicationPlugin|ApplicationTheme $app): ?string
+    {
+        $composerFile = $app->getAppRoot() . '/composer.json';
+
+        if (!file_exists($composerFile)) {
+            return null;
+        }
+
+        $composer = json_decode((string) file_get_contents($composerFile), true);
+
+        return array_key_first($composer['autoload']['psr-4'] ?? []);
     }
     #endregion
 }

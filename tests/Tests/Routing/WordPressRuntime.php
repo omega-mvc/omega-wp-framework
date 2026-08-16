@@ -92,6 +92,21 @@ final class WordPressRuntime
     public static array $filters = [];
 
     /**
+     * Recorded calls to add_action(): list of positional argument arrays.
+     *
+     * @var list<array<int, mixed>>
+     */
+    public static array $actions = [];
+
+    /**
+     * Recorded calls to load_plugin_textdomain() and load_theme_textdomain():
+     * list of positional argument arrays.
+     *
+     * @var list<array<int, mixed>>
+     */
+    public static array $textdomains = [];
+
+    /**
      * Resets every registry value between tests.
      */
     public static function reset(): void
@@ -105,5 +120,7 @@ final class WordPressRuntime
         self::$fileHeaders = [];
         self::$theme = null;
         self::$filters = [];
+        self::$actions = [];
+        self::$textdomains = [];
     }
 }
