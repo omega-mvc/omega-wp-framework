@@ -14,10 +14,19 @@ declare(strict_types=1);
 
 namespace Omega\Config;
 
+use Omega\Config\ConfigServiceProvider;
+use stdClass;
+
+use function array_find;
+use function array_reduce;
+use function array_walk;
 use function explode;
+use function in_array;
+use function is_array;
 use function is_bool;
 use function is_numeric;
 use function sanitize_text_field;
+use function str_replace;
 use function strtolower;
 use function trim;
 
@@ -84,14 +93,6 @@ class ConfigRepository
             return $value;
         }
 
-        $underscoreKey = str_replace('.', '_', $name);
-
-        $value = $this->resolveFromIndex($underscoreKey);
-
-        if ($value !== null) {
-            return $value;
-        }
-
         return $default;
     }
 
@@ -155,7 +156,7 @@ class ConfigRepository
         }
 
         if ($value === null) {
-            return $default ?? false;
+            return false;
         }
 
         if (is_numeric($value)) {
@@ -164,11 +165,19 @@ class ConfigRepository
 
         $value = strtolower(trim((string) $value));
 
-        return match ($value) {
-            '1', 'true', 'yes', 'on'  => true,
-            '0', 'false', 'no', 'off' => false,
-            default                   => $default ?? false,
-        };
+        $isTruthy = in_array($value, ['1', 'true', 'yes', 'on'], true);
+
+        if ($isTruthy) {
+            return true;
+        }
+
+        $isFalsy = in_array($value, ['0', 'false', 'no', 'off'], true);
+
+        if ($isFalsy) {
+            return false;
+        }
+
+        return $default ?? false;
     }
 
     /**
@@ -199,18 +208,17 @@ class ConfigRepository
      */
     private function buildIndex(array $data, string $prefix = ''): void
     {
-        foreach ($data as $key => $value) {
+        array_walk($data, function (mixed $value, int|string $key) use ($prefix): void {
             $fullKey = $prefix === ''
                 ? (string)$key
                 : $prefix . '.' . $key;
 
             if (is_array($value)) {
                 $this->buildIndex($value, $fullKey);
-                continue;
+            } else {
+                $this->index[$fullKey] = $value;
             }
-
-            $this->index[$fullKey] = $value;
-        }
+        });
     }
 
     /**
@@ -224,13 +232,12 @@ class ConfigRepository
      */
     private function resolveFromIndex(string $key): mixed
     {
-        foreach ($this->normalizeKey($key) as $variant) {
-            if (isset($this->index[$variant])) {
-                return $this->index[$variant];
-            }
-        }
+        $variant = array_find(
+            $this->normalizeKey($key),
+            fn (string $variant): bool => isset($this->index[$variant])
+        );
 
-        return null;
+        return $variant !== null ? $this->index[$variant] : null;
     }
 
     /**
@@ -267,15 +274,25 @@ class ConfigRepository
      */
     private function traverseArray(array $data, array $segments, mixed $default): mixed
     {
-        foreach ($segments as $segment) {
-            if (!isset($data[$segment])) {
-                return $default;
-            }
+        $marker = new stdClass();
 
-            $data = $data[$segment];
-        }
+        $result = array_reduce(
+            $segments,
+            function (mixed $carry, string $segment) use ($marker): mixed {
+                if ($carry === $marker) {
+                    return $marker;
+                }
 
-        return $data;
+                if (!isset($carry[$segment])) {
+                    return $marker;
+                }
+
+                return $carry[$segment];
+            },
+            $data
+        );
+
+        return $result === $marker ? $default : $result;
     }
     #endregion
 }

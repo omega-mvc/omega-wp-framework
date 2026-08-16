@@ -71,6 +71,22 @@ final class ConfigRepositoryTest extends TestCase
     }
 
     /**
+     * Test the default is returned when traversal stops at a missing segment.
+     */
+    public function testReturnsDefaultForDeeplyMissingKey(): void
+    {
+        $this->assertNull($this->makeRepository()->get('database.connections.redis.host'));
+    }
+
+    /**
+     * Test the default is returned when traversal crosses a scalar value.
+     */
+    public function testReturnsDefaultWhenTraversingThroughScalar(): void
+    {
+        $this->assertNull($this->makeRepository()->get('app.name.missing'));
+    }
+
+    /**
      * Test underscore-separated keys resolve to dot-notated values.
      */
     public function testAcceptsUnderscoreSeparatedKeys(): void
@@ -171,6 +187,32 @@ final class ConfigRepositoryTest extends TestCase
     }
 
     /**
+     * Test boolean() accepts every truthy string variant.
+     */
+    public function testBooleanAcceptsEveryTruthyLiteral(): void
+    {
+        $repository = new ConfigRepository(['a' => '1', 'b' => 'true', 'c' => 'yes', 'd' => 'on']);
+
+        $this->assertTrue($repository->boolean('a'));
+        $this->assertTrue($repository->boolean('b'));
+        $this->assertTrue($repository->boolean('c'));
+        $this->assertTrue($repository->boolean('d'));
+    }
+
+    /**
+     * Test boolean() accepts every falsy string variant.
+     */
+    public function testBooleanAcceptsEveryFalsyLiteral(): void
+    {
+        $repository = new ConfigRepository(['a' => '0', 'b' => 'false', 'c' => 'no', 'd' => 'off']);
+
+        $this->assertFalse($repository->boolean('a'));
+        $this->assertFalse($repository->boolean('b'));
+        $this->assertFalse($repository->boolean('c'));
+        $this->assertFalse($repository->boolean('d'));
+    }
+
+    /**
      * Test boolean() falls back to the default for unknown values.
      */
     public function testBooleanUnknownFallsBackToDefault(): void
@@ -179,8 +221,19 @@ final class ConfigRepositoryTest extends TestCase
 
         $this->assertTrue($repository->boolean('features.mode', true));
         $this->assertFalse($repository->boolean('features.mode', false));
+        $this->assertFalse($repository->boolean('features.mode'));
         $this->assertFalse($repository->boolean('app.missing'));
         $this->assertTrue($repository->boolean('app.missing', true));
+    }
+
+    /**
+     * Test the default is returned when the resolved value matches it.
+     */
+    public function testReturnsDefaultWhenResolvedValueMatchesDefault(): void
+    {
+        $default = ['host' => 'localhost', 'port' => '3306'];
+
+        $this->assertSame($default, $this->makeRepository()->get('database.connections.mysql', $default));
     }
 
     /**

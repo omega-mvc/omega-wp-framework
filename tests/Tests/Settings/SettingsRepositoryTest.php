@@ -59,6 +59,39 @@ final class SettingsRepositoryTest extends TestCase
     }
 
     /**
+     * Test a stored numeric list replaces the default list.
+     *
+     * Lists keyed by integers are treated as whole values rather than
+     * recursively merged associative arrays.
+     */
+    public function testMergeReplacesDefaultListWithStoredNumericList(): void
+    {
+        $repository = $this->makeRepository(['items' => ['default']], ['items' => ['a', 'b']]);
+
+        $this->assertSame(['a', 'b'], $repository->get('items'));
+    }
+
+    /**
+     * Test a stored array replaces a scalar default value.
+     */
+    public function testMergeStoredArrayOverridesScalarDefault(): void
+    {
+        $repository = $this->makeRepository(['x' => 1], ['x' => [1, 2]]);
+
+        $this->assertSame([1, 2], $repository->get('x'));
+    }
+
+    /**
+     * Test a stored empty array replaces the default list.
+     */
+    public function testMergeStoredEmptyArrayReplacesDefault(): void
+    {
+        $repository = $this->makeRepository(['items' => ['a']], ['items' => []]);
+
+        $this->assertSame([], $repository->get('items'));
+    }
+
+    /**
      * Test the default is returned for a missing key.
      */
     public function testGetReturnsDefaultForMissingKey(): void
@@ -67,6 +100,26 @@ final class SettingsRepositoryTest extends TestCase
 
         $this->assertNull($repository->get('missing'));
         $this->assertSame('fallback', $repository->get('missing', 'fallback'));
+    }
+
+    /**
+     * Test the default is returned when traversal continues past a missing segment.
+     */
+    public function testGetReturnsDefaultAfterMissingSegment(): void
+    {
+        $repository = $this->makeRepository([], ['mail' => ['host' => 'mx.example']]);
+
+        $this->assertNull($repository->get('mail.port.deep'));
+    }
+
+    /**
+     * Test the default is returned when traversal crosses a scalar value.
+     */
+    public function testGetReturnsDefaultWhenTraversingThroughScalar(): void
+    {
+        $repository = $this->makeRepository([], ['flag' => 'yes']);
+
+        $this->assertNull($repository->get('flag.deep'));
     }
 
     /**
@@ -207,6 +260,22 @@ final class SettingsRepositoryTest extends TestCase
     }
 
     /**
+     * Test update() recursively processes values inside nested arrays.
+     */
+    public function testUpdateProcessesNestedArrayValues(): void
+    {
+        $repository = $this->makeRepository();
+
+        $this->assertTrue($repository->update('settings', ['debug' => true, 'ports' => [80, 443]]));
+
+        $this->assertSame(['debug' => 'yes', 'ports' => [80, 443]], $repository->get('settings'));
+        $this->assertSame(
+            ['settings' => ['debug' => 'yes', 'ports' => [80, 443]]],
+            WordPressRuntime::$options['app_settings']
+        );
+    }
+
+    /**
      * Test delete() removes a key and persists the remaining settings.
      */
     public function testDeleteRemovesKeyAndSaves(): void
@@ -229,6 +298,16 @@ final class SettingsRepositoryTest extends TestCase
 
         $this->assertFalse($repository->delete('missing'));
         $this->assertFalse($repository->delete('missing.deep'));
+    }
+
+    /**
+     * Test delete() returns false when the path crosses a scalar value.
+     */
+    public function testDeleteReturnsFalseWhenTraversingThroughScalar(): void
+    {
+        $repository = $this->makeRepository([], ['flag' => 'yes']);
+
+        $this->assertFalse($repository->delete('flag.deep'));
     }
 
     /**

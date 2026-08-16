@@ -15,13 +15,18 @@ declare(strict_types=1);
 namespace Omega\Settings;
 
 use Omega\Application\ApplicationInterface;
+use stdClass;
 
 use function array_keys;
+use function array_map;
+use function array_pop;
 use function array_reduce;
 use function array_reverse;
+use function array_shift;
 use function count;
-use function end;
 use function explode;
+use function get_option;
+use function in_array;
 use function is_array;
 use function is_bool;
 use function is_string;
@@ -91,22 +96,45 @@ class SettingsRepository
      */
     private function mergeConfig(array $array1, array $array2): array
     {
-        $merged = $array1;
+        return array_reduce(
+            array_keys($array2),
+            function (array $merged, string|int $key) use ($array2): array {
+                $value = $array2[$key];
 
-        foreach ($array2 as $key => $value) {
-            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
-                $array_keys = array_keys($value);
-                if (isset($array_keys[0]) && is_string($array_keys[0])) {
-                    $merged[$key] = $this->mergeConfig($merged[$key], $value);
+                if (!is_array($value)) {
+                    $merged[$key] = $value;
+
+                    return $merged;
+                }
+
+                if (!isset($merged[$key])) {
+                    $merged[$key] = $value;
+
+                    return $merged;
+                }
+
+                if (!is_array($merged[$key])) {
+                    $merged[$key] = $value;
+
+                    return $merged;
+                }
+
+                $arrayKeys = array_keys($value);
+
+                if (isset($arrayKeys[0])) {
+                    if (is_string($arrayKeys[0])) {
+                        $merged[$key] = $this->mergeConfig($merged[$key], $value);
+                    } else {
+                        $merged[$key] = $value;
+                    }
                 } else {
                     $merged[$key] = $value;
                 }
-            } else {
-                $merged[$key] = $value;
-            }
-        }
 
-        return $merged;
+                return $merged;
+            },
+            $array1
+        );
     }
     #endregion
 
@@ -135,10 +163,10 @@ class SettingsRepository
     private function processValue(mixed $value): mixed
     {
         if (is_array($value)) {
-            foreach ($value as $key => $val) {
-                $value[$key] = $this->processValue($val);
-            }
-        } elseif (is_bool($value)) {
+            return array_map(fn (mixed $val): mixed => $this->processValue($val), $value);
+        }
+
+        if (is_bool($value)) {
             return $value ? 'yes' : 'no';
         }
 
@@ -180,23 +208,42 @@ class SettingsRepository
     public function delete(string $name): bool
     {
         $keys = explode('.', $name);
-        $config = &$this->config;
+        $lastKey = array_pop($keys);
 
-        for ($i = 0; $i < count($keys) - 1; $i++) {
-            if (!isset($config[$keys[$i]]) || !is_array($config[$keys[$i]])) {
+        return $this->removeKey($this->config, $keys, $lastKey);
+    }
+
+    /**
+     * Recursively remove a key from the configuration using a list of parent segments.
+     *
+     * @param array $config The configuration level to mutate, passed by reference.
+     * @param array $keys Remaining parent key segments leading to the target key.
+     * @param string $lastKey The final key segment to remove.
+     * @return bool True if the key was removed and saved, false otherwise.
+     */
+    private function removeKey(array &$config, array $keys, string $lastKey): bool
+    {
+        if ($keys === []) {
+            if (!isset($config[$lastKey])) {
                 return false;
             }
-            $config = &$config[$keys[$i]];
-        }
 
-        $lastKey = end($keys);
-
-        if (isset($config[$lastKey])) {
             unset($config[$lastKey]);
+
             return $this->save();
         }
 
-        return false;
+        $firstKey = array_shift($keys);
+
+        if (!isset($config[$firstKey])) {
+            return false;
+        }
+
+        if (!is_array($config[$firstKey])) {
+            return false;
+        }
+
+        return $this->removeKey($config[$firstKey], $keys, $lastKey);
     }
     #endregion
 
@@ -210,18 +257,29 @@ class SettingsRepository
      */
     public function get(string $name, mixed $default = null): mixed
     {
-        $names = explode('.', $name);
-        $config = $this->config;
+        $marker = new stdClass();
 
-        foreach ($names as $name) {
-            if (isset($config[$name])) {
-                $config = $config[$name];
-            } else {
-                return $default;
-            }
-        }
+        $result = array_reduce(
+            explode('.', $name),
+            function (mixed $carry, string $segment) use ($marker): mixed {
+                if ($carry === $marker) {
+                    return $marker;
+                }
 
-        return $config;
+                if (!is_array($carry)) {
+                    return $marker;
+                }
+
+                if (!isset($carry[$segment])) {
+                    return $marker;
+                }
+
+                return $carry[$segment];
+            },
+            $this->config
+        );
+
+        return $result === $marker ? $default : $result;
     }
 
     /**
@@ -251,7 +309,9 @@ class SettingsRepository
             return $value;
         }
 
-        return $value === 'yes' || $value === '1' || $value === 1 || $value === true;
+        $isTruthy = in_array($value, ['yes', '1', 1], true);
+
+        return $isTruthy;
     }
 
     /**
@@ -284,17 +344,7 @@ class SettingsRepository
      */
     public function has(string $name): bool
     {
-        $names = explode('.', $name);
-        $config = $this->config;
-
-        foreach ($names as $key) {
-            if (!isset($config[$key])) {
-                return false;
-            }
-            $config = $config[$key];
-        }
-
-        return true;
+        return $this->get($name, null) !== null;
     }
     #endregion
 
@@ -304,12 +354,9 @@ class SettingsRepository
      *
      * @param array $keys The list of keys representing the nested path.
      * @param mixed $value The value to assign to the final key.
-     * @param bool $create Whether to create missing intermediate keys (currently unused).
      * @return array The constructed nested array structure.
-     * @noinspection PhpSameParameterValueInspection
-     * @noinspection PhpUnusedParameterInspection
      */
-    private function addKeyValueRecursively(array $keys, mixed $value, bool $create = false): array
+    private function addKeyValueRecursively(array $keys, mixed $value): array
     {
         return array_reduce(array_reverse($keys), function ($carry, $key) use ($value) {
             return [$key => $carry ?: $value];
