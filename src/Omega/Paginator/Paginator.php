@@ -6,7 +6,7 @@
  * @link      https://omega-mvc.github.io
  * @author    Adriano Giovannini <agisoftt@gmail.com>
  * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
- * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html    GPL V3.0+
  * @version   1.0.0
  */
 
@@ -41,7 +41,7 @@ use const FILTER_VALIDATE_INT;
  * @link      https://omega-mvc.github.io
  * @author    Adriano Giovannini <agisoftt@gmail.com>
  * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
- * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html    GPL V3.0+
  * @version   1.0.0
  */
 class Paginator
@@ -73,11 +73,11 @@ class Paginator
      * Initializes pagination state and calculates derived values such as
      * last page and validated current page number.
      *
-     * @param mixed      $items        Items for the current page
-     * @param int        $total        Total number of items
-     * @param int        $perPage      Items per page
-     * @param int|null   $currentPage  Current page number (optional)
-     * @param array      $options      Extra configuration options
+     * @param mixed     $items       Items for the current page
+     * @param int       $total       Total number of items
+     * @param int       $perPage     Items per page
+     * @param int|null  $currentPage Current page number (optional)
+     * @param array     $options     Extra configuration options
      */
     public function __construct(
         mixed $items,
@@ -87,15 +87,10 @@ class Paginator
         array $options = []
     ) {
         $this->options = $options;
-
-        foreach ($options as $key => $value) {
-            $this->{$key} = $value;
-        }
-
-        $this->total = $total;
-        $this->perPage = $perPage;
-        $this->lastPage = max((int) ceil($total / $perPage), 1);
-        $this->currentPage = $this->setCurrentPage($currentPage);
+        $this->total = $options['total'] ?? $total;
+        $this->perPage = $options['perPage'] ?? $perPage;
+        $this->lastPage = max((int) ceil($this->total / $this->perPage), 1);
+        $this->currentPage = $this->setCurrentPage($options['currentPage'] ?? $currentPage);
         $this->items = $items instanceof Collection ? $items : new Collection($items);
     }
     #endregion
