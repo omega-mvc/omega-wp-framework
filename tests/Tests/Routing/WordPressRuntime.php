@@ -107,6 +107,12 @@ final class WordPressRuntime
     public static array $textdomains = [];
 
     /**
+     * When true, the rest_ensure_response() stub returns a WP_Error instead
+     * of wrapping the payload in a WPRestResponse.
+     */
+    public static bool $forceRestError = false;
+
+    /**
      * Resets every registry value between tests.
      */
     public static function reset(): void
@@ -122,5 +128,6 @@ final class WordPressRuntime
         self::$filters = [];
         self::$actions = [];
         self::$textdomains = [];
+        self::$forceRestError = false;
     }
 }

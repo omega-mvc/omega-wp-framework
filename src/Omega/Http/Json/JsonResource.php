@@ -102,11 +102,11 @@ class JsonResource
      */
     public function __get(string $name): mixed
     {
-        if (isset($this->resource) && isset($this->resource[$name])) {
-            return $this->resource[$name];
+        if (!isset($this->resource[$name])) {
+            return null;
         }
 
-        return null;
+        return $this->resource[$name];
     }
 
     /**
@@ -123,7 +123,7 @@ class JsonResource
      */
     public function __call(string $method, array $arguments): mixed
     {
-        if (isset($this->resource) && method_exists($this->resource, $method)) {
+        if (method_exists($this->resource, $method)) {
             return call_user_func_array([$this->resource, $method], $arguments);
         }
 

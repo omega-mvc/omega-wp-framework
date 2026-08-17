@@ -81,7 +81,7 @@ final class ResourceCollectionTest extends HttpTestCase
     public function testPaginatorInputPullsMetaAndDefaultsToMergedMeta(): void
     {
         $paginator = new Paginator([1, 2, 3], 10, 2, 1);
-        $collection = new ResourceCollection($paginator);
+        $collection = ResourceCollection::fromPaginator($paginator);
 
         $this->assertSame([
             'total'        => 10,
@@ -105,7 +105,7 @@ final class ResourceCollectionTest extends HttpTestCase
     public function testMergeMetaOptionNestsMetaUnderMetaKey(): void
     {
         $paginator = new Paginator([1, 2, 3], 10, 2, 1);
-        $collection = new ResourceCollection($paginator, null, ['mergeMeta' => false]);
+        $collection = ResourceCollection::fromPaginator($paginator, null, ['mergeMeta' => false]);
 
         $this->assertFalse($collection->mergeMeta);
         $this->assertSame([
@@ -139,5 +139,47 @@ final class ResourceCollectionTest extends HttpTestCase
 
         $this->assertSame('Ada', $collection->name);
         $this->assertNull($collection->missing);
+    }
+
+    /**
+     * Test a non-bool mergeMeta option is silently ignored.
+     */
+    public function testNonBoolMergeMetaOptionIsIgnored(): void
+    {
+        $collection = new ResourceCollection(new Collection([1, 2, 3]), null, ['mergeMeta' => 'yes']);
+
+        $this->assertFalse($collection->mergeMeta);
+    }
+
+    /**
+     * Test collects with mergeMeta bool option applies the flag.
+     */
+    public function testCollectsWithMergeMetaBoolAppliesFlag(): void
+    {
+        $collection = new ResourceCollection(
+            new Collection([
+                $this->makeModel(['id' => 1, 'name' => 'Ada']),
+            ]),
+            UserResource::class,
+            ['mergeMeta' => true]
+        );
+
+        $this->assertTrue($collection->mergeMeta);
+    }
+
+    /**
+     * Test collects with non-bool mergeMeta option ignores the value.
+     */
+    public function testCollectsWithNonBoolMergeMetaIsIgnored(): void
+    {
+        $collection = new ResourceCollection(
+            new Collection([
+                $this->makeModel(['id' => 1, 'name' => 'Ada']),
+            ]),
+            UserResource::class,
+            ['mergeMeta' => 'yes']
+        );
+
+        $this->assertFalse($collection->mergeMeta);
     }
 }

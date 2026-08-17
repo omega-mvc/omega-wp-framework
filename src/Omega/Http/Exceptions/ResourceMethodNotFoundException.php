@@ -16,6 +16,8 @@ namespace Omega\Http\Exceptions;
 
 use BadMethodCallException;
 
+use function sprintf;
+
 /**
  * Exception thrown when a method is called on a JsonResource that does not
  * exist on either the resource wrapper or the underlying resource instance.
@@ -39,4 +41,21 @@ use BadMethodCallException;
  */
 class ResourceMethodNotFoundException extends BadMethodCallException
 {
+    /**
+     * Create a new exception instance.
+     *
+     * Accepts either a ready-to-use message or a printf-style format string
+     * plus parameters for deferred interpolation.
+     *
+     * @param string $message   Error message or format string.
+     * @param mixed  ...$parameters Optional substitution values for sprintf.
+     */
+    public function __construct(string $message, mixed ...$parameters)
+    {
+        if ($parameters !== []) {
+            $message = sprintf($message, ...$parameters);
+        }
+
+        parent::__construct($message);
+    }
 }

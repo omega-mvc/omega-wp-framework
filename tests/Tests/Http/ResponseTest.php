@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Tests\Routing\Support\WPError;
 use Tests\Routing\Support\WPRestResponse;
+use Tests\Routing\WordPressRuntime;
 
 /**
  * Tests the Http Response builder.
@@ -88,5 +89,20 @@ final class ResponseTest extends TestCase
 
         $this->assertSame(201, $result->get_status());
         $this->assertSame(['X-Rate-Limit' => '100'], $result->get_headers());
+    }
+
+    /**
+     * Test the WP_Error path when rest_ensure_response itself fails.
+     */
+    public function testReturnsWpErrorWhenRestEnsureResponseFails(): void
+    {
+        WordPressRuntime::$forceRestError = true;
+
+        $result = (new HttpResponse())->json(['ok' => true], 200);
+
+        $this->assertInstanceOf(WPError::class, $result);
+        $this->assertSame('rest_error', $result->get_error_code());
+
+        WordPressRuntime::$forceRestError = false;
     }
 }

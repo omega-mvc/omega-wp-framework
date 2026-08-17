@@ -95,6 +95,10 @@ function current_user_can(string $capability): bool
  */
 function rest_ensure_response(mixed $response): mixed
 {
+    if (WordPressRuntime::$forceRestError) {
+        return new WPError('rest_error', 'REST Error', ['status' => 500]);
+    }
+
     if ($response instanceof WPRestResponse) {
         return $response;
     }

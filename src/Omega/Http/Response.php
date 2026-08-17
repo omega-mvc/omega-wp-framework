@@ -17,6 +17,7 @@ namespace Omega\Http;
 use WP_Error;
 use WP_REST_Response;
 
+use function array_walk;
 use function is_wp_error;
 use function rest_ensure_response;
 
@@ -82,9 +83,7 @@ class Response
 
         $response->set_status($status);
 
-        foreach ($headers as $key => $value) {
-            $response->header($key, $value);
-        }
+        array_walk($headers, static fn(string $value, string $key) => $response->header($key, $value));
 
         return $response;
     }

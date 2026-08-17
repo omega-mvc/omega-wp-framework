@@ -18,7 +18,9 @@ use Omega\Collection\Collection;
 use Omega\Database\ORM\AbstractModel;
 use Omega\Paginator\Paginator;
 
+use function array_map;
 use function array_merge;
+use function is_bool;
 
 /**
  * ResourceCollection
@@ -68,23 +70,36 @@ class ResourceCollection
      * @param string|null $collects Optional resource class for item transformation.
      * @param array $options Configuration options (e.g. meta merging).
      */
-    public function __construct(Collection|Paginator $collection, ?string $collects = null, array $options = [])
+    public function __construct(Collection $collection, ?string $collects = null, array $options = [])
     {
         if ($collects) {
             $this->collects = $collects;
         }
 
-        if ($collection instanceof Paginator) {
-            $this->collection = $collection->getCollection();
-            $this->meta = $collection->getAttributes();
-            $this->mergeMeta = $options['mergeMeta'] ?? true;
-        } else {
-            $this->collection = $collection;
-        }
+        $this->collection = $collection;
 
-        if (isset($options['mergeMeta']) && is_bool($options['mergeMeta'])) {
-            $this->mergeMeta = $options['mergeMeta'];
+        if (isset($options['mergeMeta'])) {
+            if (is_bool($options['mergeMeta'])) {
+                $this->mergeMeta = $options['mergeMeta'];
+            }
         }
+    }
+
+    /**
+     * Create a ResourceCollection from a Paginator instance.
+     *
+     * @param Paginator $paginator Source paginator to extract collection and meta from.
+     * @param string|null $collects Optional resource class for item transformation.
+     * @param array $options Configuration options (e.g. meta merging).
+     */
+    public static function fromPaginator(Paginator $paginator, ?string $collects = null, array $options = []): static
+    {
+        $options['mergeMeta'] = $options['mergeMeta'] ?? true;
+
+        $instance = new static($paginator->getCollection(), $collects, $options);
+        $instance->meta = $paginator->getAttributes();
+
+        return $instance;
     }
     #endregion
 
@@ -101,14 +116,15 @@ class ResourceCollection
     {
         if ($this->collects) {
             $resourceClass = $this->collects;
-            $resources = $this->collection->map(function ($item) use ($resourceClass) {
-                return new $resourceClass($item)->toArray();
-            });
-        } else {
-            $resources = $this->collection->toArray();
+            $resources = array_map(
+                static fn($item): array => (new $resourceClass($item))->toArray(),
+                $this->collection->getAll()
+            );
+
+            return $resources;
         }
 
-        return $resources;
+        return $this->collection->toArray();
     }
     #endregion
 
@@ -134,13 +150,15 @@ class ResourceCollection
      */
     public function appendMeta(array $data): array
     {
-        if (!empty($this->meta)) {
-            if ($this->mergeMeta) {
-                $data = array_merge($data, $this->meta);
-            } else {
-                $data['meta'] = $this->meta;
-            }
+        if ($this->meta === []) {
+            return $data;
         }
+
+        if ($this->mergeMeta) {
+            return array_merge($data, $this->meta);
+        }
+
+        $data['meta'] = $this->meta;
 
         return $data;
     }

@@ -121,4 +121,31 @@ final class JsonResourceTest extends HttpTestCase
             ['id' => 2, 'name' => 'Bob'],
         ], $result->collection());
     }
+
+    /**
+     * Test the exception accepts a plain message.
+     */
+    public function testExceptionAcceptsPlainMessage(): void
+    {
+        $exception = new ResourceMethodNotFoundException('No such method.');
+
+        $this->assertSame('No such method.', $exception->getMessage());
+    }
+
+    /**
+     * Test the exception formats a sprintf-style message with parameters.
+     */
+    public function testExceptionFormatsMessageWithParameters(): void
+    {
+        $exception = new ResourceMethodNotFoundException(
+            'Method %s does not exist on %s.',
+            'save',
+            'App\\Http\\Json\\JsonResource'
+        );
+
+        $this->assertSame(
+            'Method save does not exist on App\\Http\\Json\\JsonResource.',
+            $exception->getMessage()
+        );
+    }
 }
