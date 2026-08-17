@@ -293,4 +293,45 @@ class ContainerTest extends TestCase
 
 		$this->container->invoke(fn(string $message) => $message);
 	}
+
+	/**
+	 * Should throw exception if invocation parameter has no type.
+	 *
+	 * @return void
+	 * @throws ReflectionException
+	 */
+	public function testShouldThrowExceptionIfInvocationParameterHasNoType(): void
+	{
+		$this->expectException(DependencyResolutionException::class);
+
+		$this->container->invoke(fn($message) => $message);
+	}
+
+	/**
+	 * Should throw exception if invocation parameter has a union type.
+	 *
+	 * @return void
+	 * @throws ReflectionException
+	 */
+	public function testShouldThrowExceptionIfInvocationParameterHasUnionType(): void
+	{
+		$this->expectException(ClassNotFoundException::class);
+		$this->expectExceptionMessage(A::class . '|' . B::class);
+
+		$this->container->invoke(fn(A|B $message) => $message);
+	}
+
+	/**
+	 * Should format exception message without class prefix for global functions.
+	 *
+	 * @return void
+	 * @throws ReflectionException
+	 */
+	public function testShouldFormatExceptionMessageForGlobalFunction(): void
+	{
+		$this->expectException(DependencyResolutionException::class);
+		$this->expectExceptionMessage('while invoking strlen.');
+
+		$this->container->invoke('strlen');
+	}
 }

@@ -313,11 +313,19 @@ class Container implements ContainerInterface
 
         $type = $parameter->getType();
 
-        if (is_null($type) || ($type instanceof ReflectionNamedType && $type->isBuiltin())) {
+        if ($type instanceof ReflectionNamedType) {
+            if ($type->isBuiltin()) {
+                throw new DependencyResolutionException($parameter);
+            }
+
+            return $this->resolve($type->getName());
+        }
+
+        if (is_null($type)) {
             throw new DependencyResolutionException($parameter);
         }
 
-        return $this->resolve($type instanceof ReflectionNamedType ? $type->getName() : (string) $type);
+        return $this->resolve((string) $type);
     }
     #endregion
 }
