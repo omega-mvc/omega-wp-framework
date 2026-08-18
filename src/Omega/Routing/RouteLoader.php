@@ -115,11 +115,11 @@ readonly class RouteLoader
      */
     private function load(array $files): void
     {
-        foreach ($files as $file) {
-            if (file_exists($file)) {
-                require_once $file;
-            }
-        }
+        $existing = array_filter($files, 'file_exists');
+
+        array_walk($existing, static function (string $file): void {
+            require_once $file;
+        });
     }
     #endregion
 }

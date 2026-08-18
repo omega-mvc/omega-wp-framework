@@ -79,8 +79,14 @@ class RouterBuilder
      */
     protected function getInstance(): Router
     {
-        if ($this->groupDepth > 0 && !empty($this->instances)) {
-            return end($this->instances);
+        if ($this->groupDepth > 0) 
+        {
+            if (!empty($this->instances)) {
+                return end($this->instances);
+            }
+            $instance = new Router($this);
+            $this->instances[] = $instance;
+            return $instance;
         } else {
             $instance = new Router($this);
             $this->instances[] = $instance;
