@@ -73,6 +73,35 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
     }
 
     /**
+     * A string guard in admin mode is passed through unchanged.
+     */
+    public function testAdminRouteWithStringGuardPassesThrough(): void
+    {
+        $router = $this->makeRouter();
+        $router->setPage('my-page');
+        $router->guards('manage_options');
+
+        $router->addRoute('GET', '/settings', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $submenuArgs = WordPressRuntime::$submenus[0];
+        $this->assertSame('manage_options', $submenuArgs[3]);
+    }
+
+    /**
+     * Guards in non-admin mode pass through unchanged.
+     */
+    public function testGuardsInNonAdminModePassThrough(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards('edit_posts');
+        $router->rest();
+
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $this->assertCount(1, $router->getRoutes());
+    }
+
+    /**
      * When $_GET['path'] is not set the admin callback processes the request.
      */
     public function testAdminCallbackProcessesWhenPathNotSet(): void
@@ -457,5 +486,35 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $this->assertSame('/tasks', $routes[0]['uri']);
         $this->assertSame(['Tests\Routing\Support\StubController', 'handle'], $routes[0]['action']);
         $this->assertSame([], $routes[0]['guards']);
+    }
+
+    // ────────────────────────────────────────
+    // parseUriParameters
+    // ────────────────────────────────────────
+
+    /**
+     * A route with URI parameters converts placeholders to regex capture groups.
+     */
+    public function testParseUriParametersConvertsPlaceholdersToRegex(): void
+    {
+        $router = $this->makeRouter();
+        $router->rest();
+
+        $route = $router->addRoute('GET', '/tasks/{id}', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $this->assertSame('/tasks/(?P<id>[^/]+)', $route['uri']);
+    }
+
+    /**
+     * A route with multiple URI parameters converts all placeholders.
+     */
+    public function testParseUriParametersHandlesMultiplePlaceholders(): void
+    {
+        $router = $this->makeRouter();
+        $router->rest();
+
+        $route = $router->addRoute('GET', '/tasks/{taskId}/items/{itemId}', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $this->assertSame('/tasks/(?P<taskId>[^/]+)/items/(?P<itemId>[^/]+)', $route['uri']);
     }
 }

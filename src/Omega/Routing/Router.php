@@ -29,8 +29,12 @@ use WP_REST_Response;
 
 use function add_submenu_page;
 use function array_any;
+use function array_column;
 use function array_filter;
 use function array_map;
+use function array_merge;
+use function array_reduce;
+use function array_values;
 use function call_user_func;
 use function call_user_func_array;
 use function current_user_can;
@@ -136,7 +140,7 @@ class Router
 
         if ($this->routeType === 'admin') {
             $this->registerAdminRoute($action, "{$prefix}{$uri}");
-        } elseif ($this->routeType === 'rest') {
+        } else {
             $this->registerRestRoute($prefix, $uri, $action, $guards, $httpMethod);
         }
 
@@ -446,11 +450,9 @@ class Router
     {
         preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $uri, $matches);
 
-        foreach ($matches[1] as $param) {
-            $uri = str_replace('{' . $param . '}', '(?P<' . $param . '>[^/]+)', $uri);
-        }
-
-        return $uri;
+        return array_reduce($matches[1], function ($uri, $param) {
+            return str_replace('{' . $param . '}', '(?P<' . $param . '>[^/]+)', $uri);
+        }, $uri);
     }
     #endregion
 
@@ -515,8 +517,10 @@ class Router
      */
     public function guards(mixed $guards): static
     {
-        if ($this->routeType === 'admin' && is_array($guards)) {
-            $guards = $guards[0] ?? 'manage_options';
+        if ($this->routeType === 'admin') {
+            if (is_array($guards)) {
+                $guards = $guards[0] ?? 'manage_options';
+            }
         }
 
         $this->guardStack[$this->groupDepth] = [
@@ -632,16 +636,10 @@ class Router
             return $item['depth'] <= $this->groupDepth;
         });
 
-        $resolved = [];
-        foreach ($currentGuards as $item) {
-            if (is_array($item['guards'])) {
-                $resolved = array_merge($resolved, $item['guards']);
-            } else {
-                $resolved[] = $item['guards'];
-            }
-        }
-
-        return $resolved;
+        return array_merge(...array_map(
+            fn($item) => is_array($item['guards']) ? $item['guards'] : [$item['guards']],
+            array_values($currentGuards)
+        ));
     }
     #endregion
 
