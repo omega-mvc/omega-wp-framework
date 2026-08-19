@@ -19,7 +19,10 @@ namespace Tests\Routing;
 
 use Omega\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionMethod;
 use Tests\Routing\Support\WPError;
+use Tests\Routing\Support\WPRestRequest;
+use Tests\Routing\Support\WPRestResponse;
 
 /**
  * @category  Tests
@@ -297,6 +300,23 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $this->assertSame('', $output);
     }
 
+    /**
+     * A controller with constructor whose FormRequest validation fails outputs error.
+     */
+    public function testProcessAdminRequestWithConstructorOutputsErrorOnValidationFailure(): void
+    {
+        $router = $this->makeRouter();
+        $router->setPage('my-page');
+        $router->addRoute('GET', '/page', ['Tests\Routing\Support\ConstructorFormRequestController', 'handle']);
+
+        $callback = WordPressRuntime::$submenus[0][5];
+        ob_start();
+        $callback();
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('error', $output);
+    }
+
     // ────────────────────────────────────────
     // setPage
     // ────────────────────────────────────────
@@ -516,5 +536,227 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $route = $router->addRoute('GET', '/tasks/{taskId}/items/{itemId}', ['Tests\Routing\Support\StubController', 'handle']);
 
         $this->assertSame('/tasks/(?P<taskId>[^/]+)/items/(?P<itemId>[^/]+)', $route['uri']);
+    }
+
+    // ────────────────────────────────────────
+    // registerRestRoute — callback success path
+    // ────────────────────────────────────────
+
+    /**
+     * The REST callback wraps a successful array response in a WPRestResponse.
+     */
+    public function testRestCallbackReturnsWrappedResponseOnSuccess(): void
+    {
+        $router = $this->makeRouter();
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $result = $callback(new WPRestRequest());
+
+        $this->assertInstanceOf(WPRestResponse::class, $result);
+        $this->assertSame(['ok' => true], $result->get_data());
+    }
+
+    /**
+     * The REST callback wraps a ResourceCollection response via toArray().
+     */
+    #[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
+    public function testRestCallbackWrapsResourceCollectionViaToArray(): void
+    {
+        $router = $this->createPartialMock(Router::class, ['processRequest']);
+        $router->method('processRequest')
+            ->willReturn(new \Omega\Http\Json\ResourceCollection(
+                new \Omega\Collection\Collection(['a', 'b'])
+            ));
+
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $result = $callback(new WPRestRequest());
+
+        $this->assertInstanceOf(WPRestResponse::class, $result);
+        $this->assertSame(['data' => ['a', 'b']], $result->get_data());
+    }
+
+    /**
+     * The REST callback wraps a JsonResource response via toArray().
+     */
+    #[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
+    public function testRestCallbackWrapsJsonResourceViaToArray(): void
+    {
+        $model = $this->createMock(\Omega\Database\ORM\AbstractModel::class);
+
+        $router = $this->createPartialMock(Router::class, ['processRequest']);
+        $router->method('processRequest')
+            ->willReturn(new \Tests\Routing\Support\TestJsonResource($model));
+
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $result = $callback(new WPRestRequest());
+
+        $this->assertInstanceOf(WPRestResponse::class, $result);
+        $this->assertSame(['id' => 1, 'name' => 'test'], $result->get_data());
+    }
+
+    // ────────────────────────────────────────
+    // registerRestRoute — permission_callback
+    // ────────────────────────────────────────
+
+    /**
+     * A callable guard returning false blocks the request.
+     */
+    public function testPermissionCallbackBlocksWhenCallableGuardReturnsFalse(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([fn(): bool => false]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertFalse($permissionCallback());
+    }
+
+    /**
+     * A callable guard returning true allows the request to proceed.
+     */
+    public function testPermissionCallbackAllowsWhenCallableGuardReturnsTrue(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([fn(): bool => true]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * An array guard where any capability is missing blocks the request.
+     */
+    public function testPermissionCallbackBlocksWhenArrayGuardFails(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([['cap_a', 'cap_b']]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = false;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertFalse($permissionCallback());
+    }
+
+    /**
+     * An array guard where all capabilities pass allows the request.
+     */
+    public function testPermissionCallbackAllowsWhenArrayGuardPasses(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([['cap_a', 'cap_b']]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = true;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * A string guard where current_user_can returns true allows the request.
+     */
+    public function testPermissionCallbackAllowsWhenStringGuardPasses(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards(['edit_posts']);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = true;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * An empty guards array allows the request unconditionally.
+     */
+    public function testPermissionCallbackAllowsWithEmptyGuards(): void
+    {
+        $router = $this->makeRouter();
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * A mix of guard types where all pass allows the request.
+     */
+    public function testPermissionCallbackAllowsWhenMixedGuardsAllPass(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([fn(): bool => true, 'edit_posts', ['cap_a']]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = true;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * A mix of guard types where the first fails blocks the request.
+     */
+    public function testPermissionCallbackBlocksWhenFirstMixedGuardFails(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards([fn(): bool => false, 'edit_posts', ['cap_a']]);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = true;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertFalse($permissionCallback());
+    }
+
+    // ────────────────────────────────────────
+    // processRestRequest
+    // ────────────────────────────────────────
+
+    /**
+     * Controller with constructor is instantiated via newInstanceArgs (ternary true).
+     */
+    public function testProcessRestRequestInstantiatesViaConstructorWhenPresent(): void
+    {
+        $router = $this->makeRouter();
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\ConstructorController', 'handle']);
+
+        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $result = $callback(new WPRestRequest());
+
+        $this->assertInstanceOf(WPRestResponse::class, $result);
+        $this->assertSame(['id' => 0], $result->get_data());
+    }
+
+    /**
+     * Validation failure in FormRequest returns WP_Error (no constructor, if true).
+     */
+    public function testProcessRestRequestReturnsWpErrorWhenFormRequestValidationFails(): void
+    {
+        $router = $this->makeRouter();
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\FormRequestController', 'handle']);
+
+        $action = ['Tests\Routing\Support\FormRequestController', 'handle'];
+        $method = new ReflectionMethod($router, 'processRestRequest');
+        $result = $method->invoke($router, $action, new WPRestRequest());
+
+        $this->assertInstanceOf(WPError::class, $result);
+    }
+
+    /**
+     * Controller with constructor + method FormRequest failure returns WP_Error (ternary true, if true).
+     */
+    public function testProcessRestRequestWithConstructorReturnsWpErrorOnMethodDepsFailure(): void
+    {
+        $router = $this->makeRouter();
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\ConstructorFormRequestController', 'handle']);
+
+        $action = ['Tests\Routing\Support\ConstructorFormRequestController', 'handle'];
+        $method = new ReflectionMethod($router, 'processRestRequest');
+        $result = $method->invoke($router, $action, new WPRestRequest());
+
+        $this->assertInstanceOf(WPError::class, $result);
     }
 }

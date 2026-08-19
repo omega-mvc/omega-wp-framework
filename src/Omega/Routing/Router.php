@@ -262,10 +262,10 @@ class Router
      *
      * @param array $action  Controller action [class, method].
      * @param mixed $request Optional request payload or WP_REST_Request.
-     * @return array|null|WP_REST_Response|WP_Error
+     * @return array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
      * @throws Exception If request processing fails.
      */
-    private function processRequest(array $action, mixed $request = null): array|null|WP_REST_Response|WP_Error
+    protected function processRequest(array $action, mixed $request = null): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
     {
         if ($this->routeType === 'admin') {
             $this->processAdminRequest($action, $request);
@@ -282,10 +282,10 @@ class Router
      *
      * @param array $action Controller class and method.
      * @param WP_REST_Request $request Incoming REST request instance.
-     * @return WP_REST_Response|WP_Error|array Normalized API response.
+     * @return WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource Normalized API response.
      * @throws Exception If controller resolution fails.
      */
-    private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array
+    private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource
     {
         [$controllerClass, $method] = $action;
 
@@ -339,9 +339,7 @@ class Router
 
         if (is_string($result)) {
             echo $result;
-        }
-
-        if (is_array($result)) {
+        } elseif (is_array($result)) {
             echo '<pre>' . esc_html(print_r($result, true)) . '</pre>';
         }
     }
