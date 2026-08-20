@@ -213,6 +213,16 @@ final class ApplicationFactoryTest extends ApplicationTestCase
     }
 
     /**
+     * Test app() throws when no apps are registered and resolveAppId returns an empty id.
+     */
+    public function testAppThrowsWhenNoApplicationsAreRegistered(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        ApplicationFactory::app('config');
+    }
+
+    /**
      * Reset the shared applications registry via reflection.
      */
     private function resetFactory(): void
