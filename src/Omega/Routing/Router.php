@@ -705,21 +705,31 @@ class Router
      */
     protected function applyPrefix(): string
     {
-        if (!empty($this->prefixStack)) {
-            $currentPrefixes = array_filter($this->prefixStack, function ($item) {
-                return $item['depth'] <= $this->groupDepth;
-            });
-
-            $prefixes = array_map(function ($item) {
-                return $item['prefix'];
-            }, $currentPrefixes);
-
-            $fullPrefix = implode('/', $prefixes);
-
-            return '/' . $fullPrefix;
+        if (empty($this->prefixStack)) {
+            return '/';
         }
 
-        return '/';
+        $currentPrefixes = array_filter(
+            $this->prefixStack,
+            [$this, 'isWithinGroupDepth']
+        );
+
+        $prefixes = array_map(
+            [$this, 'extractPrefixValue'],
+            $currentPrefixes
+        );
+
+        return '/' . implode('/', $prefixes);
+    }
+
+    private function isWithinGroupDepth(array $item): bool
+    {
+        return $item['depth'] <= $this->groupDepth;
+    }
+
+    private function extractPrefixValue(array $item): string
+    {
+        return $item['prefix'];
     }
 
     /**
