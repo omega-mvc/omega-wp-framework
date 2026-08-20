@@ -23,6 +23,8 @@ use Omega\Http\Json\JsonResource;
 use Omega\Http\Json\ResourceCollection;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionNamedType;
+use ReflectionParameter;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -349,10 +351,11 @@ class Router
     /**
      * Resolve method dependencies using reflection and IoC container.
      *
-     * Supports FormRequest validation, WP_REST_Request injection,
-     * container-based resolution and default parameter values.
+     * Iterates over each parameter of the target method and resolves it
+     * through the appropriate strategy: FormRequest validation, direct
+     * request injection, container resolution, or default value fallback.
      *
-     * @param ReflectionMethod        $method  Target method to resolve.
+     * @param ReflectionMethod           $method  Target method to resolve.
      * @param WP_REST_Request|array|null $request Current request context.
      * @return WP_Error|array Resolved dependency arguments.
      * @throws Exception If a dependency cannot be resolved.
@@ -366,74 +369,174 @@ class Router
         foreach ($method->getParameters() as $param) {
             $type = $param->getType();
 
-            if ($type && !$type->isBuiltin()) {
-                $className = $type->getName();
+            if ($type === null) {
+                $resolved[] = $this->resolveDefaultParameter($param, $method);
+            } elseif ($type->isBuiltin()) {
+                $resolved[] = $this->resolveDefaultParameter($param, $method);
+            } else {
+                $result = $this->resolveTypedParameter($type, $param, $request);
 
-                if (is_subclass_of($className, FormRequest::class)) {
-                    if (!$request instanceof WP_REST_Request) {
-                        return new WP_Error(
-                            'invalid_request',
-                            "FormRequest requires a WP_REST_Request instance for parameter '{$param->getName()}'."
-                        );
-                    }
-
-                    $formRequest = new $className($request);
-                    $formRequest->validate();
-
-                    if ($formRequest->fails()) {
-                        $errors = $formRequest->errors();
-                        $firstError = reset($errors) ?: 'Validation error';
-
-                        return new WP_Error('validation_error', $firstError, $errors);
-                    }
-
-                    $resolved[] = $formRequest;
-                    continue;
+                if ($result instanceof WP_Error) {
+                    return $result;
                 }
 
-                if ($className === WP_REST_Request::class) {
-                    if ($request instanceof WP_REST_Request) {
-                        $resolved[] = $request;
-                        continue;
-                    }
-
-                    throw new Exception(
-                        sprintf(
-                            "WP_REST_Request requested but no valid request available for parameter '%s'.",
-                            $param->getName()
-                        )
-                    );
-                }
-
-                try {
-                    $resolved[] = ApplicationFactory::app($className);
-                    continue;
-                } catch (Exception) {
-                    throw new Exception(
-                        sprintf(
-                            "Cannot resolve dependency '%s' for parameter '%s'.",
-                            $className,
-                            $param->getName()
-                        )
-                    );
-                }
+                $resolved[] = $result;
             }
-
-            if ($param->isDefaultValueAvailable()) {
-                $resolved[] = $param->getDefaultValue();
-                continue;
-            }
-
-            throw new Exception(
-                sprintf(
-                    "Cannot resolve parameter '%s' in method %s.",
-                    $param->getName(),
-                    $method->getName()
-                )
-            );
         }
 
         return $resolved;
+    }
+
+    /**
+     * Resolve a typed (non-builtin) parameter to its corresponding value.
+     *
+     * Dispatches to the appropriate resolution strategy based on the
+     * parameter's type: FormRequest validation, direct request injection,
+     * or IoC container resolution.
+     *
+     * @param ReflectionNamedType        $type    Parameter type reflection.
+     * @param ReflectionParameter        $param   Parameter reflection.
+     * @param WP_REST_Request|array|null $request Current request context.
+     * @return mixed Resolved value or validation error.
+     * @throws Exception If the dependency cannot be resolved.
+     */
+    private function resolveTypedParameter(
+        ReflectionNamedType $type,
+        ReflectionParameter $param,
+        WP_REST_Request|array|null $request
+    ): mixed {
+        $className = $type->getName();
+
+        if (is_subclass_of($className, FormRequest::class)) {
+            return $this->resolveFormRequest($className, $param, $request);
+        }
+
+        if ($className === WP_REST_Request::class) {
+            return $this->resolveRestRequest($param, $request);
+        }
+
+        return $this->resolveContainerDependency($className, $param);
+    }
+
+    /**
+     * Resolve a FormRequest parameter by instantiating and validating it.
+     *
+     * Creates the FormRequest subclass from the incoming REST request,
+     * runs validation, and returns either the validated request or a
+     * WP_Error describing the first validation failure.
+     *
+     * @param string                     $className FormRequest subclass name.
+     * @param ReflectionParameter        $param     Parameter reflection.
+     * @param WP_REST_Request|array|null $request   Current request context.
+     * @return FormRequest|WP_Error Validated request or validation error.
+     */
+    private function resolveFormRequest(
+        string $className,
+        ReflectionParameter $param,
+        WP_REST_Request|array|null $request
+    ): FormRequest|WP_Error {
+        if (!$request instanceof WP_REST_Request) {
+            return new WP_Error(
+                'invalid_request',
+                "FormRequest requires a WP_REST_Request instance for parameter '{$param->getName()}'."
+            );
+        }
+
+        $formRequest = new $className($request);
+        $formRequest->validate();
+
+        if ($formRequest->fails()) {
+            $errors = $formRequest->errors();
+            $firstError = reset($errors) ?: 'Validation error';
+
+            return new WP_Error('validation_error', $firstError, $errors);
+        }
+
+        return $formRequest;
+    }
+
+    /**
+     * Resolve a WP_REST_Request parameter by injecting the current request.
+     *
+     * Returns the request directly when available, otherwise throws an
+     * exception indicating the request context is missing.
+     *
+     * @param ReflectionParameter        $param   Parameter reflection.
+     * @param WP_REST_Request|array|null $request Current request context.
+     * @return WP_REST_Request The resolved request instance.
+     * @throws Exception If no valid request is available.
+     */
+    private function resolveRestRequest(
+        ReflectionParameter $param,
+        WP_REST_Request|array|null $request
+    ): WP_REST_Request {
+        if ($request instanceof WP_REST_Request) {
+            return $request;
+        }
+
+        throw new Exception(
+            sprintf(
+                "WP_REST_Request requested but no valid request available for parameter '%s'.",
+                $param->getName()
+            )
+        );
+    }
+
+    /**
+     * Resolve a non-builtin, non-request parameter via the IoC container.
+     *
+     * Delegates resolution to the application container. If the container
+     * cannot resolve the dependency, the original exception is wrapped with
+     * a descriptive message identifying the class and parameter.
+     *
+     * @param string            $className Fully-qualified class name.
+     * @param ReflectionParameter $param   Parameter reflection.
+     * @return object The resolved dependency instance.
+     * @throws Exception If the container cannot resolve the dependency.
+     */
+    private function resolveContainerDependency(
+        string $className,
+        ReflectionParameter $param
+    ): object {
+        try {
+            return ApplicationFactory::app($className);
+        } catch (Exception) {
+            throw new Exception(
+                sprintf(
+                    "Cannot resolve dependency '%s' for parameter '%s'.",
+                    $className,
+                    $param->getName()
+                )
+            );
+        }
+    }
+
+    /**
+     * Resolve a parameter without a type hint using its default value.
+     *
+     * Returns the default value when available, otherwise throws an
+     * exception identifying the unresolvable parameter.
+     *
+     * @param ReflectionParameter $param  Parameter reflection.
+     * @param ReflectionMethod    $method Declaring method reflection.
+     * @return mixed The parameter's default value.
+     * @throws Exception If no default value is available.
+     */
+    private function resolveDefaultParameter(
+        ReflectionParameter $param,
+        ReflectionMethod $method
+    ): mixed {
+        if ($param->isDefaultValueAvailable()) {
+            return $param->getDefaultValue();
+        }
+
+        throw new Exception(
+            sprintf(
+                "Cannot resolve parameter '%s' in method %s.",
+                $param->getName(),
+                $method->getName()
+            )
+        );
     }
     #endregion
 

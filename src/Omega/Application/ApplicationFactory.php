@@ -139,6 +139,12 @@ class ApplicationFactory
             $appId = self::resolveAppId($service);
         }
 
+        if (!isset(self::$apps[$appId])) {
+            throw new \RuntimeException(
+                "No application registered for id '{$appId}'."
+            );
+        }
+
         if (!$service) {
             return self::$apps[$appId];
         }

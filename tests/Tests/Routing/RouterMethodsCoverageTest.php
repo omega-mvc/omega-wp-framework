@@ -558,6 +558,25 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
     }
 
     /**
+     * The REST callback catches exceptions and returns a WP_Error.
+     */
+    #[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
+    public function testRestCallbackReturnsWpErrorOnException(): void
+    {
+        $router = $this->createPartialMock(Router::class, ['processRequest']);
+        $router->method('processRequest')
+            ->willThrowException(new \Exception('Unexpected error'));
+
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $result = $callback(new WPRestRequest());
+
+        $this->assertInstanceOf(WPError::class, $result);
+        $this->assertSame('server_error', $result->get_error_code());
+    }
+
+    /**
      * The REST callback wraps a ResourceCollection response via toArray().
      */
     #[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]
@@ -669,6 +688,20 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         WordPressRuntime::$capabilities = true;
         $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
         $this->assertTrue($permissionCallback());
+    }
+
+    /**
+     * A string guard where current_user_can returns false blocks the request.
+     */
+    public function testPermissionCallbackBlocksWhenStringGuardFails(): void
+    {
+        $router = $this->makeRouter();
+        $router->guards(['edit_posts']);
+        $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
+
+        WordPressRuntime::$capabilities = false;
+        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $this->assertFalse($permissionCallback());
     }
 
     /**
