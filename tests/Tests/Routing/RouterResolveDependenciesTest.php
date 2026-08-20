@@ -35,6 +35,7 @@ use Tests\Routing\Support\WPError;
 use Tests\Routing\Support\MixedParamsController;
 use Tests\Routing\Support\UntypedParamController;
 use Tests\Routing\Support\WPRestRequest;
+use Tests\Routing\Support\MultiParamController;
 use Tests\Routing\Support\WPRestRequestController;
 
 /**
@@ -453,5 +454,28 @@ final class RouterResolveDependenciesTest extends RoutingTestCase
         $this->assertCount(2, $result);
         $this->assertInstanceOf(\stdClass::class, $result[0]);
         $this->assertSame(1, $result[1]);
+    }
+
+    /**
+     * Exercises the early-return guard when a previous iteration already
+     * produced a WP_Error and subsequent parameters are still pending.
+     *
+     * MultiParamController has (int $id, TestFormRequest $request, string $sort).
+     * The first param resolves to 0 (default). The second (FormRequest with
+     * empty request) fails validation → WP_Error. The third param triggers
+     * the `if ($carry instanceof WP_Error) { return $carry; }` guard.
+     */
+    public function testResolveDependenciesPropagatesWpErrorAcrossIterations(): void
+    {
+        $router = $this->makeRouter();
+        $method = new ReflectionMethod(Router::class, 'resolveDependencies');
+
+        $targetMethod = new ReflectionMethod(MultiParamController::class, 'handle');
+
+        $request = new WPRestRequest([]);
+        $result = $method->invoke($router, $targetMethod, $request);
+
+        $this->assertInstanceOf(WPError::class, $result);
+        $this->assertSame('validation_error', $result->get_error_code());
     }
 }

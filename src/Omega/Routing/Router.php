@@ -364,27 +364,29 @@ class Router
         ReflectionMethod $method,
         WP_REST_Request|array|null $request = null
     ): WP_Error|array {
-        $resolved = [];
-
-        foreach ($method->getParameters() as $param) {
-            $type = $param->getType();
-
-            if ($type === null) {
-                $resolved[] = $this->resolveDefaultParameter($param, $method);
-            } elseif ($type->isBuiltin()) {
-                $resolved[] = $this->resolveDefaultParameter($param, $method);
-            } else {
-                $result = $this->resolveTypedParameter($type, $param, $request);
-
-                if ($result instanceof WP_Error) {
-                    return $result;
+        return array_reduce(
+            $method->getParameters(),
+            function ($carry, ReflectionParameter $param) use ($method, $request) {
+                // Se nei passaggi precedenti abbiamo già intercettato un errore, propagalo
+                if ($carry instanceof WP_Error) {
+                    return $carry;
                 }
 
-                $resolved[] = $result;
-            }
-        }
+                $type = $param->getType();
 
-        return $resolved;
+                $resolvedValue = ($type === null || $type->isBuiltin())
+                    ? $this->resolveDefaultParameter($param, $method)
+                    : $this->resolveTypedParameter($type, $param, $request);
+
+                if ($resolvedValue instanceof WP_Error) {
+                    return $resolvedValue;
+                }
+
+                $carry[] = $resolvedValue;
+                return $carry;
+            },
+            []
+        );
     }
 
     /**
