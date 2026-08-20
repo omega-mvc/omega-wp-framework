@@ -202,6 +202,17 @@ final class ApplicationFactoryTest extends ApplicationTestCase
     }
 
     /**
+     * Test app() throws RuntimeException when the application id is not registered.
+     */
+    public function testAppThrowsExceptionForUnregisteredApplicationId(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("No application registered for id 'unknown'.");
+
+        ApplicationFactory::app(null, 'unknown');
+    }
+
+    /**
      * Reset the shared applications registry via reflection.
      */
     private function resetFactory(): void
