@@ -63,7 +63,7 @@ use function update_option;
 class SettingsRepository
 {
     #region Properties
-    /** @var array Internal settings storage containing merged defaults and persisted configuration values. */
+    /** @var array<int|string, mixed> Internal settings storage containing merged defaults and persisted configuration values. */
     protected array $config;
     #endregion
 
@@ -76,11 +76,12 @@ class SettingsRepository
      * and stored settings.
      *
      * @param ApplicationInterface $app The application instance used to resolve the option key prefix.
-     * @param array $defaults Default configuration values used as base settings before merging stored data.
+     * @param array<int|string, mixed> $defaults Default configuration values used as base settings before merging stored data.
      * @return void
      */
     public function __construct(protected ApplicationInterface $app, array $defaults = [])
     {
+        /** @var array<int|string, mixed> $saved_config */
         $saved_config = get_option("{$this->app->getIdAsUnderscore()}_settings", []);
         $this->config = $this->mergeConfig($defaults, $saved_config);
     }
@@ -90,9 +91,9 @@ class SettingsRepository
     /**
      * Recursively merge two configuration arrays, preserving nested structures.
      *
-     * @param array $array1 Base configuration array used as default structure.
-     * @param array $array2 Stored configuration array that overrides default values.
-     * @return array The merged configuration array.
+     * @param array<int|string, mixed> $array1 Base configuration array used as default structure.
+     * @param array<int|string, mixed> $array2 Stored configuration array that overrides default values.
+     * @return array<int|string, mixed> The merged configuration array.
      */
     private function mergeConfig(array $array1, array $array2): array
     {
@@ -178,11 +179,11 @@ class SettingsRepository
     /**
      * Update a configuration value and persist it to storage.
      *
-     * @param mixed $name The configuration key, supports dot notation for nested values.
+     * @param string $name The configuration key, supports dot notation for nested values.
      * @param mixed $value The value to store, which will be processed before saving.
      * @return bool True if the update was successfully persisted, false otherwise.
      */
-    public function update(mixed $name, mixed $value): bool
+    public function update(string $name, mixed $value): bool
     {
         $processed_value = $this->processValue($value);
 
@@ -216,8 +217,8 @@ class SettingsRepository
     /**
      * Recursively remove a key from the configuration using a list of parent segments.
      *
-     * @param array $config The configuration level to mutate, passed by reference.
-     * @param array $keys Remaining parent key segments leading to the target key.
+     * @param array<int|string, mixed> $config The configuration level to mutate, passed by reference.
+     * @param list<int|string> $keys Remaining parent key segments leading to the target key.
      * @param string $lastKey The final key segment to remove.
      * @return bool True if the key was removed and saved, false otherwise.
      */
@@ -291,7 +292,13 @@ class SettingsRepository
      */
     public function string(string $name, ?string $default = null): string
     {
-        return sanitize_text_field($this->get($name, $default));
+        $value = $this->get($name, $default);
+
+        if (!is_string($value)) {
+            return sanitize_text_field((string) ($default ?? ''));
+        }
+
+        return sanitize_text_field($value);
     }
 
     /**
@@ -323,13 +330,27 @@ class SettingsRepository
      */
     public function integer(string $name, ?int $default = null): int
     {
-        return (int)$this->get($name, $default);
+        $value = $this->get($name, $default);
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value)) {
+            return (int) $value;
+        }
+
+        if (is_string($value)) {
+            return (int) $value;
+        }
+
+        return $default ?? 0;
     }
 
     /**
      * Retrieve the full configuration array.
      *
-     * @return array The entire configuration set.
+     * @return array<int|string, mixed> The entire configuration set.
      */
     public function getAll(): array
     {
@@ -352,15 +373,18 @@ class SettingsRepository
     /**
      * Build a nested configuration array using a list of keys.
      *
-     * @param array $keys The list of keys representing the nested path.
+     * @param list<int|string> $keys The list of keys representing the nested path.
      * @param mixed $value The value to assign to the final key.
-     * @return array The constructed nested array structure.
+     * @return array<int|string, mixed> The constructed nested array structure.
      */
     private function addKeyValueRecursively(array $keys, mixed $value): array
     {
-        return array_reduce(array_reverse($keys), function ($carry, $key) use ($value) {
-            return [$key => $carry ?: $value];
+        /** @var array<int|string, mixed> $result */
+        $result = array_reduce(array_reverse($keys), function (array $carry, int|string $key) use ($value): array {
+            return [$key => $carry !== [] ? $carry : $value];
         }, []);
+
+        return $result;
     }
     #endregion
 }

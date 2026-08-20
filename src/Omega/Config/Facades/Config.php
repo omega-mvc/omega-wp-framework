@@ -43,7 +43,7 @@ use Omega\Facade\AbstractFacade;
  * @method static string string(string $key, ?string $default = null)
  * @method static int integer(string $key, ?int $default = null)
  * @method static bool boolean(string $key, ?bool $default = null)
- * @method static array getAll()
+ * @method static array<int|string, mixed> getAll()
  *
  * @see ConfigRepository
  */

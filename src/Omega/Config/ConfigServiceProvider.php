@@ -55,9 +55,12 @@ class ConfigServiceProvider extends ServiceProvider
             $configPath = $this->app->getBasePath() . '/config';
             $config     = [];
             if (is_dir($configPath)) {
-                foreach (glob($configPath . '/*.php') as $file) {
-                    $key          = basename($file, '.php');
-                    $config[$key] = require $file;
+                $files = glob($configPath . '/*.php');
+                if ($files !== false) {
+                    foreach ($files as $file) {
+                        $key          = basename($file, '.php');
+                        $config[$key] = require $file;
+                    }
                 }
             }
 

@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Str;
 
 use function array_key_exists;
+use function array_reduce;
 use function count;
 use function explode;
 use function is_array;
@@ -75,8 +76,7 @@ class Str
      * Example:
      * 'user.profile.email'
      *
-     * @param array $data The source array
-     * @param string $key Dot-notation key path
+     * @param array<int|string, mixed> $data The source array     * @param string $key Dot-notation key path
      * @param mixed|null $default Default value if key does not exist
      * @return mixed Returns found value or default
      */
@@ -119,7 +119,7 @@ class Str
      * Example:
      * 'user.profile.email'
      *
-     * @param array $data The target array (by reference)
+     * @param array<int|string, mixed> $data The target array (by reference)
      * @param string $key Dot-notation key path
      * @param mixed $value Value to assign
      * @return void
@@ -132,11 +132,11 @@ class Str
         }
 
         $keys   = array_reverse(explode('.', $key));
-        $nested = $value;
-
-        array_walk($keys, function (string $segment) use (&$nested): void {
-            $nested = [$segment => $nested];
-        });
+        $nested = (array) array_reduce(
+            $keys,
+            static fn(mixed $carry, string $segment): array => [$segment => $carry],
+            $value
+        );
 
         $data = array_replace_recursive($data, $nested);
     }

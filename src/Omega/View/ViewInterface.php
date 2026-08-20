@@ -66,7 +66,7 @@ interface ViewInterface
      * resources/views/admin/dashboard.php
      *
      * @param string $view The logical name of the view using dot notation.
-     * @param array $data The data to expose to the view file.
+     * @param array<string, mixed> $data The data to expose to the view file.
      * @return string Return the template string.
      * @throws ViewFileNotFoundException Thrown when the resolved view file does not exist.
      */

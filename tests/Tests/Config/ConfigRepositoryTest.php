@@ -213,6 +213,14 @@ final class ConfigRepositoryTest extends TestCase
     }
 
     /**
+     * Test string() returns empty when the key is missing and no default is given.
+     */
+    public function testStringReturnsEmptyWhenNoDefault(): void
+    {
+        $this->assertSame('', $this->makeRepository()->string('app.missing'));
+    }
+
+    /**
      * Test boolean() falls back to the default for unknown values.
      */
     public function testBooleanUnknownFallsBackToDefault(): void
@@ -224,6 +232,31 @@ final class ConfigRepositoryTest extends TestCase
         $this->assertFalse($repository->boolean('features.mode'));
         $this->assertFalse($repository->boolean('app.missing'));
         $this->assertTrue($repository->boolean('app.missing', true));
+    }
+
+    /**
+     * Test boolean() returns false when the key is missing and no default is given.
+     */
+    public function testBooleanReturnsFalseWhenNoDefault(): void
+    {
+        $this->assertFalse($this->makeRepository()->boolean('app.missing'));
+    }
+
+    /**
+     * Test boolean() returns the default for a non-string, non-null,
+     * non-bool, non-numeric value (e.g. array).
+     */
+    public function testBooleanReturnsDefaultForArrayValue(): void
+    {
+        $this->assertFalse($this->makeRepository()->boolean('database.connections.mysql'));
+    }
+
+    /**
+     * Test boolean() returns a non-null default for a non-string value.
+     */
+    public function testBooleanReturnsNonNullDefaultForArrayValue(): void
+    {
+        $this->assertTrue($this->makeRepository()->boolean('database.connections.mysql', true));
     }
 
     /**
@@ -246,6 +279,33 @@ final class ConfigRepositoryTest extends TestCase
         $this->assertSame(3306, $repository->integer('database.connections.mysql.port'));
         $this->assertSame(0, $repository->integer('app.missing'));
         $this->assertSame(7, $repository->integer('app.missing', 7));
+    }
+
+    /**
+     * Test integer() returns zero when the key is missing and no default is given.
+     */
+    public function testIntegerReturnsZeroWhenNoDefault(): void
+    {
+        $this->assertSame(0, $this->makeRepository()->integer('app.missing'));
+    }
+
+    /**
+     * Test integer() casts a float config value to int.
+     */
+    public function testIntegerCastsFloatToInt(): void
+    {
+        $repository = new ConfigRepository(['pi' => 3.14]);
+
+        $this->assertSame(3, $repository->integer('pi'));
+    }
+
+    /**
+     * Test integer() returns the non-null default when the resolved value
+     * is not int, float, or string (e.g. null).
+     */
+    public function testIntegerReturnsNonNullDefaultForNullValue(): void
+    {
+        $this->assertSame(5, $this->makeRepository()->integer('app.empty', 5));
     }
 
     /**

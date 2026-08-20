@@ -157,6 +157,14 @@ final class SettingsRepositoryTest extends TestCase
     }
 
     /**
+     * Test string() returns empty when the key is missing and no default is given.
+     */
+    public function testStringReturnsEmptyWhenNoDefault(): void
+    {
+        $this->assertSame('', $this->makeRepository()->string('missing'));
+    }
+
+    /**
      * Test boolean() recognizes the truthy variants.
      */
     public function testBooleanTruthyVariants(): void
@@ -204,6 +212,35 @@ final class SettingsRepositoryTest extends TestCase
         $this->assertSame(3306, $repository->integer('port'));
         $this->assertSame(0, $repository->integer('missing'));
         $this->assertSame(7, $repository->integer('missing', 7));
+    }
+
+    /**
+     * Test integer() returns zero when the key is missing and no default is given.
+     */
+    public function testIntegerReturnsZeroWhenNoDefault(): void
+    {
+        $this->assertSame(0, $this->makeRepository()->integer('missing'));
+    }
+
+    /**
+     * Test integer() casts a float config value to int.
+     */
+    public function testIntegerCastsFloatToInt(): void
+    {
+        $repository = $this->makeRepository(['pi' => 3.14]);
+
+        $this->assertSame(3, $repository->integer('pi'));
+    }
+
+    /**
+     * Test integer() returns the non-null default when the resolved value
+     * is not int, float, or string (e.g. array).
+     */
+    public function testIntegerReturnsNonNullDefaultForNonNumericValue(): void
+    {
+        $repository = $this->makeRepository(['data' => ['a', 'b']]);
+
+        $this->assertSame(5, $repository->integer('data', 5));
     }
 
     /**

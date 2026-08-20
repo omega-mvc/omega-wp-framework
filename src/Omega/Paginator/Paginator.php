@@ -16,12 +16,11 @@ namespace Omega\Paginator;
 
 use Omega\Collection\Collection;
 
+use function array_key_exists;
 use function array_merge;
 use function ceil;
-use function filter_var;
+use function is_int;
 use function max;
-
-use const FILTER_VALIDATE_INT;
 
 /**
  * Paginator
@@ -62,7 +61,7 @@ class Paginator
     /** @var Collection Collection of items for the current page. */
     protected Collection $items;
 
-    /** @var array Additional pagination configuration options. */
+    /** @var array<string, mixed> Additional pagination configuration options. */
     protected array $options = [];
     #endregion
 
@@ -77,7 +76,7 @@ class Paginator
      * @param int       $total       Total number of items
      * @param int       $perPage     Items per page
      * @param int|null  $currentPage Current page number (optional)
-     * @param array     $options     Extra configuration options
+     * @param array<string, mixed> $options Extra configuration options
      */
     public function __construct(
         mixed $items,
@@ -87,11 +86,47 @@ class Paginator
         array $options = []
     ) {
         $this->options = $options;
-        $this->total = $options['total'] ?? $total;
-        $this->perPage = $options['perPage'] ?? $perPage;
+        $this->total = self::resolveIntOption($options, 'total', $total);
+        $this->perPage = self::resolveIntOption($options, 'perPage', $perPage);
         $this->lastPage = max((int) ceil($this->total / $this->perPage), 1);
-        $this->currentPage = $this->setCurrentPage($options['currentPage'] ?? $currentPage);
-        $this->items = $items instanceof Collection ? $items : new Collection($items);
+        $this->currentPage = $this->setCurrentPage(self::resolveIntOption($options, 'currentPage', $currentPage));
+        $this->items = $items instanceof Collection ? $items : new Collection((array) $items);
+    }
+    #endregion
+
+    #region Helpers
+    /**
+     * Resolve an integer option value from the options array, falling back to a default.
+     *
+     * @param array<string, mixed> $options The options array to search
+     * @param string $key The option key
+     * @param int|null $fallback The default value if the option is not an integer
+     */
+    private static function resolveIntOption(array $options, string $key, ?int $fallback): int
+    {
+        if (array_key_exists($key, $options)) {
+            $value = $options[$key];
+
+            if (is_int($value)) {
+                return $value;
+            }
+
+            if ($value === null) {
+                return 1;
+            }
+
+            if ($fallback !== null) {
+                return $fallback;
+            }
+
+            return 1;
+        }
+
+        if ($fallback !== null) {
+            return $fallback;
+        }
+
+        return 1;
     }
     #endregion
 
@@ -124,7 +159,7 @@ class Paginator
      */
     protected function isValidPageNumber(int $page): bool
     {
-        return $page >= 1 && filter_var($page, FILTER_VALIDATE_INT) !== false;
+        return $page >= 1;
     }
     #endregion
 
@@ -168,7 +203,7 @@ class Paginator
      *
      * Merges pagination metadata with the current page items.
      *
-     * @return array Array representation of paginated data
+     * @return array{total:int, per_page:int, current_page:int, last_page:int, data:array<int|string, mixed>}
      */
     public function toArray(): array
     {

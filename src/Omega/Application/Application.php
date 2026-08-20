@@ -138,7 +138,7 @@ class Application extends AbstractApplication
     /**
      * {@inheritdoc}
      */
-    public function getIdAsUnderscore(): array|string
+    public function getIdAsUnderscore(): string
     {
         return Str::toSnake($this->id);
     }

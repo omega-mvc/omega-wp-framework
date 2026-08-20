@@ -64,7 +64,7 @@ class LocalizationServiceProvider extends ServiceProvider
      */
     public function init(): void
     {
-        $config = $this->app->resolve('config');
+        $config = $this->app->config();
 
         if (!$config->boolean('app.translation.enable')) {
             return;

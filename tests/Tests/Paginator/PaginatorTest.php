@@ -127,4 +127,81 @@ final class PaginatorTest extends TestCase
 
         $this->assertSame($items, $paginator->getCollection());
     }
+
+    /**
+     * Test options override total, perPage and currentPage when valid integers.
+     */
+    public function testOptionsOverrideValues(): void
+    {
+        $paginator = new Paginator([], 100, 10, 3, [
+            'total'       => 200,
+            'perPage'     => 20,
+            'currentPage' => 2,
+        ]);
+
+        $this->assertSame(200, $paginator->getAttributes()['total']);
+        $this->assertSame(20, $paginator->getAttributes()['per_page']);
+        $this->assertSame(2, $paginator->getAttributes()['current_page']);
+    }
+
+    /**
+     * Test non-integer option values are ignored in favour of the constructor arguments.
+     */
+    public function testNonIntegerOptionsAreIgnored(): void
+    {
+        $paginator = new Paginator([], 100, 10, 3, [
+            'total'       => 'not-an-int',
+            'perPage'     => 'not-an-int',
+            'currentPage' => 'not-an-int',
+        ]);
+
+        $this->assertSame(100, $paginator->getAttributes()['total']);
+        $this->assertSame(10, $paginator->getAttributes()['per_page']);
+        $this->assertSame(3, $paginator->getAttributes()['current_page']);
+    }
+
+    /**
+     * Test null currentPage is resolved to page 1.
+     */
+    public function testNullCurrentPageDefaultsToOne(): void
+    {
+        $paginator = new Paginator([], 25, 10, null);
+
+        $this->assertSame(1, $paginator->getAttributes()['current_page']);
+    }
+
+    /**
+     * Test currentPage option set to null defaults to page 1.
+     */
+    public function testCurrentPageOptionNullDefaultsToOne(): void
+    {
+        $paginator = new Paginator([], 25, 10, 3, ['currentPage' => null]);
+
+        $this->assertSame(1, $paginator->getAttributes()['current_page']);
+    }
+
+    /**
+     * Test a non-int non-null option with null fallback returns page 1.
+     */
+    public function testNonIntNullOptionWithNoFallbackReturnsOne(): void
+    {
+        $paginator = new Paginator([], 25, 10, null, ['currentPage' => 'bad']);
+
+        $this->assertSame(1, $paginator->getAttributes()['current_page']);
+    }
+
+    /**
+     * Test setCurrentPage returns 1 when invoked with null.
+     */
+    public function testSetCurrentPageReturnsOneForNull(): void
+    {
+        $pager = new class([], 0, 10) extends Paginator {
+            public function exposeSetCurrentPage(?int $page): int
+            {
+                return $this->setCurrentPage($page);
+            }
+        };
+
+        $this->assertSame(1, $pager->exposeSetCurrentPage(null));
+    }
 }

@@ -132,7 +132,13 @@ class ConfigRepository
      */
     public function string(string $name, ?string $default = null): string
     {
-        return sanitize_text_field($this->get($name, $default));
+        $value = $this->get($name, $default);
+
+        if (!is_string($value)) {
+            return sanitize_text_field((string) ($default ?? ''));
+        }
+
+        return sanitize_text_field($value);
     }
 
     /**
@@ -163,7 +169,11 @@ class ConfigRepository
             return (bool) $value;
         }
 
-        $value = strtolower(trim((string) $value));
+        if (!is_string($value)) {
+            return $default ?? false;
+        }
+
+        $value = strtolower(trim($value));
 
         $isTruthy = in_array($value, ['1', 'true', 'yes', 'on'], true);
 
@@ -191,7 +201,21 @@ class ConfigRepository
      */
     public function integer(string $name, ?int $default = null): int
     {
-        return (int) $this->get($name, $default);
+        $value = $this->get($name, $default);
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value)) {
+            return (int) $value;
+        }
+
+        if (is_string($value)) {
+            return (int) $value;
+        }
+
+        return $default ?? 0;
     }
     #endregion
 
@@ -283,7 +307,7 @@ class ConfigRepository
                     return $marker;
                 }
 
-                if (!isset($carry[$segment])) {
+                if (!is_array($carry) || !isset($carry[$segment])) {
                     return $marker;
                 }
 

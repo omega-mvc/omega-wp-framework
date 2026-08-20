@@ -44,7 +44,7 @@ use Omega\Settings\SettingsRepository;
  * @method static string string(string $key, ?string $default = null)
  * @method static bool boolean(string $key, bool|string $default = false)
  * @method static int integer(string $key, ?int $default = null)
- * @method static array getAll()
+ * @method static array<int|string, mixed> getAll()
  * @method static bool update(string $key, mixed $value)
  * @method static bool delete(string $key)
  *

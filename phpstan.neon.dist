@@ -1,0 +1,5 @@
+parameters:
+    level: 10
+    tmpDir: cache/phpstan
+    bootstrapFiles:
+        - tests/phpstan-bootstrap.php

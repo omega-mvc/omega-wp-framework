@@ -68,6 +68,8 @@ class View implements ViewInterface
     #region Rendering
     /**
      * {@inheritdoc}
+     *
+     * @param array<string, mixed> $data
      */
     public function render(string $view, array $data = []): string
     {

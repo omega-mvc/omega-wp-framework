@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Application;
 
 use Omega\Config\ConfigRepository;
+use Omega\Container\ContainerInterface;
 use Omega\Settings\SettingsRepository;
 
 /**
@@ -38,7 +39,7 @@ use Omega\Settings\SettingsRepository;
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
  */
-interface ApplicationInterface
+interface ApplicationInterface extends ContainerInterface
 {
     #region Lifecycle
     /**
@@ -62,9 +63,9 @@ interface ApplicationInterface
     /**
      * Get the application id in snake_case format.
      *
-     * @return string|array Return the application in snake_case format.
+     * @return string Return the application in snake_case format.
      */
-    public function getIdAsUnderscore(): array|string;
+    public function getIdAsUnderscore(): string;
 
     /**
      * Get the name of the application framework.

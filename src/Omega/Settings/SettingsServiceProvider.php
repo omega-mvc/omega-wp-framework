@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Settings;
 
+use Omega\Application\ApplicationInterface;
 use Omega\Container\ServiceProvider;
 
 /**
@@ -54,7 +55,7 @@ class SettingsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton('settings', function ($app) {
+        $this->app->singleton('settings', function (ApplicationInterface $app): SettingsRepository {
             return new SettingsRepository($app);
         });
     }
