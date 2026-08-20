@@ -792,4 +792,20 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $this->assertInstanceOf(WPError::class, $result);
     }
+
+    /**
+     * applyPrefix filters out prefixStack items whose depth exceeds groupDepth.
+     */
+    public function testApplyPrefixFiltersOutHighDepthPrefixes(): void
+    {
+        $router = $this->makeRouter();
+
+        $prop = new \ReflectionProperty($router, 'prefixStack');
+        $prop->setValue($router, [5 => ['prefix' => 'deep', 'depth' => 5]]);
+
+        $router->addRoute('GET', '/tasks', ['Tests\Routing\Support\StubController', 'handle']);
+
+        [$namespace] = WordPressRuntime::$restRoutes[0];
+        $this->assertSame('', $namespace);
+    }
 }

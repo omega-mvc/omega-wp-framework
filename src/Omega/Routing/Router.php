@@ -709,27 +709,17 @@ class Router
             return '/';
         }
 
-        $currentPrefixes = array_filter(
+        return '/' . array_reduce(
             $this->prefixStack,
-            [$this, 'isWithinGroupDepth']
+            function (string $carry, array $item): string {
+                if ($item['depth'] > $this->groupDepth) {
+                    return $carry;
+                }
+
+                return $carry === '' ? $item['prefix'] : $carry . '/' . $item['prefix'];
+            },
+            ''
         );
-
-        $prefixes = array_map(
-            [$this, 'extractPrefixValue'],
-            $currentPrefixes
-        );
-
-        return '/' . implode('/', $prefixes);
-    }
-
-    private function isWithinGroupDepth(array $item): bool
-    {
-        return $item['depth'] <= $this->groupDepth;
-    }
-
-    private function extractPrefixValue(array $item): string
-    {
-        return $item['prefix'];
     }
 
     /**
