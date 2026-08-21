@@ -53,7 +53,7 @@ class JsonResource
      * Create a new resource instance.
      *
      * @param AbstractModel $resource The underlying model instance being transformed.
-     * @param array $options Optional transformation options or metadata.
+     * @param array<string, mixed> $options Optional transformation options or metadata.
      */
     public function __construct(public AbstractModel $resource, public array $options = [])
     {
@@ -68,7 +68,7 @@ class JsonResource
      * the current resource class as transformer.
      *
      * @param Collection|Paginator $collection The collection of models to transform.
-     * @param array $options Optional transformation options applied to the collection.
+     * @param array<string, mixed> $options Optional transformation options applied to the collection.
      * @return ResourceCollection The resource collection instance.
      */
     public static function collection(Collection|Paginator $collection, array $options = []): ResourceCollection
@@ -82,7 +82,7 @@ class JsonResource
      * This method should be overridden in child classes to define the actual
      * transformation logic for the resource.
      *
-     * @return array The transformed representation of the resource.
+     * @return array<string, mixed> The transformed representation of the resource.
      */
     public function toArray(): array
     {
@@ -116,7 +116,7 @@ class JsonResource
      * if the method exists.
      *
      * @param string $method The method name being called.
-     * @param array $arguments The arguments passed to the method.
+     * @param array<int, mixed> $arguments The arguments passed to the method.
      * @return mixed The result of the proxied method call.
      * @throws ResourceMethodNotFoundException If the method does not exist
      *                                         on the resource or wrapper.

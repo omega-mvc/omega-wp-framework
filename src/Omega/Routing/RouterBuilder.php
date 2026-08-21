@@ -117,7 +117,7 @@ class RouterBuilder
      * in the WordPress admin interface when required.
      *
      * @param string $id Page identifier.
-     * @param array $options Optional configuration for the admin page.
+     * @param array<string, mixed> $options Optional configuration for the admin page.
      * @return Router The underlying router instance.
      * @throws ReflectionException
      */
@@ -139,7 +139,7 @@ class RouterBuilder
      *
      * @param string $uri Route URI pattern.
      * @param mixed $action Route handler or controller action.
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception
      */
     public function get(string $uri, mixed $action = null): array
@@ -154,7 +154,7 @@ class RouterBuilder
      *
      * @param string $uri Route URI pattern.
      * @param mixed $action Route handler or controller action.
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception
      */
     public function post(string $uri, mixed $action = null): array
@@ -169,7 +169,7 @@ class RouterBuilder
      *
      * @param string $uri Route URI pattern.
      * @param mixed $action Route handler or controller action.
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception
      */
     public function put(string $uri, mixed $action = null): array
@@ -184,7 +184,7 @@ class RouterBuilder
      *
      * @param string $uri Route URI pattern.
      * @param mixed $action Route handler or controller action.
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception
      */
     public function patch(string $uri, mixed $action = null): array
@@ -199,7 +199,7 @@ class RouterBuilder
      *
      * @param string $uri Route URI pattern.
      * @param mixed $action Route handler or controller action.
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception
      */
     public function delete(string $uri, mixed $action = null): array

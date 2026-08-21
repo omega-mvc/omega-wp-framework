@@ -50,7 +50,7 @@ class Make
      * @param string $target   Logical target used for display messages and destination resolution.
      * @param string $info     Success message displayed when generation completes.
      * @param string $warning  Warning message displayed when the target file already exists.
-     * @param array  $vars     Additional template placeholder mappings in the
+     * @param array<string, string>  $vars     Additional template placeholder mappings in the
      *                         format [placeholder => transformation].
      */
     public function __construct(

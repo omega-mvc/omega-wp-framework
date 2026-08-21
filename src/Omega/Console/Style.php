@@ -79,7 +79,7 @@ class Style extends SymfonyStyle
      *
      * Every non-empty line is automatically indented before being written.
      *
-     * @param string|iterable $messages The message or messages to write.
+     * @param string|array<int|string, string> $messages The message or messages to write.
      * @param int $type The output verbosity type.
      * @return void
      */
@@ -105,7 +105,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a success message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -123,7 +123,7 @@ class Style extends SymfonyStyle
     /**
      * Displays an error message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -141,7 +141,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a warning message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -159,7 +159,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a comment message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -177,7 +177,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a note message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -195,7 +195,7 @@ class Style extends SymfonyStyle
     /**
      * Displays an informational message.
      *
-     * @param string|iterable $message The message to display.
+     * @param string|array<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -249,7 +249,7 @@ class Style extends SymfonyStyle
     /**
      * Displays plain text.
      *
-     * @param string|array $message The text to display.
+     * @param string|array<int|string, string> $message The text to display.
      * @return void
      */
     #[Override]
@@ -313,7 +313,7 @@ class Style extends SymfonyStyle
      * Iterable messages are converted into a single string separated by
      * line breaks.
      *
-     * @param string|iterable $message The message to normalize.
+     * @param string|array<int|string, string> $message The message to normalize.
      * @return string The normalized message.
      */
     private function processMessage(string|iterable $message): string

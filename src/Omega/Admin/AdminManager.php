@@ -34,7 +34,7 @@ use function remove_all_actions;
  */
 class AdminManager
 {
-    /** @var array List of admin page identifiers where notices should be hidden. */
+    /** @var array<int|string, string> List of admin page identifiers where notices should be hidden. */
     private array $hiddenPages = [];
 
     /**

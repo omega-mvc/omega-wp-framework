@@ -134,14 +134,14 @@ interface ApplicationInterface extends ContainerInterface
     /**
      * Get all registered API route file paths.
      *
-     * @return array List of API route file paths
+     * @return array<int, string> List of API route file paths
      */
     public function getRestRouteFiles(): array;
 
     /**
      * Get all registered admin route file paths.
      *
-     * @return array List of admin route file paths
+     * @return array<int, string> List of admin route file paths
      */
     public function getAdminRouteFiles(): array;
     #endregion
@@ -158,7 +158,7 @@ interface ApplicationInterface extends ContainerInterface
     /**
      * Get all registered migration folder paths.
      *
-     * @return array List of migration directories
+     * @return array<int|string, string> List of migration directories
      */
     public function getMigrationFolders(): array;
     #endregion

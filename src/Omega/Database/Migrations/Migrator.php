@@ -56,7 +56,7 @@ use function sprintf;
 class Migrator
 {
     #region Properties
-    /** @var string|array Application identifier used as table prefix. */
+    /** @var string|array<int|string, string> Application identifier used as table prefix. */
     protected string|array $prefix;
 
     /** @var string Base filesystem path where migrations are located. */
@@ -109,7 +109,6 @@ class Migrator
 
         try {
             Schema::create($this->tableName, function (Blueprint $table) {
-                /** @noinspection PhpRedundantOptionalArgumentInspection */
                 $table->id('id');
                 $table->string('name');
                 $table->string('file');
@@ -249,8 +248,6 @@ class Migrator
 
                     if (method_exists($migration, 'down')) {
                         $migration->down();
-                        /** @noinspection PhpArrayWriteIsNotUsedInspection */
-                        $success[] = $mg->name;
                         $model->where(['id' => $mg->id])->delete();
                     }
                 }

@@ -10,8 +10,6 @@
  * @version   1.0.0
  */
 
-/** @noinspection PhpGetterAndSetterCanBeReplacedWithPropertyHooksInspection */
-
 declare(strict_types=1);
 
 namespace Omega\Application;
@@ -61,10 +59,10 @@ class Application extends AbstractApplication
     /** @var string Base path of the application. */
     protected string $basePath;
 
-    /** @var array Route file definitions grouped by type. */
+    /** @var array<int, array{type: string, path: string}> Route file definitions grouped by type. */
     protected array $routeFiles = [];
 
-    /** @var array Registered migration folder paths. */
+    /** @var array<int|string, string> Registered migration folder paths. */
     protected array $migrationFolders = [];
 
     /** @var string Root directory of the plugin. */
@@ -230,6 +228,8 @@ class Application extends AbstractApplication
 
     /**
      * {@inheritdoc}
+     *
+     * @return array<int, string>
      */
     public function getRestRouteFiles(): array
     {
@@ -241,6 +241,8 @@ class Application extends AbstractApplication
 
     /**
      * {@inheritdoc}
+     *
+     * @return array<int, string>
      */
     public function getAdminRouteFiles(): array
     {
@@ -262,6 +264,8 @@ class Application extends AbstractApplication
 
     /**
      * {@inheritdoc}
+     *
+     * @return array<int|string, string>
      */
     public function getMigrationFolders(): array
     {

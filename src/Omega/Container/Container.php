@@ -193,8 +193,7 @@ class Container implements ContainerInterface
      */
     public function invoke(callable $callable, mixed ...$parameters): mixed
     {
-        /** @noinspection PhpClosureCanBeConvertedToFirstClassCallableInspection */
-        $reflection = new ReflectionFunction(Closure::fromCallable($callable));
+        $reflection = new ReflectionFunction($callable(...));
 
         if ($reflection->getNumberOfParameters() === 0) {
             return $reflection->invoke();

@@ -10,8 +10,6 @@
  * @version   1.0.0
  */
 
-/** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-
 declare(strict_types=1);
 
 namespace Omega\Validator;
@@ -150,10 +148,10 @@ use const FILTER_VALIDATE_INT;
 class Validator
 {
     #region Properties
-    /** @var array Validation error messages indexed by field name. */
+    /** @var array<string, string> Validation error messages indexed by field name. */
     protected array $errors = [];
 
-    /** @var array Data that passed all validation rules. */
+    /** @var array<string, mixed> Data that passed all validation rules. */
     protected array $validatedData = [];
     #endregion
 
@@ -161,8 +159,8 @@ class Validator
     /**
      * Create a new validator instance.
      *
-     * @param array $data Input data to validate
-     * @param array $rules Validation rules definition
+     * @param array<string, mixed> $data Input data to validate
+     * @param array<string, array<int, string>|string> $rules Validation rules definition
      * @return void
      */
     public function __construct(protected array $data, protected array $rules)
@@ -289,6 +287,8 @@ class Validator
 
     /**
      * Hook executed before validation starts for data preprocessing.
+     *
+     * @return void
      */
     protected function prepareForValidation()
     {
@@ -298,7 +298,7 @@ class Validator
     /**
      * Retrieve validation rules used by the validator.
      *
-     * @return array<string, array|string> Validation rules set
+     * @return array<string, array<int, string>|string> Validation rules set
      */
     public function rules(): array
     {
@@ -308,7 +308,7 @@ class Validator
     /**
      * Retrieve all validation errors.
      *
-     * @return array List of validation errors
+     * @return array<string, string> List of validation errors
      */
     public function errors(): array
     {
@@ -582,7 +582,7 @@ class Validator
     /**
      * Merge additional values into the validation dataset.
      *
-     * @param array $fields Key-value pairs to merge into data
+     * @param array<string, mixed> $fields Key-value pairs to merge into data
      * @return void
      */
     protected function merge(array $fields): void
@@ -619,7 +619,7 @@ class Validator
     /**
      * Return the original input data.
      *
-     * @return array Raw input data
+     * @return array<string, mixed> Raw input data
      */
     public function getAll(): array
     {
@@ -678,7 +678,7 @@ class Validator
     /**
      * Determine if a nested key exists inside an array using dot notation.
      *
-     * @param array $data Input data array
+     * @param array<string, mixed> $data Input data array
      * @param string $key Dot notation key path
      * @return bool
      */
@@ -716,7 +716,7 @@ class Validator
     /**
      * Get raw input dataset.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     protected function getData(): array
     {

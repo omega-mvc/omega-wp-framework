@@ -74,7 +74,7 @@ abstract class AbstractCommand extends Command
     /** @var string|null Short description displayed in the command list */
     protected ?string $description = null;
 
-    /** @var array Alternative names that can be used to execute the command */
+    /** @var array<int|string, string> Alternative names that can be used to execute the command */
     protected array $aliases = [];
 
     /** @var bool Whether the command should be hidden from the command list */
@@ -168,8 +168,6 @@ abstract class AbstractCommand extends Command
             }
 
             [$mode, $description] = $config;
-            /** @noinspection PhpUnusedLocalVariableInspection */
-            $default = $config[2] ?? null;
 
             if (!is_int($mode)) {
                 throw new InvalidArgumentException("Argument '$name': mode must be an integer.");
@@ -193,9 +191,6 @@ abstract class AbstractCommand extends Command
             $shortcut = $config[0];
             $mode = $config[1];
             $description = $config[2];
-            /** @noinspection PhpUnusedLocalVariableInspection */
-            $default         = $config[3] ?? null;
-            $suggestedValues = $config[4] ?? [];
 
             if (!is_int($mode)) {
                 throw new InvalidArgumentException("Option '$name': mode must be an integer.");

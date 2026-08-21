@@ -45,15 +45,15 @@ use Omega\Facade\AbstractFacade;
  * @method static QueryBuilder table(string $table)
  * @method static string prepare(string $query, mixed ...$args)
  * @method static bool|int query(string $query)
- * @method static array|object|null getResults(string $query)
+ * @method static array<int|string, mixed>|object|null getResults(string $query)
  * @method static string|null getVar(string $query)
- * @method static bool|int delete(string $table, array $whereValues, ?array $whereFormat = null)
- * @method static bool|int insert(string $table, array $data)
- * @method static bool|int update(string $table, array $data, array $whereValues)
- * @method static bool|int insertMultiple(string $tableName, array $data)
+ * @method static bool|int delete(string $table, array<int|string, mixed> $whereValues, ?array<int|string, mixed> $whereFormat = null)
+ * @method static bool|int insert(string $table, array<int|string, mixed> $data)
+ * @method static bool|int update(string $table, array<int|string, mixed> $data, array<int|string, mixed> $whereValues)
+ * @method static bool|int insertMultiple(string $tableName, array<int|string, mixed> $data)
  * @method static bool tableExists(string $tableName)
  * @method static string getTableName(string $tableName, string $prefix = '')
- * @method static void createOrUpdateTable(string $tableName, array $columns)
+ * @method static void createOrUpdateTable(string $tableName, array<int|string, mixed> $columns)
  *
  * @see Database
  */

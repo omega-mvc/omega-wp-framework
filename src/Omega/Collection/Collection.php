@@ -76,6 +76,8 @@ use function usort;
  * @copyright Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
  * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version   1.0.0
+ * @implements ArrayAccess<int|string, mixed>
+ * @implements IteratorAggregate<int|string, mixed>
  */
 class Collection implements ArrayAccess, Countable, IteratorAggregate
 {
@@ -120,7 +122,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      * Transform each item in the collection using a callback.
      *
      * @param callable $callback A function applied to each item and its key
-     * @return array The transformed items as a plain array
+     * @return array<int|string, mixed> The transformed items as a plain array
      */
     public function map(callable $callback): array
     {
@@ -173,7 +175,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Convert the collection into a plain array, recursively converting models when needed.
      *
-     * @return array The collection represented as a plain PHP array
+     * @return array<int|string, mixed> The collection represented as a plain PHP array
      */
     public function toArray(): array
     {
@@ -186,7 +188,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Return the raw underlying items of the collection without transformation.
      *
-     * @return array The raw items stored in the collection
+     * @return array<int|string, mixed> The raw items stored in the collection
      */
     public function getAll(): array
     {
@@ -241,7 +243,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      *
      * @param string|int $key The property or array key to compare against
      * @param mixed $value The value to match strictly against each item
-     * @return array A filtered array of items matching the condition
+     * @return array<int|string, mixed> A filtered array of items matching the condition
      */
     public function where(string|int $key, mixed $value): array
     {
@@ -351,7 +353,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Merge the collection with another collection or array of items.
      *
-     * @param array|Collection $collection The items to merge into the collection
+     * @param array<int|string, mixed>|Collection $collection The items to merge into the collection
      * @return static The updated collection instance
      */
     public function merge(array|Collection $collection): static
@@ -492,7 +494,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Get an iterator for traversing the collection items.
      *
-     * @return ArrayIterator An iterator for the collection items
+     * @return ArrayIterator<int|string, mixed> An iterator for the collection items
      */
     public function getIterator(): ArrayIterator
     {

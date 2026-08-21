@@ -28,8 +28,8 @@ use const DIRECTORY_SEPARATOR;
  * unnecessary and would in fact be harmful: it would check the *global* scope
  * and silently skip this declaration if a global `slash()` happened to exist.
  *
- * @param string|array $path The path or list of paths to normalize.
- * @return string|array The normalized path(s) with correct directory separators.
+ * @param string|array<int|string, string> $path The path or list of paths to normalize.
+ * @return string|array<int|string, string> The normalized path(s) with correct directory separators.
  */
 function slash(string|array $path): string|array
 {

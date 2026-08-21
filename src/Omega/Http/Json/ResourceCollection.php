@@ -52,7 +52,7 @@ class ResourceCollection
     /** @var bool Merge meta into root level instead of nesting under "meta". */
     public bool $mergeMeta = false;
 
-    /** @var array Extra metadata attached to the collection response. */
+    /** @var array<string, mixed> Extra metadata attached to the collection response. */
     protected array $meta = [];
 
     /** @var AbstractModel Model instance used for dynamic attribute resolution. */
@@ -66,9 +66,9 @@ class ResourceCollection
      * Supports raw collections or paginated results and optionally applies
      * a resource transformer class for each item.
      *
-     * @param Collection|Paginator $collection Source data collection or paginator.
+     * @param Collection $collection Source data collection.
      * @param string|null $collects Optional resource class for item transformation.
-     * @param array $options Configuration options (e.g. meta merging).
+     * @param array<string, mixed> $options Configuration options (e.g. meta merging).
      */
     public function __construct(Collection $collection, ?string $collects = null, array $options = [])
     {
@@ -90,7 +90,7 @@ class ResourceCollection
      *
      * @param Paginator $paginator Source paginator to extract collection and meta from.
      * @param string|null $collects Optional resource class for item transformation.
-     * @param array $options Configuration options (e.g. meta merging).
+     * @param array<string, mixed> $options Configuration options (e.g. meta merging).
      */
     public static function fromPaginator(Paginator $paginator, ?string $collects = null, array $options = []): static
     {
@@ -110,7 +110,7 @@ class ResourceCollection
      * If a resource class is defined, each item is transformed individually.
      * Otherwise, raw collection data is returned.
      *
-     * @return array Transformed collection data.
+     * @return array<int|string, mixed> Transformed collection data.
      */
     public function collection(): array
     {
@@ -132,7 +132,7 @@ class ResourceCollection
     /**
      * Retrieve metadata associated with the collection.
      *
-     * @return array Collection metadata.
+     * @return array<string, mixed> Collection metadata.
      */
     public function getMeta(): array
     {
@@ -145,8 +145,8 @@ class ResourceCollection
      * Depending on configuration, metadata is either merged into the root
      * structure or nested under a "meta" key.
      *
-     * @param array $data Base response payload.
-     * @return array Payload enriched with metadata.
+     * @param array<string, mixed> $data Base response payload.
+     * @return array<string, mixed> Payload enriched with metadata.
      */
     public function appendMeta(array $data): array
     {
@@ -170,7 +170,7 @@ class ResourceCollection
      *
      * Includes transformed data and optional metadata.
      *
-     * @return array Final serialized representation of the collection.
+     * @return array<string, mixed> Final serialized representation of the collection.
      */
     public function toArray(): array
     {

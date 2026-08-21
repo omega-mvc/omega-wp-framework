@@ -157,7 +157,7 @@ class Sanitizer
      * Non-array values return an empty array.
      *
      * @param mixed $value Value to sanitize
-     * @return array Sanitized array of strings
+     * @return array<int|string, string> Sanitized array of strings
      */
     public static function arrayOfStrings(mixed $value): array
     {

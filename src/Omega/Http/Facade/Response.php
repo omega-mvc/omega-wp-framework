@@ -41,7 +41,7 @@ use WP_REST_Response;
  * @version    1.0.0
  *
  * phpcs:ignore
- * @method static WP_Error|WP_REST_Response json(array $data = [], int $status = 200, array $headers = [], int $options = 0)
+ * @method static WP_Error|WP_REST_Response json(array<int|string, mixed> $data = [], int $status = 200, array<string, string> $headers = [], int $options = 0)
  */
 class Response extends AbstractFacade
 {

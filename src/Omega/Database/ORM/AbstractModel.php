@@ -79,6 +79,7 @@ use function ucwords;
  * @copyright  Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
+ * @implements ArrayAccess<string, mixed>
  */
 abstract class AbstractModel implements ArrayAccess
 {
@@ -499,7 +500,7 @@ abstract class AbstractModel implements ArrayAccess
     /**
      * Specify the columns that should be selected by the query.
      *
-     * @param string|array $columns Column name or list of columns to select.
+     * @param string|array<int|string, string> $columns Column name or list of columns to select.
      * @return QueryBuilder The query builder instance for method chaining.
      */
     public static function select(string|array $columns): QueryBuilder
@@ -519,7 +520,7 @@ abstract class AbstractModel implements ArrayAccess
      * within the provided list of values.
      *
      * @param string $column The database column name.
-     * @param array $values List of accepted values.
+     * @param array<int|string, mixed> $values List of accepted values.
      * @return QueryBuilder The query builder instance for method chaining.
      */
     public static function whereIn(string $column, array $values = []): QueryBuilder

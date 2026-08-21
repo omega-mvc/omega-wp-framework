@@ -114,8 +114,7 @@ class ForeignIdColumnDefinition extends ColumnDefinition
     {
         $parts = explode('_', $column);
 
-        /** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-        return "{$parts[0]}s";
+        return $parts[0] . 's';
     }
     #endregion
 }

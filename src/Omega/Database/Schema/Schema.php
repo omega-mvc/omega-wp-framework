@@ -79,8 +79,7 @@ class Schema
     {
         global $wpdb;
 
-        /** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-        $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}$table");
+        $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . $table);
     }
 
     /**

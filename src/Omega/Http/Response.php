@@ -55,9 +55,9 @@ class Response
      *
      * If the response creation fails, the original WP_Error is returned.
      *
-     * @param array $data Response payload data.
+     * @param array<int|string, mixed> $data Response payload data.
      * @param int $status HTTP status code.
-     * @param array $headers Optional response headers.
+     * @param array<string, string> $headers Optional response headers.
      * @param int $options Reserved for future JSON encoding options.
      * @return WP_Error|WP_REST_Response REST-compatible response object.
      */

@@ -10,8 +10,6 @@
  * @version   1.0.0
  */
 
-/** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-
 declare(strict_types=1);
 
 namespace Omega\Database\Schema;
@@ -61,7 +59,7 @@ class Blueprint
     /** @var string Current schema operation command, such as create or alter. */
     protected string $command = 'alter';
 
-    /** @var array Registered schema commands and foreign key definitions. */
+    /** @var array<int, array{string, string}|array{string, string, array<int|string, string>}> Registered schema commands and foreign key definitions. */
     protected array $commands = [];
     #endregion
 
@@ -729,7 +727,7 @@ class Blueprint
     /**
      * Specify an index for the table.
      *
-     * @param  string|array  $columns
+     * @param  string|array<int|string, string>  $columns
      * @param  string|null  $name
      * @return $this
      */
@@ -741,7 +739,7 @@ class Blueprint
     /**
      * Specify a unique index for the table.
      *
-     * @param  string|array  $columns
+     * @param  string|array<int|string, string>  $columns
      * @param  string|null  $name
      * @return $this
      */
@@ -754,7 +752,7 @@ class Blueprint
      * Add a new index command to the blueprint.
      *
      * @param  string  $type
-     * @param  string|array  $columns
+     * @param  string|array<int|string, string>  $columns
      * @param  string|null  $index
      * @return $this
      */
@@ -773,7 +771,7 @@ class Blueprint
      * Create a default index name for the table.
      *
      * @param  string  $type
-     * @param  array  $columns
+     * @param  array<int|string, string>  $columns
      * @return string
      */
     protected function createIndexName(string $type, array $columns): string
@@ -786,7 +784,7 @@ class Blueprint
     /**
      * Quote index columns, supporting prefix lengths like "column(20)".
      *
-     * @param  array  $columns
+     * @param  array<int|string, string>  $columns
      * @return string
      */
     private function quoteIndexColumns(array $columns): string
@@ -861,7 +859,7 @@ class Blueprint
     /**
      * Indicate that the given index should be dropped.
      *
-     * @param  string|array  $index  Index name or array of columns to resolve the conventional name.
+     * @param  string|array<int|string, string>  $index  Index name or array of columns to resolve the conventional name.
      * @return $this
      */
     public function dropIndex(string|array $index): static
@@ -888,7 +886,7 @@ class Blueprint
      *
      * @param  string  $command
      * @param  string  $type
-     * @param  string|array  $index
+     * @param  string|array<int|string, string>  $index
      * @return $this
      */
     protected function dropIndexCommand(string $command, string $type, string|array $index): static

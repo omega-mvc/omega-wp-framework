@@ -10,8 +10,6 @@
  * @version   1.0.0
  */
 
-/** @noinspection PhpUnnecessaryCurlyVarSyntaxInspection */
-
 declare(strict_types=1);
 
 namespace Omega\Routing;
@@ -100,7 +98,7 @@ class Router
     /** @var int Current nesting level for route groups. */
     protected int $groupDepth = 0;
 
-    /** @var array Additional configuration options for admin page routing. */
+    /** @var array<string, mixed> Additional configuration options for admin page routing. */
     protected array $pageOptions = [];
     #endregion
 
@@ -128,10 +126,10 @@ class Router
      * Supports both REST and admin routes. The URI is normalized and prefixed
      * according to the current routing group context.
      *
-     * @param string|array $httpMethod HTTP method(s) for the route (GET, POST, etc.).
+     * @param string|array<int, string> $httpMethod HTTP method(s) for the route (GET, POST, etc.).
      * @param string       $uri        Route URI pattern.
      * @param mixed        $action     Controller action definition [Class, method].
-     * @return array Registered route definition.
+     * @return array<string, mixed> Registered route definition.
      * @throws Exception If route registration fails.
      */
     public function addRoute(string|array $httpMethod, string $uri, mixed $action): array
@@ -208,8 +206,8 @@ class Router
      * @param string       $prefix     API namespace/prefix.
      * @param string       $uri        Route URI pattern.
      * @param mixed        $action     Controller action [Class, method].
-     * @param array        $guards     List of authorization rules (capabilities or callbacks).
-     * @param string|array $httpMethod HTTP method or list of methods (GET, POST, etc.).
+     * @param array<int|string, mixed> $guards     List of authorization rules (capabilities or callbacks).
+     * @param string|array<int, string> $httpMethod HTTP method or list of methods (GET, POST, etc.).
      * @return void
      */
     protected function registerRestRoute(
@@ -262,9 +260,9 @@ class Router
     /**
      * Process a controller request and dispatch it to REST or Admin handler.
      *
-     * @param array $action  Controller action [class, method].
+     * @param array<int, string> $action  Controller action [class, method].
      * @param mixed $request Optional request payload or WP_REST_Request.
-     * @return array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
+     * @return array<int|string, mixed>|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
      * @throws Exception If request processing fails.
      */
     protected function processRequest(array $action, mixed $request = null): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
@@ -282,9 +280,10 @@ class Router
      *
      * Resolves controller dependencies, executes method and normalizes output.
      *
-     * @param array $action Controller class and method.
+     * @param array<int, string> $action Controller class and method.
      * @param WP_REST_Request $request Incoming REST request instance.
-     * @return WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource Normalized API response.
+     * @return WP_REST_Response|WP_Error|array<int|string, mixed>|ResourceCollection|JsonResource
+     *                                     Normalized API response.
      * @throws Exception If controller resolution fails.
      */
     private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource
@@ -314,7 +313,7 @@ class Router
      *
      * Executes controller method and prints result as HTML or debug output.
      *
-     * @param array $action Controller class and method.
+     * @param array<int, string> $action Controller class and method.
      * @param mixed $request Optional request payload.
      * @return void
      * @throws Exception If controller resolution fails.
@@ -356,8 +355,8 @@ class Router
      * request injection, container resolution, or default value fallback.
      *
      * @param ReflectionMethod           $method  Target method to resolve.
-     * @param WP_REST_Request|array|null $request Current request context.
-     * @return WP_Error|array Resolved dependency arguments.
+     * @param WP_REST_Request|array<string, mixed>|null $request Current request context.
+     * @return WP_Error|array<int, mixed> Resolved dependency arguments.
      * @throws Exception If a dependency cannot be resolved.
      */
     protected function resolveDependencies(
@@ -398,7 +397,7 @@ class Router
      *
      * @param ReflectionNamedType        $type    Parameter type reflection.
      * @param ReflectionParameter        $param   Parameter reflection.
-     * @param WP_REST_Request|array|null $request Current request context.
+     * @param WP_REST_Request|array<string, mixed>|null $request Current request context.
      * @return mixed Resolved value or validation error.
      * @throws Exception If the dependency cannot be resolved.
      */
@@ -429,7 +428,7 @@ class Router
      *
      * @param string                     $className FormRequest subclass name.
      * @param ReflectionParameter        $param     Parameter reflection.
-     * @param WP_REST_Request|array|null $request   Current request context.
+     * @param WP_REST_Request|array<string, mixed>|null $request   Current request context.
      * @return FormRequest|WP_Error Validated request or validation error.
      */
     private function resolveFormRequest(
@@ -464,7 +463,7 @@ class Router
      * exception indicating the request context is missing.
      *
      * @param ReflectionParameter        $param   Parameter reflection.
-     * @param WP_REST_Request|array|null $request Current request context.
+     * @param WP_REST_Request|array<string, mixed>|null $request Current request context.
      * @return WP_REST_Request The resolved request instance.
      * @throws Exception If no valid request is available.
      */
@@ -683,7 +682,7 @@ class Router
      * Useful for nested admin routing groups.
      *
      * @param mixed $id Page identifier.
-     * @param array $options Optional page configuration.
+     * @param array<string, mixed> $options Optional page configuration.
      * @return Router New router instance.
      */
     public function page(mixed $id, array $options = []): Router
@@ -727,7 +726,7 @@ class Router
      *
      * Flattens nested guard definitions and filters by group depth.
      *
-     * @return array List of resolved guards.
+     * @return array<int|string, mixed> List of resolved guards.
      */
     protected function applyGuards(): array
     {
@@ -750,7 +749,7 @@ class Router
     /**
      * Retrieve all registered routes.
      *
-     * @return array List of defined routes.
+     * @return array<int, array<string, mixed>> List of defined routes.
      */
     public function getRoutes(): array
     {

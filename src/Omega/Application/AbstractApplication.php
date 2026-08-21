@@ -50,7 +50,7 @@ use function method_exists;
 abstract class AbstractApplication extends Container implements ApplicationInterface
 {
     #region Properties
-    /** @var array Registered service provider instances. */
+    /** @var array<int|string, mixed> Registered service provider instances. */
     protected array $serviceProviders = [];
 
     /** @var array<class-string> Service providers defined by the application layer. */
