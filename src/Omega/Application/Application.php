@@ -25,6 +25,7 @@ use function array_map;
 use function array_values;
 use function rtrim;
 use function wp_get_theme;
+
 use const DIRECTORY_SEPARATOR;
 
 /**

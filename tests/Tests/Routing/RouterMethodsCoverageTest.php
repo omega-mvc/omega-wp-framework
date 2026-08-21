@@ -533,7 +533,11 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router = $this->makeRouter();
         $router->rest();
 
-        $route = $router->addRoute('GET', '/tasks/{taskId}/items/{itemId}', ['Tests\Routing\Support\StubController', 'handle']);
+        $route = $router->addRoute(
+            'GET',
+            '/tasks/{taskId}/items/{itemId}',
+            ['Tests\Routing\Support\StubController', 'handle'],
+        );
 
         $this->assertSame('/tasks/(?P<taskId>[^/]+)/items/(?P<itemId>[^/]+)', $route['uri']);
     }

@@ -6,10 +6,10 @@ namespace Tests\Container\Support;
 
 class ARecursive
 {
-	public BRecursive $b;
+    public BRecursive $b;
 
-	public function __construct(BRecursive $b)
-	{
-		$this->b = $b;
-	}
+    public function __construct(BRecursive $b)
+    {
+        $this->b = $b;
+    }
 }

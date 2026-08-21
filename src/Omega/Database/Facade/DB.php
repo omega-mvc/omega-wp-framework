@@ -47,7 +47,11 @@ use Omega\Facade\AbstractFacade;
  * @method static bool|int query(string $query)
  * @method static array<int|string, mixed>|object|null getResults(string $query)
  * @method static string|null getVar(string $query)
- * @method static bool|int delete(string $table, array<int|string, mixed> $whereValues, ?array<int|string, mixed> $whereFormat = null)
+ * @method static bool|int delete(
+ *     string $table,
+ *     array<int|string, mixed> $whereValues,
+ *     ?array<int|string, mixed> $whereFormat = null
+ * )
  * @method static bool|int insert(string $table, array<int|string, mixed> $data)
  * @method static bool|int update(string $table, array<int|string, mixed> $data, array<int|string, mixed> $whereValues)
  * @method static bool|int insertMultiple(string $tableName, array<int|string, mixed> $data)

@@ -265,8 +265,10 @@ class Router
      * @return array<int|string, mixed>|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
      * @throws Exception If request processing fails.
      */
-    protected function processRequest(array $action, mixed $request = null): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
-    {
+    protected function processRequest(
+        array $action,
+        mixed $request = null,
+    ): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource {
         if ($this->routeType === 'admin') {
             $this->processAdminRequest($action, $request);
             return null;
@@ -286,8 +288,10 @@ class Router
      *                                     Normalized API response.
      * @throws Exception If controller resolution fails.
      */
-    private function processRestRequest(array $action, WP_REST_Request $request): WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource
-    {
+    private function processRestRequest(
+        array $action,
+        WP_REST_Request $request,
+    ): WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource {
         [$controllerClass, $method] = $action;
 
         $reflector = new ReflectionClass($controllerClass);

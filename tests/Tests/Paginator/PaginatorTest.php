@@ -195,7 +195,7 @@ final class PaginatorTest extends TestCase
      */
     public function testSetCurrentPageReturnsOneForNull(): void
     {
-        $pager = new class([], 0, 10) extends Paginator {
+        $pager = new class ([], 0, 10) extends Paginator {
             public function exposeSetCurrentPage(?int $page): int
             {
                 return $this->setCurrentPage($page);

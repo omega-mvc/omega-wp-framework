@@ -76,7 +76,8 @@ class SettingsRepository
      * and stored settings.
      *
      * @param ApplicationInterface $app The application instance used to resolve the option key prefix.
-     * @param array<int|string, mixed> $defaults Default configuration values used as base settings before merging stored data.
+     * @param array<int|string, mixed> $defaults
+     *        Default configuration values used as base settings before merging stored data.
      * @return void
      */
     public function __construct(protected ApplicationInterface $app, array $defaults = [])

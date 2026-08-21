@@ -859,7 +859,8 @@ class Blueprint
     /**
      * Indicate that the given index should be dropped.
      *
-     * @param  string|array<int|string, string>  $index  Index name or array of columns to resolve the conventional name.
+     * @param  string|array<int|string, string>  $index
+     *         Index name or array of columns to resolve the conventional name.
      * @return $this
      */
     public function dropIndex(string|array $index): static

@@ -20,8 +20,6 @@ use Omega\Routing\RouterBuilder;
 use Omega\Routing\RouterServiceProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
 
-
-
 /**
  * Tests the RouterServiceProvider registration and boot behavior.
  *

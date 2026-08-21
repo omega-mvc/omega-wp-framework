@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace Omega\Container;
 
+use Closure;
+
 /**
  * Defines the contract for a dependency injection container.
  *
@@ -83,10 +85,10 @@ interface ContainerInterface
      * The service definition may be a class name or a factory closure.
      *
      * @param string $identifier Unique service identifier.
-     * @param mixed $definition Optional service definition.
+     * @param string|Closure|null $definition Optional service definition.
      * @return void
      */
-    public function singleton(string $identifier, mixed $definition = null): void;
+    public function singleton(string $identifier, string|Closure|null $definition = null): void;
 
     /**
      * Register an alias for an existing service identifier.

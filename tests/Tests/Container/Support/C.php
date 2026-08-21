@@ -6,10 +6,10 @@ namespace Tests\Container\Support;
 
 class C
 {
-	public B $b;
+    public B $b;
 
-	public function __construct(B $b)
-	{
-		$this->b = $b;
-	}
+    public function __construct(B $b)
+    {
+        $this->b = $b;
+    }
 }

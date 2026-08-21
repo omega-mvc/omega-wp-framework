@@ -29,9 +29,13 @@ use ReflectionParameter;
 use function array_key_exists;
 use function array_map;
 use function array_pop;
+use function class_exists;
 use function count;
+use function enum_exists;
 use function in_array;
+use function interface_exists;
 use function is_null;
+use function trait_exists;
 
 /**
  * Dependency injection container implementation.
@@ -127,16 +131,14 @@ class Container implements ContainerInterface
     /**
      * {@inheritdoc}
      */
-    public function singleton(string $identifier, mixed $definition = null): void
+    public function singleton(string $identifier, string|Closure|null $definition = null): void
     {
-        $definition = $definition ?: $identifier;
-
-        $this->bindFactory($identifier, function ($container) use ($definition) {
+        $this->bindFactory($identifier, function ($container) use ($identifier, $definition) {
             static $instance;
             if ($instance === null) {
                 $instance = ($definition instanceof Closure)
                     ? $definition($container)
-                    : $this->resolve($definition);
+                    : $this->resolve($definition ?? $identifier);
             }
             return $instance;
         });
@@ -199,7 +201,7 @@ class Container implements ContainerInterface
             return $reflection->invoke();
         }
 
-        return $reflection->invokeArgs($this->resolveMethodDependencies($reflection, $parameters));
+        return $reflection->invokeArgs($this->resolveMethodDependencies($reflection, array_values($parameters)));
     }
     #endregion
 
@@ -225,6 +227,32 @@ class Container implements ContainerInterface
 
     #region Instance Creation
     /**
+     * Check whether the given name refers to an existing class-like element.
+     *
+     * Returns true when the identifier matches an existing class, interface,
+     * trait, or enum.
+     *
+     * @phpstan-assert-if-true class-string $className
+     *
+     * @param string $className Fully-qualified class-like name.
+     * @return bool True when the name exists.
+     */
+    private function classLikeExists(string $className): bool
+    {
+        if (enum_exists($className)) {
+            return true;
+        } elseif (class_exists($className)) {
+            return true;
+        } elseif (interface_exists($className)) {
+            return true;
+        } elseif (trait_exists($className)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Instantiate the given class resolving its constructor dependencies.
      *
      * If the class defines a constructor, all unresolved object dependencies
@@ -233,18 +261,18 @@ class Container implements ContainerInterface
      *
      * @param string $className Fully-qualified class name.
      * @param mixed ...$parameters Optional runtime constructor parameters.
-     * @return string|object|null A newly created class instance.
+     * @return object A newly created class instance.
      * @throws ClassNotFoundException If the class cannot be loaded.
      * @throws NotInstantiableException If the class cannot be instantiated.
      * @throws ReflectionException If reflection fails.
      */
-    private function createInstance(string $className, mixed ...$parameters): string|null|object
+    private function createInstance(string $className, mixed ...$parameters): object
     {
-        try {
-            $reflection = new ReflectionClass($className);
-        } catch (ReflectionException) {
+        if (!$this->classLikeExists($className)) {
             throw new ClassNotFoundException($className);
         }
+
+        $reflection = new ReflectionClass($className);
 
         if (!$reflection->isInstantiable()) {
             throw new NotInstantiableException($className);
@@ -256,7 +284,7 @@ class Container implements ContainerInterface
             return $reflection->newInstance();
         }
 
-        return $reflection->newInstanceArgs($this->resolveMethodDependencies($constructor, $parameters));
+        return $reflection->newInstanceArgs($this->resolveMethodDependencies($constructor, array_values($parameters)));
     }
     #endregion
 
