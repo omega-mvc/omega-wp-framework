@@ -169,6 +169,91 @@ final class CollectionTest extends TestCase
     }
 
     /**
+     * Test pluck() with a key parameter on an empty collection returns an empty result.
+     */
+    public function testPluckWithKeyOnEmptyCollectionReturnsEmpty(): void
+    {
+        $result = (new Collection([]))->pluck('name', 'id');
+
+        $this->assertSame([], $result->getAll());
+    }
+
+    /**
+     * Test pluck() indexes results using string keys when the key field is a string.
+     */
+    public function testPluckIndexesResultsByStringKey(): void
+    {
+        $items = [
+            (object) ['role' => 'admin', 'name' => 'Ada'],
+            (object) ['role' => 'editor', 'name' => 'Grace'],
+        ];
+
+        $this->assertSame(
+            ['admin' => 'Ada', 'editor' => 'Grace'],
+            (new Collection($items))->pluck('name', 'role')->getAll()
+        );
+    }
+
+    /**
+     * Test pluck() skips items where the key property does not exist.
+     */
+    public function testPluckSkipsItemsWithMissingKey(): void
+    {
+        $items = [
+            (object) ['id' => 1, 'name' => 'Ada'],
+            (object) ['name' => 'NoId'],
+            (object) ['id' => 3, 'name' => 'Grace'],
+        ];
+
+        $this->assertSame(
+            [1 => 'Ada', 3 => 'Grace'],
+            (new Collection($items))->pluck('name', 'id')->getAll()
+        );
+    }
+
+    /**
+     * Test pluck() returns an empty collection when no items have the key property.
+     */
+    public function testPluckReturnsEmptyWhenAllKeysMissing(): void
+    {
+        $items = [
+            (object) ['name' => 'Ada'],
+            (object) ['name' => 'Grace'],
+        ];
+
+        $this->assertSame([], (new Collection($items))->pluck('name', 'id')->getAll());
+    }
+
+    /**
+     * Test pluck() mixes string-keyed and missing-key items.
+     */
+    public function testPluckMixesStringKeysAndMissingKeys(): void
+    {
+        $items = [
+            (object) ['role' => 'admin', 'name' => 'Ada'],
+            (object) ['name' => 'NoRole'],
+            (object) ['role' => 'editor', 'name' => 'Grace'],
+        ];
+
+        $this->assertSame(
+            ['admin' => 'Ada', 'editor' => 'Grace'],
+            (new Collection($items))->pluck('name', 'role')->getAll()
+        );
+    }
+
+    /**
+     * Test pluck() with a single item whose key property is missing.
+     */
+    public function testPluckSingleItemMissingKey(): void
+    {
+        $items = [
+            (object) ['name' => 'Ada'],
+        ];
+
+        $this->assertSame([], (new Collection($items))->pluck('name', 'id')->getAll());
+    }
+
+    /**
      * Test slice() returns a new collection of the requested range.
      */
     public function testSliceReturnsRequestedRange(): void

@@ -141,21 +141,28 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      */
     public function pluck(string|int $value, string|int|null $key = null): Collection
     {
-        $values = array_map(
-            fn (mixed $item): mixed => $this->dataGet($item, $value),
-            $this->items
-        );
-
         if (is_null($key)) {
-            return new self(array_values($values));
+            return new self(array_values(array_map(
+                fn (mixed $item): mixed => $this->dataGet($item, $value),
+                $this->items
+            )));
         }
 
-        $keys = array_map(
-            fn (mixed $item): mixed => $this->dataGet($item, $key),
-            $this->items
+        $result = array_reduce(
+            $this->items,
+            function (array $carry, mixed $item) use ($value, $key): array {
+                $itemKey = $this->dataGet($item, $key);
+
+                if (is_int($itemKey) || is_string($itemKey)) {
+                    $carry[$itemKey] = $this->dataGet($item, $value);
+                }
+
+                return $carry;
+            },
+            []
         );
 
-        return new self(array_combine($keys, $values));
+        return new self($result);
     }
 
     /**
@@ -326,10 +333,10 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     {
         return array_reduce(
             $this->items,
-            function (float|int|string $total, mixed $item) use ($key): float|int|string {
+            function (float|int $total, mixed $item) use ($key): float|int {
                 $value = is_callable($key) ? $key($item) : $this->dataGet($item, $key);
 
-                return is_numeric($value) ? $total + $value : $total;
+                return is_numeric($value) ? $total + $value + 0 : $total;
             },
             0
         );
@@ -375,18 +382,18 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
      * Retrieve a value from a nested array or object using "dot" notation.
      *
      * @param mixed $target The array or object to search within
-     * @param string|null $key The dot-notated key path to retrieve
+     * @param string|int|null $key The dot-notated key path to retrieve
      * @param mixed $default The default value returned if the key does not exist
      * @return mixed The resolved value or the default value if not found
      */
-    public function dataGet(mixed $target, ?string $key, mixed $default = null): mixed
+    public function dataGet(mixed $target, string|int|null $key, mixed $default = null): mixed
     {
         if (is_null($key)) {
             return $target;
         }
 
         return array_reduce(
-            explode('.', $key),
+            explode('.', strval($key)),
             function (mixed $carry, string $segment) use ($default): mixed {
                 if (is_array($carry)) {
                     return array_key_exists($segment, $carry) ? $carry[$segment] : $default;
@@ -430,7 +437,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Determine whether an item exists at the given offset.
      *
-     * @param mixed $offset The array offset to check
+     * @param array-key $offset The array offset to check
      * @return bool True if the offset exists, false otherwise
      */
     public function offsetExists(mixed $offset): bool
@@ -441,7 +448,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Retrieve an item at the specified offset.
      *
-     * @param mixed $offset The array offset to retrieve
+     * @param array-key $offset The array offset to retrieve
      * @return mixed The item at the given offset or null if not set
      */
     #[ReturnTypeWillChange]
@@ -453,7 +460,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Set an item at the specified offset.
      *
-     * @param mixed $offset The array offset to assign, or null to append
+     * @param array-key|null $offset The array offset to assign, or null to append
      * @param mixed $value The value to store at the given offset
      * @return void
      */
@@ -469,7 +476,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     /**
      * Remove an item at the specified offset.
      *
-     * @param mixed $offset The array offset to remove
+     * @param array-key $offset The array offset to remove
      * @return void
      */
     public function offsetUnset(mixed $offset): void
