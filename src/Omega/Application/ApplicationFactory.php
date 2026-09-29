@@ -29,8 +29,6 @@ use function debug_backtrace;
 use function file_exists;
 use function file_get_contents;
 use function json_decode;
-use function is_string;
-use function is_array;
 use function str_contains;
 
 /**
@@ -274,17 +272,13 @@ class ApplicationFactory
             return null;
         }
 
+        /** @var array{autoload?: array{psr-4?: array<int|string, string>}} $composer */
         $composer = json_decode((string) file_get_contents($composerFile), true);
 
-        if (!is_array($composer)) {
-            return null;
-        }
+        /** @var string|null $prefix */
+        $prefix = array_key_first($composer['autoload']['psr-4'] ?? []);
 
-        $autoload = is_array($composer['autoload'] ?? null) ? $composer['autoload'] : [];
-        $prefixes = is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [];
-        $prefix   = array_key_first($prefixes);
-
-        return is_string($prefix) ? $prefix : null;
+        return $prefix;
     }
     #endregion
 }

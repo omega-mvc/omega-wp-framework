@@ -24,7 +24,6 @@ use function array_filter;
 use function array_map;
 use function array_values;
 use function rtrim;
-use function is_string;
 use function wp_get_theme;
 
 use const DIRECTORY_SEPARATOR;
@@ -58,10 +57,10 @@ use const DIRECTORY_SEPARATOR;
 class Application extends AbstractApplication
 {
     // Application display name, meant to be overridden by concrete applications.
-    public const NAME = 'omega';
+    public const string NAME = 'omega';
 
     // Application version, meant to be overridden by concrete applications.
-    public const VERSION = '1.0.0';
+    public const string VERSION = '1.0.0';
 
     #region Properties
     /** @var string Base path of the application. */
@@ -120,9 +119,10 @@ class Application extends AbstractApplication
 
         $this->id = $id;
 
+        /** @var string $normalized */
         $normalized = slash($basePath);
 
-        $basePath = rtrim(is_string($normalized) ? $normalized : $basePath, DIRECTORY_SEPARATOR);
+        $basePath = rtrim($normalized, DIRECTORY_SEPARATOR);
 
         $this->setBasePath($basePath);
         $this->appRoot = $basePath;
@@ -155,7 +155,7 @@ class Application extends AbstractApplication
     {
         $name = static::NAME;
 
-        return is_string($name) ? $name : '';
+        return $name;
     }
 
     /**
@@ -165,7 +165,7 @@ class Application extends AbstractApplication
     {
         $version = static::VERSION;
 
-        return is_string($version) ? $version : '';
+        return $version;
     }
     #endregion
 
@@ -368,10 +368,12 @@ class Application extends AbstractApplication
      */
     public function getApplicationCachePath(): string
     {
-        $base     = rtrim($this->getBasePath(), "/\\");
+        $base = rtrim($this->getBasePath(), "/\\");
+
+        /** @var string $cacheDir */
         $cacheDir = slash(path: '/bootstrap/cache');
 
-        return $base . (is_string($cacheDir) ? $cacheDir : '');
+        return $base . $cacheDir;
     }
 
     /**
