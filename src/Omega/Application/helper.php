@@ -35,7 +35,9 @@ function slash(string|array $path): string|array
 {
     if (is_array($path)) {
         return array_map(
-            static fn(mixed $item): string|array => is_array($item) ? slash($item) : (is_scalar($item) ? (string) $item : ''),
+            static fn(mixed $item): string|array => is_array($item)
+                ? slash($item)
+                : (is_scalar($item) ? (string) $item : ''),
             $path
         );
     }

@@ -9,13 +9,18 @@
     <arg name="colors" />
     <arg value="p" />
 
+    <file>./src</file>
+    <file>./tests</file>
+
     <exclude-pattern>./tests/Tests/Support/fixtures</exclude-pattern>
 
     <rule ref="PSR12">
         <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps" />
         <exclude name="PSR12.Files.FileHeader.IncorrectGrouping" />
     </rule>
+    <!-- Facade @method annotations cannot be wrapped without breaking PHPStan resolution -->
     <rule ref="Generic.Files.LineLength">
+        <exclude-pattern>./src/Omega/Database/Facade/DB.php</exclude-pattern>
         <properties>
             <property name="lineLimit" value="120"/>
             <property name="absoluteLineLimit" value="0"/>
