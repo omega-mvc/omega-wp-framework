@@ -1,1 +1,1 @@
-Hello, <?= $name ?>!
+Hello, <?= isset($name) && is_scalar($name) ? (string) $name : '' ?>!

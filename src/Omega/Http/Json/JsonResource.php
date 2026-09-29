@@ -73,6 +73,10 @@ class JsonResource
      */
     public static function collection(Collection|Paginator $collection, array $options = []): ResourceCollection
     {
+        if ($collection instanceof Paginator) {
+            return ResourceCollection::fromPaginator($collection, static::class, $options);
+        }
+
         return new ResourceCollection($collection, static::class, $options);
     }
 
@@ -124,7 +128,10 @@ class JsonResource
     public function __call(string $method, array $arguments): mixed
     {
         if (method_exists($this->resource, $method)) {
-            return call_user_func_array([$this->resource, $method], $arguments);
+            /** @var callable $callable */
+            $callable = [$this->resource, $method];
+
+            return call_user_func_array($callable, $arguments);
         }
 
         throw new ResourceMethodNotFoundException(sprintf(

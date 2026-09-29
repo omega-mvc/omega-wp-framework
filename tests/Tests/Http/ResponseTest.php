@@ -55,6 +55,7 @@ final class ResponseTest extends TestCase
     {
         $result = (new HttpResponse())->json(['error' => 'Boom.'], 404);
 
+        $this->assertInstanceOf(WPError::class, $result);
         $this->assertSame('Boom.', $result->getErrorMessage());
     }
 
@@ -65,6 +66,7 @@ final class ResponseTest extends TestCase
     {
         $result = (new HttpResponse())->json([], 500);
 
+        $this->assertInstanceOf(WPError::class, $result);
         $this->assertSame('Error', $result->getErrorMessage());
     }
 
@@ -87,6 +89,7 @@ final class ResponseTest extends TestCase
     {
         $result = (new HttpResponse())->json(['id' => 7], 201, ['X-Rate-Limit' => '100']);
 
+        $this->assertInstanceOf(WPRestResponse::class, $result);
         $this->assertSame(201, $result->get_status());
         $this->assertSame(['X-Rate-Limit' => '100'], $result->get_headers());
     }

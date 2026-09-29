@@ -16,6 +16,10 @@ namespace Omega\Application\Exceptions;
 
 use RuntimeException;
 
+use function array_map;
+use function is_scalar;
+use function sprintf;
+
 /**
  * Exception thrown when a requested header value cannot be found.
  *
@@ -43,7 +47,12 @@ final class HeaderNotFoundException extends RuntimeException
     public function __construct(string $message, mixed ...$parameters)
     {
         if ($parameters !== []) {
-            $message = sprintf($message, ...$parameters);
+            $values = array_map(
+                static fn(mixed $parameter): string => is_scalar($parameter) ? (string) $parameter : '',
+                $parameters
+            );
+
+            $message = sprintf($message, ...$values);
         }
 
         parent::__construct($message);

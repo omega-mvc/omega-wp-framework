@@ -8,8 +8,12 @@ use WP_REST_Request;
 
 class WPRestRequestController
 {
+    /** @return array<string, mixed> */
     public function handle(WP_REST_Request $request): array
     {
-        return $request->getParams();
+        /** @var array<string, mixed> $params */
+        $params = $request->get_params();
+
+        return $params;
     }
 }

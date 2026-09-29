@@ -60,7 +60,7 @@ final class RouterTest extends RoutingTestCase
         $router->addRoute('GET', '/tasks', ['App\Http\Controllers\TaskController', 'index']);
 
         WordPressRuntime::$capabilities = false;
-        $this->assertFalse(WordPressRuntime::$restRoutes[0][2]['permission_callback']());
+        $this->assertFalse(WordPressRuntime::restRouteCallable('permission_callback')());
     }
 
     /**
@@ -79,7 +79,7 @@ final class RouterTest extends RoutingTestCase
         $this->assertSame('sub', $namespace);
 
         WordPressRuntime::$capabilities = false;
-        $this->assertFalse(WordPressRuntime::$restRoutes[0][2]['permission_callback']());
+        $this->assertFalse(WordPressRuntime::restRouteCallable('permission_callback')());
     }
 
     /**
@@ -99,7 +99,7 @@ final class RouterTest extends RoutingTestCase
         $this->assertSame('/tasks', $route);
 
         WordPressRuntime::$capabilities = false;
-        $this->assertFalse(WordPressRuntime::$restRoutes[0][2]['permission_callback']());
+        $this->assertFalse(WordPressRuntime::restRouteCallable('permission_callback')());
     }
 
     /**
@@ -118,7 +118,7 @@ final class RouterTest extends RoutingTestCase
         });
 
         WordPressRuntime::$capabilities = false;
-        $this->assertFalse(WordPressRuntime::$restRoutes[0][2]['permission_callback']());
+        $this->assertFalse(WordPressRuntime::restRouteCallable('permission_callback')());
     }
 
     /**

@@ -11,6 +11,7 @@ class ConstructorFormRequestController
     ) {
     }
 
+    /** @return array<string, mixed> */
     public function handle(TestFormRequest $request): array
     {
         return ['id' => $this->id, 'valid' => true];

@@ -1,5 +1,6 @@
 includes:
     - vendor/pestphp/pest-plugin-phpstan/extension.neon
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
 parameters:
     level: 10
     paths:

@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Database\Schema;
 
+use function is_string;
 use function md5;
 use function sprintf;
 use function strlen;
@@ -134,6 +135,7 @@ class ForeignKeyDefinition
      */
     public function getForeignKeySql(): string
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $column     = $this->attributes['name'] ?? null;
@@ -141,7 +143,11 @@ class ForeignKeyDefinition
         $table      = $this->attributes['on'] ?? null;
         $onDelete   = $this->attributes['onDelete'] ?? null;
 
-        if (!$column || !$references || !$table) {
+        if (
+            !is_string($column) || !$column
+            || !is_string($references) || !$references
+            || !is_string($table) || !$table
+        ) {
             return '';
         }
 
@@ -165,7 +171,7 @@ class ForeignKeyDefinition
             $references
         );
 
-        if ($onDelete) {
+        if (is_string($onDelete) && $onDelete) {
             $sql .= ' ON DELETE ' . strtoupper($onDelete);
         }
 

@@ -94,7 +94,10 @@ abstract class FacadeTestCase extends TestCase
     {
         $property = new ReflectionProperty(AbstractFacade::class, 'resolvedInstance');
 
-        return $property->getValue(null);
+        /** @var array<string, mixed> $instances */
+        $instances = $property->getValue(null);
+
+        return $instances;
     }
 
     /**

@@ -26,6 +26,8 @@ use Tests\Application\ApplicationTestCase;
 use Tests\Application\Support\AbstractApplicationStub;
 use Tests\Routing\WordPressRuntime;
 
+use function end;
+
 /**
  * Tests the LocalizationServiceProvider behavior.
  *
@@ -62,10 +64,9 @@ final class LocalizationServiceProviderTest extends ApplicationTestCase
 
         $provider->boot();
 
-        $this->assertSame(
-            ['init', [$provider, 'init']],
-            WordPressRuntime::$actions[array_key_last(WordPressRuntime::$actions)]
-        );
+        $actions = WordPressRuntime::$actions;
+
+        $this->assertSame(['init', [$provider, 'init']], end($actions));
     }
 
     /**
@@ -193,6 +194,9 @@ final class LocalizationServiceProviderTest extends ApplicationTestCase
         $reflection = new ReflectionClass($app);
         $property   = $reflection->getProperty('serviceProviders');
 
-        return $property->getValue($app);
+        /** @var array<class-string, object> $providers */
+        $providers = $property->getValue($app);
+
+        return $providers;
     }
 }

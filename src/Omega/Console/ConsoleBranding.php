@@ -133,7 +133,7 @@ final class ConsoleBranding extends SymfonyConsole
      */
     protected function renderRuntimeInfo(OutputInterface $output): void
     {
-        $env    = $this->app->getEnvironment() ?? 'unknown';
+        $env    = $this->app->getEnvironment();
         $debug  = $this->app->isDebugMode() ? 'ON' : 'OFF';
         $php    = PHP_VERSION;
         $memory = $this->formatBytes(memory_get_usage(true));

@@ -16,6 +16,7 @@ namespace Omega\Database\ORM\Casts;
 
 use Omega\Database\ORM\AbstractModel;
 
+use function is_numeric;
 use function round;
 
 /**
@@ -50,7 +51,7 @@ class MoneyCast implements CastsAttributesInterface
      */
     public function get(AbstractModel $model, string $key, mixed $value, array $attributes): int|float
     {
-        return $value / 100;
+        return (is_numeric($value) ? (float) $value : 0.0) / 100;
     }
 
     /**
@@ -58,7 +59,7 @@ class MoneyCast implements CastsAttributesInterface
      */
     public function set(AbstractModel $model, string $key, mixed $value, array $attributes): int
     {
-        return (int)round($value * 100);
+        return (int)round((is_numeric($value) ? (float) $value : 0.0) * 100);
     }
     #endregion
 }

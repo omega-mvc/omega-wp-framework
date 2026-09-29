@@ -6,6 +6,7 @@ namespace Tests\Routing\Support;
 
 class StubController
 {
+    /** @return array<string, mixed> */
     public function handle(): array
     {
         return ['ok' => true];
@@ -20,6 +21,7 @@ class StubController
     {
     }
 
+    /** @return array<string, mixed> */
     public function withDefault(int $page = 1, string $sort = 'name'): array
     {
         return ['page' => $page, 'sort' => $sort];

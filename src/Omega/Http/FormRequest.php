@@ -69,7 +69,10 @@ class FormRequest extends Validator
      */
     public function isMethod(string $method): bool
     {
-        return strtolower($method) === strtolower($_SERVER['REQUEST_METHOD']);
+        /** @var string $requestMethod */
+        $requestMethod = $_SERVER['REQUEST_METHOD'];
+
+        return strtolower($method) === strtolower($requestMethod);
     }
     #endregion
 }

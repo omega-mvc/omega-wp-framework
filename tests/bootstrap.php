@@ -6,7 +6,9 @@ require __DIR__ . '/../vendor/autoload.php';
 
 require_once __DIR__ . '/ProcessIsolation.php';
 
-require_once __DIR__ . '/Tests/Routing/helper.php';
+if (!function_exists('add_action')) {
+    require_once __DIR__ . '/Tests/Routing/WordPressFunctions.php';
+}
 
 if (!class_exists('WP_Error', false)) {
     class_alias(\Tests\Routing\Support\WPError::class, 'WP_Error');
@@ -22,5 +24,5 @@ if (!class_exists('WP_REST_Response', false)) {
 
 if (!class_exists('wpdb', false)) {
     class_alias(\Tests\Routing\Support\WPDB::class, 'wpdb');
-    $GLOBALS['wpdb'] = new \wpdb();
+    $GLOBALS['wpdb'] = new \wpdb('', '', '', '');
 }

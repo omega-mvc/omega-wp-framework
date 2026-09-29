@@ -58,7 +58,7 @@ class ApplicationTheme extends Application
      *
      * @var string
      */
-    protected const string NAME = 'Omega Theme';
+    public const string NAME = 'Omega Theme';
 
     /**
      * The version of the framework.
@@ -71,7 +71,7 @@ class ApplicationTheme extends Application
      *
      * @var string
      */
-    protected const string VERSION = '1.0.0';
+    public const string VERSION = '1.0.0';
     #endregion
 
     #region Lifecycle

@@ -29,7 +29,8 @@ use function file_exists;
 use function get_option;
 use function glob;
 use function in_array;
-use function method_exists;
+use function is_scalar;
+use function is_string;
 use function sprintf;
 
 /**
@@ -68,8 +69,8 @@ class Migrator
     /** @var string Name of the migrations tracking database table. */
     protected string $tableName;
 
-    /** @var mixed Previous installed application version used for conditional migrations. */
-    protected mixed $oldVersion;
+    /** @var string Previous installed application version used for conditional migrations. */
+    protected string $oldVersion;
     #endregion
 
     #region Lifecycle
@@ -88,7 +89,8 @@ class Migrator
         $this->prefix     = $app->getIdAsUnderscore();
         $this->path       = $app->getBasePath();
         $this->tableName  = "{$this->prefix}_migrations";
-        $this->oldVersion = get_option("{$this->prefix}_version", $app->getHeaderField('Version'));
+        $oldVersion       = get_option("{$this->prefix}_version", $app->getHeaderField('Version'));
+        $this->oldVersion = is_scalar($oldVersion) ? (string) $oldVersion : '';
     }
     #endregion
 
@@ -142,10 +144,9 @@ class Migrator
      */
     public function processMigrationFile(string $file): bool
     {
-        /** @var AbstractMigration $migration */
         $migration = require $file;
 
-        if (! method_exists($migration, 'up')) {
+        if (! $migration instanceof AbstractMigration) {
             return false;
         }
 
@@ -178,9 +179,12 @@ class Migrator
     public function run(): ?array
     {
         $files = glob("$this->path/database/migrations/*.php");
+        $files = $files === false ? [] : $files;
 
-        if (!empty($this->app->getMigrationFolders()) && is_array($this->app->getMigrationFolders())) {
-            foreach ($this->app->getMigrationFolders() as $folder) {
+        $migrationFolders = $this->app->getMigrationFolders();
+
+        if (!empty($migrationFolders)) {
+            foreach ($migrationFolders as $folder) {
                 $extraFiles = glob("$folder/*.php");
                 if ($extraFiles) {
                     $files = array_merge($files, $extraFiles);
@@ -243,13 +247,17 @@ class Migrator
 
         if (!$migrations->isEmpty()) {
             foreach ($migrations as $mg) {
-                if (file_exists($mg->file)) {
-                    $migration = require_once $mg->file;
+                $file = $mg['file'];
 
-                    if (method_exists($migration, 'down')) {
-                        $migration->down();
-                        $model->where(['id' => $mg->id])->delete();
-                    }
+                if (!is_string($file) || !file_exists($file)) {
+                    continue;
+                }
+
+                $migration = require_once $file;
+
+                if ($migration instanceof AbstractMigration) {
+                    $migration->down();
+                    $model->where(['id' => $mg['id']])->delete();
                 }
             }
         }

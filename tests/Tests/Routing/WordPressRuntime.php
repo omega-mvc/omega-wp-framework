@@ -42,14 +42,14 @@ final class WordPressRuntime
     /**
      * Recorded calls to add_menu_page(): list of positional argument arrays.
      *
-     * @var list<array<int, mixed>>
+     * @var list<array<int|string, mixed>>
      */
     public static array $menus = [];
 
     /**
      * Recorded calls to add_submenu_page(): list of positional argument arrays.
      *
-     * @var list<array<int, mixed>>
+     * @var list<array<int|string, mixed>>
      */
     public static array $submenus = [];
 
@@ -87,14 +87,14 @@ final class WordPressRuntime
     /**
      * Recorded calls to add_filter(): list of positional argument arrays.
      *
-     * @var list<array<int, mixed>>
+     * @var list<array<int|string, mixed>>
      */
     public static array $filters = [];
 
     /**
      * Recorded calls to add_action(): list of positional argument arrays.
      *
-     * @var list<array<int, mixed>>
+     * @var list<array<int|string, mixed>>
      */
     public static array $actions = [];
 
@@ -102,7 +102,7 @@ final class WordPressRuntime
      * Recorded calls to load_plugin_textdomain() and load_theme_textdomain():
      * list of positional argument arrays.
      *
-     * @var list<array<int, mixed>>
+     * @var list<array<int|string, mixed>>
      */
     public static array $textdomains = [];
 
@@ -111,6 +111,72 @@ final class WordPressRuntime
      * of wrapping the payload in a WPRestResponse.
      */
     public static bool $forceRestError = false;
+
+    /**
+     * Returns the callable stored at a key of the first registered REST route
+     * args, e.g. "callback" or "permission_callback".
+     *
+     * The recorded args are typed as array<string, mixed>, so the concrete
+     * callable is only known at runtime. The helper narrows it once here
+     * instead of scattering is_callable() checks across every test.
+     *
+     * @param string $key      Key inside the recorded route args.
+     * @return callable The stored callable.
+     *
+     * @throws \RuntimeException When the key is missing or is not callable.
+     */
+    public static function restRouteCallable(string $key = 'callback'): callable
+    {
+        $callable = self::$restRoutes[0][2][$key] ?? null;
+
+        if (!is_callable($callable)) {
+            throw new \RuntimeException(sprintf(
+                'No callable "%s" was recorded on the first REST route.',
+                $key
+            ));
+        }
+
+        return $callable;
+    }
+
+    /**
+     * Returns the admin menu callback WordPress received as argument 5 of the
+     * first add_submenu_page() call.
+     *
+     * @return callable The stored admin menu callback.
+     *
+     * @throws \RuntimeException When no callable was recorded.
+     */
+    public static function firstSubmenuCallback(): callable
+    {
+        $callable = self::$submenus[0][5] ?? null;
+
+        if (!is_callable($callable)) {
+            throw new \RuntimeException('No admin menu callback was recorded on add_submenu_page().');
+        }
+
+        return $callable;
+    }
+
+    /**
+     * Returns the callback WordPress received for the first add_action()
+     * call registered under the given hook name.
+     *
+     * @param string $hookName WordPress hook name, e.g. 'rest_api_init'.
+     * @return callable The stored hook callback.
+     *
+     * @throws \RuntimeException When no callable was recorded for the hook.
+     */
+    public static function firstActionCallback(string $hookName): callable
+    {
+        foreach (self::$actions as $action) {
+            if ($action[0] === $hookName && is_callable($action[1] ?? null)) {
+                return $action[1];
+            }
+        }
+
+        throw new \RuntimeException(sprintf('No callback was recorded for the "%s" hook.', $hookName));
+    }
 
     /**
      * Resets every registry value between tests.

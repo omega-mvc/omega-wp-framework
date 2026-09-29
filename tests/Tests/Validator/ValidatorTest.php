@@ -35,6 +35,30 @@ use function var_export;
 final class ValidatorTest extends TestCase
 {
     /**
+     * Reads a value through the validator magic getter.
+     *
+     * @param Validator $validator The validator under test.
+     * @param string    $attribute The dot-notation attribute name.
+     * @return mixed The value resolved by __get().
+     */
+    private function readAttribute(Validator $validator, string $attribute): mixed
+    {
+        return $validator->{$attribute};
+    }
+
+    /**
+     * Writes a value through the validator magic setter.
+     *
+     * @param Validator $validator The validator under test.
+     * @param string    $attribute The dot-notation attribute name.
+     * @param mixed     $value The value to store.
+     */
+    private function writeAttribute(Validator $validator, string $attribute, mixed $value): void
+    {
+        $validator->{$attribute} = $value;
+    }
+
+    /**
      * Test the factory method returns a validator instance.
      */
     public function testMakeReturnsValidatorInstance(): void
@@ -418,11 +442,11 @@ final class ValidatorTest extends TestCase
     {
         $validator = Validator::make(['user' => ['name' => 'Ada']], []);
 
-        $this->assertSame('Ada', $validator->{'user.name'});
+        $this->assertSame('Ada', $this->readAttribute($validator, 'user.name'));
         $this->assertTrue(isset($validator->{'user.name'}));
         $this->assertFalse(isset($validator->{'user.missing'}));
 
-        $validator->{'user.city'} = 'Terni';
+        $this->writeAttribute($validator, 'user.city', 'Terni');
         $this->assertSame('Terni', $validator->get('user.city'));
     }
 

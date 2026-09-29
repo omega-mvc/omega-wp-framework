@@ -20,6 +20,7 @@ use Omega\Facade\AbstractFacade;
 use Omega\Facade\Exception\FacadeObjectNotSetException;
 use Omega\Facade\FacadeInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -42,7 +43,9 @@ final class AbstractFacadeTest extends FacadeTestCase
      */
     public function testConcreteFacadeImplementsContract(): void
     {
-        $this->assertTrue(is_a(ConfigFacade::class, FacadeInterface::class, true));
+        $facade = new ReflectionClass(ConfigFacade::class);
+
+        $this->assertTrue($facade->implementsInterface(FacadeInterface::class));
         $this->assertSame('config', ConfigFacade::getFacadeAccessor());
     }
 

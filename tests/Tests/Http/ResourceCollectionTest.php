@@ -36,6 +36,18 @@ use Tests\Http\Support\UserResource;
 final class ResourceCollectionTest extends HttpTestCase
 {
     /**
+     * Reads an attribute through the collection magic getter.
+     *
+     * @param object $collection The collection under test.
+     * @param string $attribute  The attribute name to read.
+     * @return mixed The value resolved by __get().
+     */
+    private function readAttribute(object $collection, string $attribute): mixed
+    {
+        return $collection->{$attribute};
+    }
+
+    /**
      * Test a raw collection is returned unchanged without metadata.
      */
     public function testRawCollectionReturnsItems(): void
@@ -137,8 +149,8 @@ final class ResourceCollectionTest extends HttpTestCase
         $collection = new ExposedResourceCollection(new Collection([]));
         $collection->setResource($this->makeModel(['id' => 9, 'name' => 'Ada']));
 
-        $this->assertSame('Ada', $collection->name);
-        $this->assertNull($collection->missing);
+        $this->assertSame('Ada', $this->readAttribute($collection, 'name'));
+        $this->assertNull($this->readAttribute($collection, 'missing'));
     }
 
     /**

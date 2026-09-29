@@ -16,6 +16,8 @@ namespace Omega\Database\ORM\Casts;
 
 use Omega\Database\ORM\AbstractModel;
 
+use function is_scalar;
+
 /**
  * BooleanCast
  *
@@ -55,7 +57,7 @@ class BooleanCast implements CastsAttributesInterface
      */
     public function set(AbstractModel $model, string $key, mixed $value, array $attributes): int
     {
-        return (int)$value;
+        return is_scalar($value) ? (int) $value : 0;
     }
     #endregion
 }

@@ -157,6 +157,10 @@ final class RouteLoaderTest extends RoutingTestCase
     /**
      * Builds a stub ApplicationInterface with the temp directory as base path.
      */
+    /**
+     * @param array<int, string> $restFiles  REST route file paths.
+     * @param array<int, string> $adminFiles Admin route file paths.
+     */
     private function stubApp(array $restFiles, array $adminFiles): ApplicationInterface
     {
         $app = $this->createStub(ApplicationInterface::class);
@@ -182,10 +186,13 @@ final class RouteLoaderTest extends RoutingTestCase
         );
 
         foreach ($iterator as $file) {
+            /** @var \SplFileInfo $file */
+            $realPath = (string) $file->getRealPath();
+
             if ($file->isDir()) {
-                rmdir($file->getRealPath());
+                rmdir($realPath);
             } else {
-                unlink($file->getRealPath());
+                unlink($realPath);
             }
         }
 

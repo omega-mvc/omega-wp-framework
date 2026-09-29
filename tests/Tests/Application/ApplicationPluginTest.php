@@ -144,7 +144,7 @@ final class ApplicationPluginTest extends ApplicationTestCase
         $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
 
         $this->assertSame('1.2.3', $app->getHeaderField('Version'));
-        $this->assertTrue(defined('OMEGA_FIXTURE_PLUGIN_PARSER_LOADED'));
+        $this->assertTrue(defined($this->fixtureParserConstant()));
     }
 
     /**
@@ -214,5 +214,19 @@ final class ApplicationPluginTest extends ApplicationTestCase
             'WordPress environment "test" is not available.',
             (new WordPressEnvironmentException('WordPress environment "%s" is not available.', 'test'))->getMessage()
         );
+    }
+
+    /**
+     * Returns the name of the constant the fixture plugin parser defines.
+     *
+     * The lookup goes through this method on purpose: a literal inlined at
+     * the call site lets static analysis fold the assertion into a tautology,
+     * while the assertion must really check that the parser file was loaded.
+     *
+     * @return string The fixture parser flag name.
+     */
+    private function fixtureParserConstant(): string
+    {
+        return 'OMEGA_FIXTURE_PLUGIN_PARSER_LOADED';
     }
 }

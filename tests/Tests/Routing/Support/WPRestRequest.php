@@ -26,11 +26,13 @@ class WPRestRequest
         return $this->params[$key] ?? null;
     }
 
+    /** @return array<string, mixed> */
     public function getParams(): array
     {
         return $this->params;
     }
 
+    /** @return array<string, mixed> */
     public function get_params(): array
     {
         return $this->params;

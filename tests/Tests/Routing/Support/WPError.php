@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Routing\Support;
 
+use function is_scalar;
+
 /**
  * Minimal WP_Error replacement.
  *
@@ -40,7 +42,7 @@ class WPError
     public function __construct(mixed $code = '', mixed $message = '', mixed $data = '')
     {
         $this->code = $code;
-        $this->message = (string) $message;
+        $this->message = is_scalar($message) ? (string) $message : '';
         $this->data = $data;
     }
 

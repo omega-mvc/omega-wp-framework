@@ -18,7 +18,6 @@ use Omega\Collection\Collection;
 use Omega\Database\ORM\AbstractModel;
 use Omega\Paginator\Paginator;
 
-use function array_map;
 use function array_merge;
 use function is_bool;
 
@@ -39,11 +38,13 @@ use function is_bool;
  * @copyright  Copyright (c) 2026 Adriano Giovannini (https://omega-mvc.github.io)
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
+ *
+ * @phpstan-consistent-constructor
  */
 class ResourceCollection
 {
     #region Properties
-    /** @var string|null Fully qualified resource class used to transform items. */
+    /** @var class-string<JsonResource>|null Fully qualified resource class used to transform items. */
     public ?string $collects = null;
 
     /** @var Collection Underlying collection of items to be transformed. */
@@ -67,7 +68,7 @@ class ResourceCollection
      * a resource transformer class for each item.
      *
      * @param Collection $collection Source data collection.
-     * @param string|null $collects Optional resource class for item transformation.
+     * @param class-string<JsonResource>|null $collects Optional resource class for item transformation.
      * @param array<string, mixed> $options Configuration options (e.g. meta merging).
      */
     public function __construct(Collection $collection, ?string $collects = null, array $options = [])
@@ -89,7 +90,7 @@ class ResourceCollection
      * Create a ResourceCollection from a Paginator instance.
      *
      * @param Paginator $paginator Source paginator to extract collection and meta from.
-     * @param string|null $collects Optional resource class for item transformation.
+     * @param class-string<JsonResource>|null $collects Optional resource class for item transformation.
      * @param array<string, mixed> $options Configuration options (e.g. meta merging).
      */
     public static function fromPaginator(Paginator $paginator, ?string $collects = null, array $options = []): static
@@ -116,10 +117,13 @@ class ResourceCollection
     {
         if ($this->collects) {
             $resourceClass = $this->collects;
-            $resources = array_map(
-                static fn(mixed $item): array => (new $resourceClass($item))->toArray(),
-                $this->collection->getAll()
-            );
+            /** @var array<int, mixed> $resources */
+            $resources = [];
+
+            foreach ($this->collection->getAll() as $item) {
+                /** @var AbstractModel $item */
+                $resources[] = (new $resourceClass($item))->toArray();
+            }
 
             return $resources;
         }

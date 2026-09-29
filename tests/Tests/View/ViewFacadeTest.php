@@ -40,6 +40,22 @@ final class ViewFacadeTest extends TestCase
     use FixturesPathTrait;
 
     /**
+     * Invokes a static facade method through the magic static caller.
+     *
+     * @param string            $method    The facade method name.
+     * @param array<int, mixed> $arguments Arguments forwarded to the facade service.
+     * @return mixed The value returned by the facade service.
+     */
+    private function callFacade(string $method, array $arguments = []): mixed
+    {
+        /** @var callable $callable */
+        $callable = [ViewFacade::class, $method];
+
+        return $callable(...$arguments);
+    }
+
+
+    /**
      * Clear the facade cache and the application registry before each test.
      */
     protected function setUp(): void
@@ -67,7 +83,7 @@ final class ViewFacadeTest extends TestCase
         (new ViewServiceProvider($app))->register();
         $this->setFactoryApps(['theme' => $app]);
 
-        $this->assertSame('Hello, Omega!', ViewFacade::render('welcome', ['name' => 'Omega']));
+        $this->assertSame('Hello, Omega!', $this->callFacade('render', ['welcome', ['name' => 'Omega']]));
     }
 
     /**

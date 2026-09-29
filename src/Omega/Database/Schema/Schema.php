@@ -77,6 +77,7 @@ class Schema
      */
     public static function drop(string $table): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . $table);

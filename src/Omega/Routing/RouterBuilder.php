@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Routing;
 
+use Omega\Admin\AdminManager;
 use Exception;
 use Omega\Application\ApplicationInterface;
 use ReflectionException;
@@ -124,7 +125,9 @@ class RouterBuilder
     {
         $instance = $this->getInstance();
 
-        $this->app->resolve('admin.manager')->addHiddenNoticesPage($id);
+        /** @var AdminManager $adminManager */
+        $adminManager = $this->app->resolve('admin.manager');
+        $adminManager->addHiddenNoticesPage($id);
 
         $instance->page($id, $options);
 

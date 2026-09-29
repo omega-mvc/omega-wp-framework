@@ -17,6 +17,7 @@ namespace Omega\Admin;
 use Omega\Admin\Features\FeaturesInterface;
 use Omega\Admin\Features\WooCommerce;
 use Omega\Admin\Menu\AbstractMenuBuilder;
+use Omega\Config\ConfigRepository;
 use Omega\Container\ServiceProvider;
 use ReflectionException;
 
@@ -67,10 +68,14 @@ class AdminServiceProvider extends ServiceProvider
         add_action('admin_init', [$this, 'adminSetup']);
 
         foreach ($this->features as $feature) {
-            $this->app->resolve($feature)->init();
+            /** @var FeaturesInterface $resolved */
+            $resolved = $this->app->resolve($feature);
+            $resolved->init();
         }
 
-        $this->app->resolve('admin.manager')->init();
+        /** @var AdminManager $manager */
+        $manager = $this->app->resolve('admin.manager');
+        $manager->init();
     }
 
     /**
@@ -83,7 +88,9 @@ class AdminServiceProvider extends ServiceProvider
      */
     public function adminSetup(): void
     {
-        $setupClass = $this->app->resolve('config')->string('app.admin.setup');
+        /** @var ConfigRepository $config */
+        $config     = $this->app->resolve('config');
+        $setupClass = $config->string('app.admin.setup');
 
         if (!class_exists($setupClass)) {
             return;
@@ -103,7 +110,9 @@ class AdminServiceProvider extends ServiceProvider
      */
     public function adminMenu(): void
     {
-        $menuClass = $this->app->resolve('config')->string('app.admin.menu');
+        /** @var ConfigRepository $config */
+        $config    = $this->app->resolve('config');
+        $menuClass = $config->string('app.admin.menu');
 
         if (!class_exists($menuClass)) {
             return;

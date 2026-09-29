@@ -17,6 +17,10 @@ namespace Omega\Admin;
 use function array_map;
 use function esc_url_raw;
 use function is_array;
+use function is_bool;
+use function is_int;
+use function is_numeric;
+use function is_scalar;
 use function rest_sanitize_boolean;
 use function sanitize_email;
 use function sanitize_text_field;
@@ -50,7 +54,11 @@ class Sanitizer
      */
     public static function boolean(mixed $value): bool
     {
-        return rest_sanitize_boolean($value);
+        if (is_bool($value) || is_int($value) || is_string($value)) {
+            return rest_sanitize_boolean($value);
+        }
+
+        return false;
     }
 
     /**
@@ -68,7 +76,7 @@ class Sanitizer
             return $default;
         }
 
-        return sanitize_text_field(wp_unslash((string)$value));
+        return sanitize_text_field(wp_unslash(is_scalar($value) ? (string) $value : ''));
     }
 
     /**
@@ -86,7 +94,7 @@ class Sanitizer
             return $default;
         }
 
-        return sanitize_textarea_field(wp_unslash((string)$value));
+        return sanitize_textarea_field(wp_unslash(is_scalar($value) ? (string) $value : ''));
     }
 
     /**
@@ -102,7 +110,7 @@ class Sanitizer
             return $default;
         }
 
-        return (int)$value;
+        return is_numeric($value) ? (int) $value : $default;
     }
 
     /**
@@ -118,7 +126,7 @@ class Sanitizer
             return $default;
         }
 
-        return (float)$value;
+        return is_numeric($value) ? (float) $value : $default;
     }
 
     /**
@@ -130,7 +138,7 @@ class Sanitizer
      */
     public static function email(mixed $value, string $default = ''): string
     {
-        $sanitized = sanitize_email((string)$value);
+        $sanitized = sanitize_email(is_scalar($value) ? (string) $value : '');
 
         return $sanitized !== '' ? $sanitized : $default;
     }
@@ -146,7 +154,7 @@ class Sanitizer
      */
     public static function url(mixed $value, string $default = ''): string
     {
-        $sanitized = esc_url_raw((string)$value);
+        $sanitized = esc_url_raw(is_scalar($value) ? (string) $value : '');
 
         return $sanitized !== '' ? $sanitized : $default;
     }
@@ -165,7 +173,10 @@ class Sanitizer
             return [];
         }
 
-        return array_map(fn(mixed $item): string => sanitize_text_field(wp_unslash((string)$item)), $value);
+        return array_map(
+            fn(mixed $item): string => sanitize_text_field(wp_unslash(is_scalar($item) ? (string) $item : '')),
+            $value
+        );
     }
 
     /**
@@ -187,14 +198,18 @@ class Sanitizer
      */
     public static function cast(mixed $value, string $type, mixed $default = null): mixed
     {
+        $stringDefault = is_scalar($default) ? (string) $default : '';
+        $intDefault    = is_numeric($default) ? (int) $default : 0;
+        $floatDefault  = is_numeric($default) ? (float) $default : 0.0;
+
         return match ($type) {
             'boolean'  => static::boolean($value),
-            'integer'  => static::integer($value, (int)$default),
-            'float'    => static::float($value, (float)$default),
-            'email'    => static::email($value, (string)$default),
-            'url'      => static::url($value, (string)$default),
-            'textarea' => static::textarea($value, (string)$default),
-            default    => static::string($value, (string)$default),
+            'integer'  => static::integer($value, $intDefault),
+            'float'    => static::float($value, $floatDefault),
+            'email'    => static::email($value, $stringDefault),
+            'url'      => static::url($value, $stringDefault),
+            'textarea' => static::textarea($value, $stringDefault),
+            default    => static::string($value, $stringDefault),
         };
     }
 }

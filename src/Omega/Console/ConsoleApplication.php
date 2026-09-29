@@ -19,12 +19,15 @@ use Omega\Application\ApplicationInterface;
 use Omega\Console\Attribute\AsCommand;
 use ReflectionClass;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 
+use function is_string;
+use function array_values;
 use function class_exists;
 use function file_exists;
 use function getenv;
@@ -96,7 +99,7 @@ class ConsoleApplication
     {
         //$this->bootstrap();
 
-        $input  = is_array($input) ? new ArgvInput($input) : ($input ?? new ArgvInput());
+        $input  = is_array($input) ? new ArgvInput(array_values($input)) : ($input ?? new ArgvInput());
         $output = $output ?? new ConsoleOutput();
 
         $shell = getenv('SHELL');
@@ -156,7 +159,10 @@ class ConsoleApplication
             ? require $cacheFile
             : $this->discoverCommands();
 
-        $console->setCommandLoader(new CommandLoader($this->app, $merged));
+        /** @var array<string, class-string<Command>> $commands */
+        $commands = is_array($merged) ? $merged : [];
+
+        $console->setCommandLoader(new CommandLoader($this->app, $commands));
     }
 
     /**
@@ -169,9 +175,13 @@ class ConsoleApplication
      */
     public function discoverCommands(): array
     {
+        $frameworkCommands   = slash(path: '/Commands');
+        $applicationCommands = slash(path: '/app/Commands');
+
         $commandPaths = [
-            'Omega\\Console\\Commands\\' => __DIR__ . slash(path: '/Commands'),
-            'App\\Console\\Commands\\'   => $this->app->getBasePath() . slash(path: '/app/Commands'),
+            'Omega\\Console\\Commands\\' => __DIR__ . (is_string($frameworkCommands) ? $frameworkCommands : ''),
+            'App\\Console\\Commands\\'   => $this->app->getBasePath()
+                . (is_string($applicationCommands) ? $applicationCommands : ''),
         ];
 
         $commands = [];

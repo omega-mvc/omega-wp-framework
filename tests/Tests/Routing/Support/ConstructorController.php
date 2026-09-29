@@ -11,6 +11,7 @@ class ConstructorController
     ) {
     }
 
+    /** @return array<string, mixed> */
     public function handle(): array
     {
         return ['id' => $this->id];

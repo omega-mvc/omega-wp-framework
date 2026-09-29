@@ -176,7 +176,10 @@ class ContainerTest extends TestCase
      */
     public function testShouldResolveConstructorDependencies(): void
     {
-        $this->assertInstanceOf(A::class, $this->container->resolve(B::class)->a);
+        $b = $this->container->resolve(B::class);
+
+        $this->assertInstanceOf(B::class, $b);
+        $this->assertInstanceOf(A::class, $b->a);
     }
 
     /**
@@ -187,7 +190,11 @@ class ContainerTest extends TestCase
      */
     public function testShouldResolveRecursiveDependencies(): void
     {
-        $this->assertInstanceOf(A::class, $this->container->resolve(C::class)->b->a);
+        $c = $this->container->resolve(C::class);
+
+        $this->assertInstanceOf(C::class, $c);
+        $this->assertInstanceOf(B::class, $c->b);
+        $this->assertInstanceOf(A::class, $c->b->a);
     }
 
     /**
@@ -201,6 +208,7 @@ class ContainerTest extends TestCase
         $message = 'message';
         $d = $this->container->resolve(D::class, $message);
 
+        $this->assertInstanceOf(D::class, $d);
         $this->assertSame($message, $d->message);
         $this->assertInstanceOf(A::class, $d->a);
     }
@@ -216,6 +224,7 @@ class ContainerTest extends TestCase
         $message = 'message';
         $e = $this->container->resolve(E::class, $message);
 
+        $this->assertInstanceOf(E::class, $e);
         $this->assertSame($message, $e->message);
         $this->assertNull($e->a);
     }

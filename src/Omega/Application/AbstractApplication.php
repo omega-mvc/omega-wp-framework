@@ -30,6 +30,7 @@ use function file_exists;
 use function get_class;
 use function in_array;
 use function is_array;
+use function is_object;
 use function is_string;
 use function method_exists;
 
@@ -50,7 +51,7 @@ use function method_exists;
 abstract class AbstractApplication extends Container implements ApplicationInterface
 {
     #region Properties
-    /** @var array<int|string, mixed> Registered service provider instances. */
+    /** @var array<string, object> Registered service provider instances. */
     protected array $serviceProviders = [];
 
     /** @var array<class-string> Service providers defined by the application layer. */
@@ -66,10 +67,6 @@ abstract class AbstractApplication extends Container implements ApplicationInter
      * of all fundamental framework components.
      *
      * It performs the following steps in order:
-     * - Validates the provided application identifier and base path
-     * - Assigns the application ID
-     * - Initializes the base path of the application
-     * - Defines the application root directory
      * - Registers core container bindings
      * - Registers base framework service providers
      * - Registers user-defined service providers
@@ -78,15 +75,9 @@ abstract class AbstractApplication extends Container implements ApplicationInter
      * The application instance is fully bootstrapped at the end of this process,
      * meaning that all core services are available for resolution and use.
      *
-     * @param string $id Unique identifier of the application instance.
-     *                   This value is used to distinguish between multiple
-     *                   applications within the same runtime environment.
-     * @param string $basePath Absolute path to the root directory of the application.
-     *                         This path is used as the base for configuration,
-     *                         service discovery, and file resolution.
      * @return void
      */
-    public function __construct(string $id, string $basePath)
+    public function __construct()
     {
         $this->registerBaseBindings();
         $this->registerBaseServiceProviders();
@@ -148,7 +139,13 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         if (file_exists($providersFile)) {
             $providers = include $providersFile;
             if (is_array($providers)) {
-                array_map(fn(object|string $provider): object|string => $this->register($provider), $providers);
+                array_map(
+                    fn(object|string $provider): object|string => $this->register($provider),
+                    array_filter(
+                        $providers,
+                        static fn(mixed $provider): bool => is_object($provider) || is_string($provider)
+                    )
+                );
             }
         }
     }

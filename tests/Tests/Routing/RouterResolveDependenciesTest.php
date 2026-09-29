@@ -71,6 +71,9 @@ final class RouterResolveDependenciesTest extends RoutingTestCase
         $method = new ReflectionMethod(Router::class, 'resolveDefaultParameter');
 
         $constructor = (new ReflectionClass(ConstructorController::class))->getConstructor();
+
+        $this->assertNotNull($constructor);
+
         $param = $constructor->getParameters()[0];
 
         $result = $method->invoke($router, $param, $constructor);
@@ -360,7 +363,7 @@ final class RouterResolveDependenciesTest extends RoutingTestCase
             $this->assertIsArray($result);
             $this->assertCount(1, $result);
         } catch (\Throwable) {
-            $this->assertTrue(true);
+            $this->addToAssertionCount(1);
         }
     }
 

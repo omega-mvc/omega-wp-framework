@@ -27,6 +27,7 @@ use function array_map;
 use function count;
 use function dbDelta;
 use function implode;
+use function is_string;
 use function sprintf;
 
 /**
@@ -85,7 +86,9 @@ class Database
         }
 
         $this->wpdb     = $wpdb;
-        $this->migrator = $app->resolve('migrator');
+        /** @var Migrator $migrator */
+        $migrator       = $app->resolve('migrator');
+        $this->migrator = $migrator;
     }
     #endregion
 
@@ -114,6 +117,7 @@ class Database
      */
     public static function getTableName(string $tableName, string $prefix = ''): string
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         return sprintf('%s%s%s', $wpdb->prefix, $prefix, $tableName);
@@ -136,6 +140,7 @@ class Database
      */
     public static function createOrUpdateTable(string $tableName, array $columns): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $charsetCollate = $wpdb->get_charset_collate();
@@ -164,6 +169,7 @@ class Database
      */
     public static function tableExists(string $tableName): bool
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $exists = $wpdb->get_var(
@@ -205,7 +211,11 @@ class Database
      */
     public function prepare(string $query, mixed ...$args): string
     {
-        return $this->wpdb->prepare($query, $args);
+        /** @var literal-string $literalQuery Placeholders are always written as literals. */
+        $literalQuery = $query;
+        $prepared     = $this->wpdb->prepare($literalQuery, $args);
+
+        return is_string($prepared) ? $prepared : '';
     }
 
     /**
@@ -266,11 +276,12 @@ class Database
      * Insert a single row into a database table.
      *
      * @param string $table The target table name.
-     * @param array<string, mixed> $data Column values to insert.
+     * @param array<int|string, mixed> $data Column values to insert.
      * @return bool|int False on failure or the inserted row ID.
      */
     public static function insert(string $table, array $data): bool|int
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $inserted = $wpdb->insert($table, $data);
@@ -339,7 +350,7 @@ class Database
         $sql = "INSERT INTO $tableName ($columnsSql) VALUES $values_sql";
 
         return $this->wpdb->query(
-            $this->wpdb->prepare($sql, $values)
+            $this->prepare($sql, ...$values)
         );
     }
     #endregion

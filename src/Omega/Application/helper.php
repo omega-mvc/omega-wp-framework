@@ -17,7 +17,7 @@ use const DIRECTORY_SEPARATOR;
  * to the platform-specific directory separator (`DIRECTORY_SEPARATOR`).
  *
  * It supports both string and array inputs. When an array is provided,
- * the normalization is applied recursively to each element.
+ * the normalization is applied to each element.
  *
  * This function does not alter the semantic meaning of the path,
  * but ensures consistency across different operating systems.
@@ -28,16 +28,14 @@ use const DIRECTORY_SEPARATOR;
  * unnecessary and would in fact be harmful: it would check the *global* scope
  * and silently skip this declaration if a global `slash()` happened to exist.
  *
- * @param string|array<int|string, string> $path The path or list of paths to normalize.
- * @return string|array<int|string, string> The normalized path(s) with correct directory separators.
+ * @param string|array<int|string, mixed> $path The path or list of paths to normalize.
+ * @return string|array<int|string, mixed> The normalized path(s) with correct directory separators.
  */
 function slash(string|array $path): string|array
 {
     if (is_array($path)) {
         return array_map(
-            fn(string|array $p): string|array => is_array($p)
-                ? slash($p)
-                : str_replace('/', DIRECTORY_SEPARATOR, $p),
+            static fn(mixed $item): string|array => is_array($item) ? slash($item) : (is_scalar($item) ? (string) $item : ''),
             $path
         );
     }

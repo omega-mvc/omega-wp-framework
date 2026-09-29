@@ -16,6 +16,7 @@ namespace Tests;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
 
+use function is_string;
 use function ltrim;
 use function Omega\Application\slash;
 
@@ -53,7 +54,9 @@ trait FixturesPathTrait
      */
     protected function setFixturePath(string $path = ''): string
     {
-        return slash(__DIR__ . ($path !== '' ? '/' . ltrim($path, '/') : ''));
+        $fullPath = slash(__DIR__ . ($path !== '' ? '/' . ltrim($path, '/') : ''));
+
+        return is_string($fullPath) ? $fullPath : '';
     }
 
     /**

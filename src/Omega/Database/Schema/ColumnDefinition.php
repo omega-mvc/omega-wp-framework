@@ -17,6 +17,8 @@ namespace Omega\Database\Schema;
 use Omega\Database\Exceptions\ColumnDefinitionException;
 
 use function is_bool;
+use function is_numeric;
+use function is_scalar;
 
 /**
  * ColumnDefinition
@@ -71,6 +73,9 @@ class ColumnDefinition
 
     /** @var string|null The column after which this column should be placed. */
     protected ?string $after = null;
+
+    /** @var int|null The maximum character length used by string columns. */
+    protected ?int $length = null;
     #endregion
 
     #region Lifecycle
@@ -94,10 +99,13 @@ class ColumnDefinition
             throw new ColumnDefinitionException('Column name is required');
         }
 
-        $this->autoIncrement = $data['autoIncrement'] ?? false;
-        $this->unsigned = $data['unsigned'] ?? false;
-        $this->type = $data['type'];
-        $this->name = $data['name'];
+        $this->autoIncrement = (bool) ($data['autoIncrement'] ?? false);
+        $this->unsigned      = (bool) ($data['unsigned'] ?? false);
+        $this->type          = is_scalar($data['type']) ? (string) $data['type'] : '';
+        $this->name          = is_scalar($data['name']) ? (string) $data['name'] : '';
+        $this->length        = isset($data['length']) && is_numeric($data['length'])
+            ? (int) $data['length']
+            : null;
     }
     #endregion
 
@@ -294,6 +302,16 @@ class ColumnDefinition
     }
 
     /**
+     * Get the maximum character length declared for the column.
+     *
+     * @return int|null The declared length, or null when the column has none.
+     */
+    public function getLength(): ?int
+    {
+        return $this->length;
+    }
+
+    /**
      * Get the default column value.
      *
      * Boolean values are normalized to integer equivalents
@@ -331,6 +349,7 @@ class ColumnDefinition
             'primary'       => $this->isPrimary(),
             'index'         => $this->isIndex(),
             'after'         => $this->getAfter(),
+            'length'        => $this->getLength(),
         ];
     }
     #endregion

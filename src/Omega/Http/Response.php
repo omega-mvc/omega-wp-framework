@@ -17,6 +17,7 @@ namespace Omega\Http;
 use WP_Error;
 use WP_REST_Response;
 
+use function is_string;
 use function array_walk;
 use function is_wp_error;
 use function rest_ensure_response;
@@ -68,13 +69,12 @@ class Response
         int $options = 0
     ): WP_Error|WP_REST_Response {
         if ($status >= 400) {
-            return new WP_Error(
-                $status,
-                $data['message'] ?? ($data['error'] ?? 'Error'),
-                ['status' => $status]
-            );
+            $message = $data['message'] ?? $data['error'] ?? 'Error';
+
+            return new WP_Error($status, is_string($message) ? $message : 'Error', ['status' => $status]);
         }
 
+        /** @var WP_REST_Response $response */
         $response = rest_ensure_response($data);
 
         if (is_wp_error($response)) {

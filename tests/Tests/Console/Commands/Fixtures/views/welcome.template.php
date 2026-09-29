@@ -1,0 +1,1 @@
+<h1><?php echo is_string($name ?? null) ? $name : ''; ?></h1>

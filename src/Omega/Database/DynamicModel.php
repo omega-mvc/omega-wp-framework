@@ -51,11 +51,11 @@ class DynamicModel extends AbstractModel
      *
      * Initializes the model with raw data and the associated table name.
      *
-     * @param array<string, mixed>|object $data Raw record data used to hydrate the model.
-     * @param string $table Table name associated with this dynamic model.
+     * @param array<string, mixed> $data Raw record data used to hydrate the model.
+     * @param string|null $table Table name associated with this dynamic model.
      * @throws ReflectionException If the parent model fails to resolve property or schema metadata via reflection.
      */
-    public function __construct($data, $table)
+    public function __construct(array $data = [], ?string $table = null)
     {
         parent::__construct($data, $table);
     }

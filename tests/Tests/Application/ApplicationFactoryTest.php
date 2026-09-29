@@ -144,6 +144,7 @@ final class ApplicationFactoryTest extends ApplicationTestCase
         $theme = ApplicationFactory::app('config', 'theme');
 
         $this->assertInstanceOf(ConfigRepository::class, $sample);
+        $this->assertInstanceOf(ConfigRepository::class, $theme);
         $this->assertSame('local', $sample->string('app.environment', ''));
         $this->assertSame('staging', $theme->string('app.environment', ''));
     }

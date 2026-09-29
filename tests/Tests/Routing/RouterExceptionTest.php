@@ -46,7 +46,7 @@ final class RouterExceptionTest extends RoutingTestCase
 
         $router->addRoute('GET', '/secret', [ThrowingController::class, 'index']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPError::class, $result);

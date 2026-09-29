@@ -15,7 +15,10 @@ declare(strict_types=1);
 namespace Omega\Database\ORM\Relations;
 
 use Omega\Database\ORM\AbstractModel;
+use Omega\Database\ORM\QueryBuilder;
 use ReflectionException;
+
+use function is_int;
 
 /**
  * AbstractHasOneOrMany
@@ -78,7 +81,9 @@ abstract class AbstractHasOneOrMany extends AbstractRelation
     {
         $attributes[$this->getForeignKey()] = $this->parent->{$this->getLocalKey()};
 
-        return $this->relatedClass::create($attributes);
+        $created = $this->relatedClass::create($attributes);
+
+        return $created instanceof AbstractModel ? $created : false;
     }
 
     /**
@@ -91,10 +96,14 @@ abstract class AbstractHasOneOrMany extends AbstractRelation
      */
     public function delete(): false|int
     {
-        return $this->relatedClass::where(
+        /** @var QueryBuilder $builder */
+        $builder = $this->relatedClass::where(
             $this->getForeignKey(),
             $this->parent->{$this->getLocalKey()}
-        )->delete();
+        );
+        $deleted = $builder->delete();
+
+        return is_int($deleted) ? $deleted : false;
     }
     #endregion
 

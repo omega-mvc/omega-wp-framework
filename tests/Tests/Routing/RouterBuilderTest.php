@@ -19,6 +19,8 @@ use Omega\Routing\Router;
 use Omega\Routing\RouterBuilder;
 use PHPUnit\Framework\Attributes\CoversClass;
 
+use function is_scalar;
+
 /**
  * Tests the RouterBuilder route registration and admin page behavior.
  *
@@ -203,13 +205,15 @@ final class RouterBuilderTest extends RoutingTestCase
         $this->assertCount(1, WordPressRuntime::$submenus);
         $parent = WordPressRuntime::$submenus[0][0];
         $menuSlugs = array_map(
-            static fn(array $menu): string => (string) $menu[2],
+            static fn(array $menu): string => is_scalar($menu[2]) ? (string) $menu[2] : '',
             WordPressRuntime::$menus,
         );
 
+        $parentLabel = is_scalar($parent) ? (string) $parent : 'null';
+
         $this->assertTrue(
             in_array($parent, $menuSlugs, true) || $parent === null,
-            "Submenu parent '{$parent}' must be a registered top-level menu or null.",
+            "Submenu parent '{$parentLabel}' must be a registered top-level menu or null.",
         );
     }
 }

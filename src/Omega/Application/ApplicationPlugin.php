@@ -58,7 +58,7 @@ class ApplicationPlugin extends Application
      *
      * @var string
      */
-    protected const string NAME = 'Omega Plugin';
+    public const string NAME = 'Omega Plugin';
 
     /**
      * The version of the framework.
@@ -71,7 +71,7 @@ class ApplicationPlugin extends Application
      *
      * @var string
      */
-    protected const string VERSION = '1.0.0';
+    public const string VERSION = '1.0.0';
     #endregion
 
     #region Lifecycle

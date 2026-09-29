@@ -130,6 +130,7 @@ final class EnvTest extends TestCase
         $this->assertSame($expected, Env::get($key));
     }
 
+    /** @return array<int, array<int, mixed>> */
     public static function stringConversionProvider(): array
     {
         return [

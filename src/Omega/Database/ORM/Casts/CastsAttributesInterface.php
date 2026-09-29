@@ -49,7 +49,7 @@ interface CastsAttributesInterface
      * @param AbstractModel $model The model instance the attribute belongs to.
      * @param string $key The attribute name being cast.
      * @param mixed $value The raw value retrieved from the database.
-     * @param array<string, mixed> $attributes All raw model attributes.
+     * @param array<int|string, mixed> $attributes All raw model attributes.
      * @return mixed The transformed value to be used in the model instance.
      */
     public function get(AbstractModel $model, string $key, mixed $value, array $attributes): mixed;
@@ -63,7 +63,7 @@ interface CastsAttributesInterface
      * @param AbstractModel $model The model instance the attribute belongs to.
      * @param string $key The attribute name being cast.
      * @param mixed|null $value The PHP value assigned to the attribute.
-     * @param array<string, mixed> $attributes All current model attributes.
+     * @param array<int|string, mixed> $attributes All current model attributes.
      * @return mixed The transformed value suitable for database storage.
      */
     public function set(AbstractModel $model, string $key, mixed $value, array $attributes): mixed;

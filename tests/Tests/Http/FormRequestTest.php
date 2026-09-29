@@ -20,6 +20,9 @@ use PHPUnit\Framework\TestCase;
 use Tests\Http\Support\ContactFormRequest;
 use Tests\Http\Support\MergingFormRequest;
 use Tests\Routing\Support\WPRestRequest;
+use WP_REST_Request;
+
+use function is_string;
 
 /**
  * Tests the FormRequest adapter over the Validator engine.
@@ -44,7 +47,29 @@ final class FormRequestTest extends TestCase
     {
         parent::setUp();
 
-        $this->requestMethod = $_SERVER['REQUEST_METHOD'] ?? null;
+        $method = $_SERVER['REQUEST_METHOD'] ?? null;
+
+        $this->requestMethod = is_string($method) ? $method : null;
+    }
+
+    /**
+     * Builds a request double typed as the real WordPress request class.
+     *
+     * tests/bootstrap.php aliases WP_REST_Request to
+     * Tests\Routing\Support\WPRestRequest, so the instance below *is* a
+     * WP_REST_Request at runtime. The assertion pins that contract down and
+     * keeps the static type of the returned double correct.
+     *
+     * @param array<string, mixed> $params Request parameters.
+     * @return WP_REST_Request The aliased request double.
+     */
+    private function makeRequest(array $params = []): WP_REST_Request
+    {
+        $request = new WPRestRequest($params);
+
+        $this->assertInstanceOf(WP_REST_Request::class, $request);
+
+        return $request;
     }
 
     protected function tearDown(): void
@@ -63,7 +88,7 @@ final class FormRequestTest extends TestCase
      */
     public function testConstructorExtractsRequestParams(): void
     {
-        $form = new FormRequest(new WPRestRequest(['q' => 'hello', 'page' => 2]));
+        $form = new FormRequest($this->makeRequest(['q' => 'hello', 'page' => 2]));
 
         $this->assertSame('hello', $form->get('q'));
         $this->assertSame(2, $form->get('page'));
@@ -77,7 +102,7 @@ final class FormRequestTest extends TestCase
     {
         $_SERVER['REQUEST_METHOD'] = 'POST';
 
-        $form = new FormRequest(new WPRestRequest());
+        $form = new FormRequest($this->makeRequest());
 
         $this->assertTrue($form->isMethod('POST'));
         $this->assertTrue($form->isMethod('post'));
@@ -90,7 +115,7 @@ final class FormRequestTest extends TestCase
     public function testValidatesRequestDataUsingSubclassRules(): void
     {
         $form = new ContactFormRequest(
-            new WPRestRequest(['name' => 'Ada', 'email' => 'ada@example.com'])
+            $this->makeRequest(['name' => 'Ada', 'email' => 'ada@example.com'])
         );
         $form->validate();
 
@@ -103,7 +128,7 @@ final class FormRequestTest extends TestCase
      */
     public function testFailsValidationWithInvalidRequestData(): void
     {
-        $form = new ContactFormRequest(new WPRestRequest(['name' => '', 'email' => 'nope']));
+        $form = new ContactFormRequest($this->makeRequest(['name' => '', 'email' => 'nope']));
         $form->validate();
 
         $this->assertTrue($form->fails());
@@ -116,7 +141,7 @@ final class FormRequestTest extends TestCase
      */
     public function testPrepareForValidationMergesDefaults(): void
     {
-        $form = new MergingFormRequest(new WPRestRequest([]));
+        $form = new MergingFormRequest($this->makeRequest());
         $form->validate();
 
         $this->assertFalse($form->fails());

@@ -117,7 +117,8 @@ final class RouterServiceProviderTest extends RoutingTestCase
         $adminHook = $this->findAction('admin_menu');
 
         $this->assertNotNull($adminHook, 'admin_menu hook must be registered.');
-        $this->assertSame(99, $adminHook[2]);
+        $this->assertArrayHasKey(2, $adminHook, 'admin_menu hook must record a priority.');
+        $this->assertSame(99, $adminHook[2] ?? null);
     }
 
     /**
@@ -135,6 +136,8 @@ final class RouterServiceProviderTest extends RoutingTestCase
         $provider->boot();
 
         $hook = $this->findAction('rest_api_init');
+
+        $this->assertNotNull($hook, 'rest_api_init hook must be registered.');
         $hook[1]();
     }
 
@@ -153,6 +156,8 @@ final class RouterServiceProviderTest extends RoutingTestCase
         $provider->boot();
 
         $hook = $this->findAction('admin_menu');
+
+        $this->assertNotNull($hook, 'admin_menu hook must be registered.');
         $hook[1]();
     }
 
@@ -162,12 +167,13 @@ final class RouterServiceProviderTest extends RoutingTestCase
      * Find the recorded add_action() call for the given WordPress hook.
      *
      * @param string $hookName WordPress hook name (e.g. 'rest_api_init').
-     * @return array<int, mixed>|null The recorded arguments or null when not found.
+     * @return array{0:string,1:callable,2?:mixed}|null The recorded arguments or null when not found.
      */
     private function findAction(string $hookName): ?array
     {
         foreach (WordPressRuntime::$actions as $action) {
             if ($action[0] === $hookName) {
+                /** @var array{0:string,1:callable,2?:mixed} $action */
                 return $action;
             }
         }

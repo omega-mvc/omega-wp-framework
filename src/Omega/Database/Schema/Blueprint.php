@@ -24,6 +24,7 @@ use function esc_sql;
 use function implode;
 use function in_array;
 use function is_array;
+use function is_scalar;
 
 /**
  * Blueprint
@@ -59,7 +60,10 @@ class Blueprint
     /** @var string Current schema operation command, such as create or alter. */
     protected string $command = 'alter';
 
-    /** @var array<int, array{string, string}|array{string, string, array<int|string, string>}> Registered schema commands and foreign key definitions. */
+    /**
+     * @var array<int, array{0: string, 1: string, 2?: array<int|string, string>}|ForeignKeyDefinition>
+     *     Registered schema commands and foreign key definitions.
+     */
     protected array $commands = [];
     #endregion
 
@@ -134,7 +138,7 @@ class Blueprint
                 $sql .= ' tinyint(1)';
                 break;
             case 'string':
-                $length = $column->length ?? 255;
+                $length = $column->getLength() ?? 255;
                 $sql .= " varchar($length)";
                 break;
             case 'timestamp':
@@ -163,7 +167,8 @@ class Blueprint
         $sql .= $column->isNullable() ? ' DEFAULT NULL' : " NOT NULL";
 
         if (!$column->isNullable() && $column->getDefault() !== null) {
-            $sql .= " DEFAULT '" . esc_sql($column->getDefault()) . "'";
+            $default = $column->getDefault();
+            $sql .= " DEFAULT '" . esc_sql(is_scalar($default) ? (string) $default : '') . "'";
         }
 
         if (
@@ -227,11 +232,11 @@ class Blueprint
             foreach ($this->commands as $command) {
                 if ($command instanceof ForeignKeyDefinition) {
                     $columnsSql[] = $command->getForeignKeySql();
-                }
-
-                if (is_array($command) && in_array($command[0], [ 'index', 'unique' ], true)) {
+                } elseif (in_array($command[0], [ 'index', 'unique' ], true)) {
                     $keyword = 'unique' === $command[0] ? 'UNIQUE KEY' : 'KEY';
-                    $columnsSql[] = "$keyword `{$command[1]}` (" . $this->quoteIndexColumns($command[2]) . ")";
+                    $columnsSql[] = "$keyword `{$command[1]}` ("
+                        . $this->quoteIndexColumns($command[2] ?? [])
+                        . ')';
                 }
             }
         }
@@ -252,6 +257,7 @@ class Blueprint
      */
     public function tableExists(string $tableName): bool
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $tableName));
@@ -271,9 +277,12 @@ class Blueprint
      */
     private function columnExists(string $tableName, string $columnName): bool
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
+        /** @var literal-string $query */
+        $query  = "SHOW COLUMNS FROM `{$tableName}` LIKE %s";
 
-        $exists = $wpdb->get_var($wpdb->prepare("SHOW COLUMNS FROM `{$tableName}` LIKE %s", $columnName));
+        $exists = $wpdb->get_var($wpdb->prepare($query, $columnName));
 
         return $exists !== null;
     }
@@ -290,9 +299,12 @@ class Blueprint
      */
     private function indexExists(string $tableName, string $indexName): bool
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
+        /** @var literal-string $query */
+        $query  = "SHOW INDEX FROM `{$tableName}` WHERE Key_name = %s";
 
-        $exists = $wpdb->get_var($wpdb->prepare("SHOW INDEX FROM `{$tableName}` WHERE Key_name = %s", $indexName));
+        $exists = $wpdb->get_var($wpdb->prepare($query, $indexName));
 
         return $exists !== null;
     }
@@ -312,6 +324,7 @@ class Blueprint
      */
     public function run(): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         if ($this->command === 'create') {
@@ -372,6 +385,7 @@ class Blueprint
      */
     private function query(string $sql, string $tableName): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -395,6 +409,7 @@ class Blueprint
      */
     private function runAlterCommands(string $tableName): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         foreach ($this->commands as $command) {
@@ -422,6 +437,7 @@ class Blueprint
 
     private function runIndexCommands(string $tableName): void
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         foreach ($this->commands as $command) {
@@ -436,7 +452,7 @@ class Blueprint
                     $keyword = 'unique' === $command[0] ? 'UNIQUE INDEX' : 'INDEX';
                     $wpdb->query(
                         "ALTER TABLE `$tableName` ADD $keyword `$indexName` ("
-                        . $this->quoteIndexColumns($command[2])
+                        . $this->quoteIndexColumns($command[2] ?? [])
                         . ");"
                     );
                 }
@@ -649,7 +665,7 @@ class Blueprint
      * WordPress database environments by using datetime types internally.
      *
      * @param int|null $precision Optional fractional seconds precision.
-     * @return Collection<int, ColumnDefinition> Collection containing both column definitions.
+     * @return Collection<ColumnDefinition> Collection containing both column definitions.
      */
     public function timestamps(?int $precision = null): Collection
     {

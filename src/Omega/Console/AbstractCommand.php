@@ -19,6 +19,7 @@ use Omega\Application\ApplicationInterface;
 use Omega\Console\Attribute\AsCommand;
 use Omega\Console\Exceptions\InvalidArgumentException;
 use ReflectionClass;
+use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -110,8 +111,16 @@ abstract class AbstractCommand extends Command
      */
     protected function call(string $commandName, array $parameters = []): int
     {
+        $application = $this->getApplication();
+
+        if (!$application instanceof Application) {
+            $this->io->error('Unable to execute command \'' . $commandName . '\': no console application found.');
+
+            return self::FAILURE;
+        }
+
         try {
-            $command = $this->getApplication()->find($commandName);
+            $command = $application->find($commandName);
             $parameters['command'] = $commandName;
             $input = new ArrayInput($parameters);
 
@@ -160,9 +169,11 @@ abstract class AbstractCommand extends Command
         $this->setHidden($settings->hidden);
 
         foreach ($settings->arguments as $name => $config) {
+            $argumentName = (string) $name;
+
             if (!is_array($config) || count($config) < 2 || count($config) > 3) {
                 throw new InvalidArgumentException(
-                    "Argument configuration for '$name' must be an array with 2 or 3 elements: "
+                    "Argument configuration for '$argumentName' must be an array with 2 or 3 elements: "
                     . "[mode:int, description:string, default?]"
                 );
             }
@@ -170,41 +181,46 @@ abstract class AbstractCommand extends Command
             [$mode, $description] = $config;
 
             if (!is_int($mode)) {
-                throw new InvalidArgumentException("Argument '$name': mode must be an integer.");
+                throw new InvalidArgumentException("Argument '$argumentName': mode must be an integer.");
             }
             if (!is_string($description)) {
-                throw new InvalidArgumentException("Argument '$name': description must be a string.");
+                throw new InvalidArgumentException("Argument '$argumentName': description must be a string.");
             }
 
-            $this->addArgument($name, $config[0], $config[1], $config[2] ?? null);
+            $this->addArgument($argumentName, $mode, $description, $config[2] ?? null);
         }
 
         foreach ($settings->options as $name => $config) {
+            $optionName = (string) $name;
+
             if (!is_array($config) || count($config) < 3 || count($config) > 5) {
                 throw new InvalidArgumentException(
-                    "Option configuration for '$name' must be an array with 3-5 elements: "
+                    "Option configuration for '$optionName' must be an array with 3-5 elements: "
                     . "[shortcut:string|array|null, mode:int, description:string, default?, "
                     . "suggestedValues?]"
                 );
             }
 
-            $shortcut = $config[0];
-            $mode = $config[1];
-            $description = $config[2];
+            $shortcut        = $config[0];
+            $mode            = $config[1];
+            $description     = $config[2];
+            $default         = $config[3] ?? null;
+            $suggestedValues = $config[4] ?? [];
 
             if (!is_int($mode)) {
-                throw new InvalidArgumentException("Option '$name': mode must be an integer.");
+                throw new InvalidArgumentException("Option '$optionName': mode must be an integer.");
             }
             if (!is_string($description)) {
-                throw new InvalidArgumentException("Option '$name': description must be a string.");
+                throw new InvalidArgumentException("Option '$optionName': description must be a string.");
             }
             if (!is_null($shortcut) && !is_string($shortcut) && !is_array($shortcut)) {
-                throw new InvalidArgumentException("Option '$name': shortcut must be string, array or null.");
+                throw new InvalidArgumentException("Option '$optionName': shortcut must be string, array or null.");
             }
             if (!is_array($suggestedValues) && !$suggestedValues instanceof Closure) {
-                throw new InvalidArgumentException("Option '$name': suggestedValues must be array or Closure.");
+                throw new InvalidArgumentException("Option '$optionName': suggestedValues must be array or Closure.");
             }
-            $this->addOption($name, $config[0], $config[1], $config[2], $config[3] ?? null, $config[4] ?? []);
+
+            $this->addOption($optionName, $shortcut, $mode, $description, $default, $suggestedValues);
         }
     }
 

@@ -20,6 +20,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+use function is_string;
+
 /**
  * Provides a customized console style for Omega commands.
  *
@@ -80,7 +82,7 @@ class Style extends SymfonyStyle
      * Every non-empty line is automatically indented before being written.
      *
      * @param string|array<int|string, string> $messages The message or messages to write.
-     * @param int $type The output verbosity type.
+     * @param int<0, 511> $type The output verbosity type.
      * @return void
      */
     #[Override]
@@ -268,18 +270,21 @@ class Style extends SymfonyStyle
      * Prompts the user for textual input.
      *
      * @param string $question The question displayed to the user.
-     * @param mixed $default The default value.
+     * @param string|bool|float|int|null $default The default value.
      * @param callable|null $validator Optional input validator.
      * @return mixed The user input.
      */
     #[Override]
-    public function ask(string $question, $default = null, $validator = null): mixed
-    {
+    public function ask(
+        string $question,
+        string|bool|float|int|null $default = null,
+        ?callable $validator = null
+    ): mixed {
         $this->ensureTopSpacing();
 
         $question = $this->indent . "<fg=cyan;options=bold>?</> $question";
 
-        $result = parent::ask($question, $default, $validator);
+        $result = parent::ask($question, is_string($default) ? $default : null, $validator);
 
         $this->isLastLineEmpty = false;
 

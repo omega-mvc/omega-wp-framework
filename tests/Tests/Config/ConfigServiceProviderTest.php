@@ -53,7 +53,10 @@ final class ConfigServiceProviderTest extends ConfigTestCase
     {
         $application = new Application('app', $this->emptyBasePath());
 
-        $this->assertSame([], $application->resolve('config')->getAll());
+        $config = $application->resolve('config');
+
+        $this->assertInstanceOf(ConfigRepository::class, $config);
+        $this->assertSame([], $config->getAll());
     }
 
     /**

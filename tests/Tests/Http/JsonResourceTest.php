@@ -37,6 +37,34 @@ use Tests\Http\Support\UserResource;
 final class JsonResourceTest extends HttpTestCase
 {
     /**
+     * Reads an attribute through the resource magic getter.
+     *
+     * @param object $resource   The resource under test.
+     * @param string $attribute  The attribute name to read.
+     * @return mixed The value resolved by __get().
+     */
+    private function readAttribute(object $resource, string $attribute): mixed
+    {
+        return $resource->{$attribute};
+    }
+
+    /**
+     * Invokes a method through the resource magic caller.
+     *
+     * @param object            $resource   The resource under test.
+     * @param string            $method     The method name to invoke.
+     * @param array<int, mixed> $arguments  Arguments forwarded to the resource method.
+     * @return mixed The value returned by the resource method.
+     */
+    private function callMagic(object $resource, string $method, array $arguments = []): mixed
+    {
+        /** @var callable $callable */
+        $callable = [$resource, $method];
+
+        return $callable(...$arguments);
+    }
+
+    /**
      * Test the base transformer returns an empty array.
      */
     public function testBaseToArrayIsEmpty(): void
@@ -63,8 +91,8 @@ final class JsonResourceTest extends HttpTestCase
     {
         $resource = new UserResource($this->makeModel(['id' => 1, 'name' => 'Ada']));
 
-        $this->assertSame(1, $resource->id);
-        $this->assertSame('Ada', $resource->name);
+        $this->assertSame(1, $this->readAttribute($resource, 'id'));
+        $this->assertSame('Ada', $this->readAttribute($resource, 'name'));
     }
 
     /**
@@ -74,7 +102,7 @@ final class JsonResourceTest extends HttpTestCase
     {
         $resource = new UserResource($this->makeModel(['id' => 1]));
 
-        $this->assertNull($resource->missing);
+        $this->assertNull($this->readAttribute($resource, 'missing'));
     }
 
     /**
@@ -84,7 +112,7 @@ final class JsonResourceTest extends HttpTestCase
     {
         $resource = new UserResource($this->makeModel(['id' => 1, 'name' => 'Ada']));
 
-        $this->assertTrue($resource->keyExists('name'));
+        $this->assertTrue($this->callMagic($resource, 'keyExists', ['name']));
     }
 
     /**
@@ -99,7 +127,7 @@ final class JsonResourceTest extends HttpTestCase
             'Method notExisting does not exist on ' . UserResource::class . ' or its resource.'
         );
 
-        $resource->notExisting();
+        $this->callMagic($resource, 'notExisting');
     }
 
     /**

@@ -160,7 +160,7 @@ class Validator
      * Create a new validator instance.
      *
      * @param array<string, mixed> $data Input data to validate
-     * @param array<string, array<int, string>|string> $rules Validation rules definition
+     * @param array<string, string> $rules Validation rules definition
      * @return void
      */
     public function __construct(protected array $data, protected array $rules)
@@ -172,13 +172,16 @@ class Validator
     /**
      * Create a new Validator instance.
      *
-     * @param mixed $data Input data to validate
-     * @param mixed $rules Validation rules definition
-     * @return static Validator instance
+     * Subclasses such as FormRequest take their input through a different
+     * constructor, so the factory always builds the base validator.
+     *
+     * @param array<string, mixed> $data Input data to validate
+     * @param array<string, string> $rules Validation rules definition
+     * @return self Validator instance
      */
-    public static function make(mixed $data, mixed $rules): static
+    public static function make(array $data, array $rules): self
     {
-        return new static($data, $rules);
+        return new self($data, $rules);
     }
     #endregion
 
@@ -279,7 +282,11 @@ class Validator
         }
 
         $errorCountBefore = count($this->errors);
-        call_user_func_array([$this, $method], [$field, ...$parameters]);
+
+        /** @var callable $ruleValidator */
+        $ruleValidator = [$this, $method];
+
+        call_user_func_array($ruleValidator, [$field, ...$parameters]);
         if (count($this->errors) > $errorCountBefore) {
             $fieldValid = false;
         }
@@ -298,7 +305,7 @@ class Validator
     /**
      * Retrieve validation rules used by the validator.
      *
-     * @return array<string, array<int, string>|string> Validation rules set
+     * @return array<string, string> Validation rules set
      */
     public function rules(): array
     {
@@ -417,7 +424,7 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value === null) {
+        if (!is_scalar($value)) {
             return;
         }
 
@@ -437,7 +444,7 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value === null) {
+        if (!is_scalar($value)) {
             return;
         }
 
@@ -457,7 +464,7 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value === null) {
+        if (!is_scalar($value)) {
             return;
         }
 
@@ -515,7 +522,7 @@ class Validator
         }
 
         if (!in_array($value, $values, true)) {
-            $validValues = implode(', ', $values);
+            $validValues = implode(', ', array_filter($values, 'is_string'));
             $this->errors[$field] = "The field {$field} must be one of: {$validValues}.";
         }
     }
@@ -568,7 +575,7 @@ class Validator
     {
         $value = Str::getNestedValue($this->data, $field);
 
-        if ($value === null) {
+        if (!is_string($value)) {
             return;
         }
 

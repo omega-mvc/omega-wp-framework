@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Routing;
 
 use Omega\Container\ContainerInterface;
+use Omega\Application\ApplicationInterface;
 use Omega\Container\ServiceProvider;
 use ReflectionException;
 
@@ -51,11 +52,11 @@ class RouterServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton('router', function (ContainerInterface $app): RouterBuilder {
+        $this->app->singleton('router', function (ApplicationInterface $app): RouterBuilder {
             return new RouterBuilder($app);
         });
 
-        $this->app->singleton(RouteLoader::class, function (ContainerInterface $app): RouteLoader {
+        $this->app->singleton(RouteLoader::class, function (ApplicationInterface $app): RouteLoader {
             return new RouteLoader($app);
         });
     }
@@ -68,11 +69,15 @@ class RouterServiceProvider extends ServiceProvider
     public function boot(): void
     {
         add_action('rest_api_init', function () {
-            $this->app->resolve(RouteLoader::class)->loadRestRoutes();
+            /** @var RouteLoader $loader */
+            $loader = $this->app->resolve(RouteLoader::class);
+            $loader->loadRestRoutes();
         });
 
         add_action('admin_menu', function () {
-            $this->app->resolve(RouteLoader::class)->loadAdminRoutes();
+            /** @var RouteLoader $loader */
+            $loader = $this->app->resolve(RouteLoader::class);
+            $loader->loadAdminRoutes();
         }, 99);
     }
     #endregion

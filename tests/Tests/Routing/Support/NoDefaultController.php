@@ -6,6 +6,7 @@ namespace Tests\Routing\Support;
 
 class NoDefaultController
 {
+    /** @return array<string, mixed> */
     public function handle(int $id): array
     {
         return ['id' => $id];

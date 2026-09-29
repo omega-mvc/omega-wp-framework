@@ -42,7 +42,6 @@ use function is_array;
 use function is_callable;
 use function is_string;
 use function is_subclass_of;
-use function is_wp_error;
 use function preg_match_all;
 use function register_rest_route;
 use function reset;
@@ -178,7 +177,10 @@ class Router
             $firstGuard,
             $this->page,
             function () use ($action, $path) {
-                if (!isset($_GET['path']) || trim($_GET['path'], "/") === trim($path, "/") || $path === '*') {
+                /** @var array<int, string> $action */
+                $requestedPath = $_GET['path'] ?? null;
+
+                if (!is_string($requestedPath) || trim($requestedPath, "/") === trim($path, "/") || $path === '*') {
                     $this->processRequest($action, []);
                 } else {
                     return new WP_Error('not_found', 'Page not found', ['status' => 404]);
@@ -223,6 +225,7 @@ class Router
             [
                 'methods'  => $httpMethod,
                 'callback' => function (WP_REST_Request $request) use ($action) {
+                    /** @var array<int, string> $action */
                     try {
                         $response = $this->processRequest($action, $request);
                         if ($response instanceof ResourceCollection || $response instanceof JsonResource) {
@@ -261,19 +264,20 @@ class Router
      * Process a controller request and dispatch it to REST or Admin handler.
      *
      * @param array<int, string> $action  Controller action [class, method].
-     * @param mixed $request Optional request payload or WP_REST_Request.
+     * @param WP_REST_Request|array<string, mixed>|null $request Optional request payload.
      * @return array<int|string, mixed>|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource
      * @throws Exception If request processing fails.
      */
     protected function processRequest(
         array $action,
-        mixed $request = null,
+        WP_REST_Request|array|null $request = null,
     ): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource {
         if ($this->routeType === 'admin') {
             $this->processAdminRequest($action, $request);
             return null;
         }
 
+        /** @var WP_REST_Request $request */
         return $this->processRestRequest($action, $request);
     }
 
@@ -294,21 +298,33 @@ class Router
     ): WP_REST_Response|WP_Error|array|ResourceCollection|JsonResource {
         [$controllerClass, $method] = $action;
 
+        /** @var class-string $controllerClass */
         $reflector = new ReflectionClass($controllerClass);
 
-        $instance = $reflector->getConstructor()
-            ? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
+        $constructor = $reflector->getConstructor();
+        /** @var array<int, mixed> $constructorDeps */
+        $constructorDeps = $constructor ? $this->resolveDependencies($constructor) : [];
+
+        $instance = $constructor
+            ? $reflector->newInstanceArgs($constructorDeps)
             : new $controllerClass();
 
         $calledMethod = $reflector->getMethod($method);
         $dependencies = $this->resolveDependencies($calledMethod, $request);
 
-        if (is_wp_error($dependencies)) {
+        if ($dependencies instanceof WP_Error) {
             return $dependencies;
         }
 
-        $result = call_user_func_array([$instance, $method], $dependencies);
+        /** @var callable $controllerMethod */
+        $controllerMethod = [$instance, $method];
 
+        /** @var mixed $result */
+        $result = call_user_func_array($controllerMethod, $dependencies);
+
+        /**
+         * @var array<int|string, mixed>|JsonResource|ResourceCollection|WP_Error|WP_REST_Response|null $result
+         */
         return $result ?? [];
     }
 
@@ -318,29 +334,38 @@ class Router
      * Executes controller method and prints result as HTML or debug output.
      *
      * @param array<int, string> $action Controller class and method.
-     * @param mixed $request Optional request payload.
+     * @param WP_REST_Request|array<string, mixed>|null $request Optional request payload.
      * @return void
      * @throws Exception If controller resolution fails.
      */
-    private function processAdminRequest(array $action, mixed $request = null): void
+    private function processAdminRequest(array $action, WP_REST_Request|array|null $request = null): void
     {
         [$controllerClass, $method] = $action;
 
+        /** @var class-string $controllerClass */
         $reflector = new ReflectionClass($controllerClass);
 
-        $instance = $reflector->getConstructor()
-            ? $reflector->newInstanceArgs($this->resolveDependencies($reflector->getConstructor()))
+        $constructor = $reflector->getConstructor();
+        /** @var array<int, mixed> $constructorDeps */
+        $constructorDeps = $constructor ? $this->resolveDependencies($constructor) : [];
+
+        $instance = $constructor
+            ? $reflector->newInstanceArgs($constructorDeps)
             : new $controllerClass();
 
         $calledMethod = $reflector->getMethod($method);
         $dependencies = $this->resolveDependencies($calledMethod, $request);
 
-        if (is_wp_error($dependencies)) {
+        if ($dependencies instanceof WP_Error) {
             echo '<div class="error"><p>' . esc_html($dependencies->get_error_message()) . '</p></div>';
             return;
         }
 
-        $result = call_user_func_array([$instance, $method], $dependencies);
+        /** @var callable $controllerMethod */
+        $controllerMethod = [$instance, $method];
+
+        /** @var mixed $result */
+        $result = call_user_func_array($controllerMethod, $dependencies);
 
         if (is_string($result)) {
             echo $result;
@@ -367,9 +392,12 @@ class Router
         ReflectionMethod $method,
         WP_REST_Request|array|null $request = null
     ): WP_Error|array {
-        return array_reduce(
+        /** @var array<int, mixed> $resolved */
+        $resolved = [];
+
+        $carry = array_reduce(
             $method->getParameters(),
-            function (mixed $carry, ReflectionParameter $param) use ($method, $request): WP_Error|array {
+            function (array|WP_Error $carry, ReflectionParameter $param) use ($method, $request): WP_Error|array {
                 // Se nei passaggi precedenti abbiamo già intercettato un errore, propagalo
                 if ($carry instanceof WP_Error) {
                     return $carry;
@@ -377,7 +405,7 @@ class Router
 
                 $type = $param->getType();
 
-                $resolvedValue = ($type === null || $type->isBuiltin())
+                $resolvedValue = !($type instanceof ReflectionNamedType) || $type->isBuiltin()
                     ? $this->resolveDefaultParameter($param, $method)
                     : $this->resolveTypedParameter($type, $param, $request);
 
@@ -388,8 +416,11 @@ class Router
                 $carry[] = $resolvedValue;
                 return $carry;
             },
-            []
+            $resolved
         );
+
+        /** @var array<int, mixed>|WP_Error $carry */
+        return $carry;
     }
 
     /**
@@ -430,7 +461,7 @@ class Router
      * runs validation, and returns either the validated request or a
      * WP_Error describing the first validation failure.
      *
-     * @param string                     $className FormRequest subclass name.
+     * @param class-string<FormRequest>     $className FormRequest subclass name.
      * @param ReflectionParameter        $param     Parameter reflection.
      * @param WP_REST_Request|array<string, mixed>|null $request   Current request context.
      * @return FormRequest|WP_Error Validated request or validation error.
@@ -504,7 +535,10 @@ class Router
         ReflectionParameter $param
     ): object {
         try {
-            return ApplicationFactory::app($className);
+            /** @var object $resolved */
+            $resolved = ApplicationFactory::app($className);
+
+            return $resolved;
         } catch (Exception) {
             throw new Exception(
                 sprintf(
@@ -549,10 +583,10 @@ class Router
     /**
      * Convert URI parameters in `{param}` format into regex named capture groups.
      *
-     * @param mixed $uri Route URI containing optional placeholders.
-     * @return mixed Normalized URI regex pattern.
+     * @param string $uri Route URI containing optional placeholders.
+     * @return string Normalized URI regex pattern.
      */
-    protected function parseUriParameters(mixed $uri): mixed
+    protected function parseUriParameters(string $uri): string
     {
         preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $uri, $matches);
 
@@ -571,6 +605,7 @@ class Router
      */
     public function prefix(mixed $prefix): static
     {
+        /** @var string $prefix */
         $this->prefixStack[$this->groupDepth] = [
             'prefix' => trim($prefix, '/'),
             'depth'  => $this->groupDepth
@@ -649,6 +684,7 @@ class Router
      */
     public function setPage(mixed $page): static
     {
+        /** @var string|null $page */
         $this->page = $page;
         $this->admin();
         $this->parentRouter?->setPage($page);

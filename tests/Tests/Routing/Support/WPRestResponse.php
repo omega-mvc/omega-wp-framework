@@ -68,6 +68,7 @@ class WPRestResponse
         return $this->status;
     }
 
+    /** @return array<string, string> */
     public function get_headers(): array
     {
         return $this->headers;

@@ -25,6 +25,9 @@ use stdClass;
 use Tests\FixturesPathTrait;
 use Tests\Http\Support\FakeModel;
 
+use function is_numeric;
+use function sprintf;
+
 /**
  * Tests the Collection wrapper behaviour.
  *
@@ -117,10 +120,15 @@ final class CollectionTest extends TestCase
      */
     public function testMapTransformsItemsAndKeepsKeys(): void
     {
-        $result = (new Collection(['a' => 1, 'b' => 2]))->map(fn ($item, $key) => $key . ':' . $item);
+        $result = (new Collection(['a' => 1, 'b' => 2]))->map(
+            static fn (mixed $item, mixed $key): string => sprintf(
+                '%s:%s',
+                is_scalar($key) ? (string) $key : '',
+                is_scalar($item) ? (string) $item : ''
+            )
+        );
 
         $this->assertSame(['a' => 'a:1', 'b' => 'b:2'], $result);
-        $this->assertIsArray($result);
     }
 
     /**
@@ -339,8 +347,8 @@ final class CollectionTest extends TestCase
 
         $this->assertInstanceOf(Collection::class, $result);
         $this->assertCount(2, $result);
-        $this->assertSame('Ada', $result->getAll()[0]->name);
-        $this->assertSame('Grace', $result->getAll()[1]->name);
+        $this->assertSame('Ada', $result->dataGet($result->getAll()[0], 'name'));
+        $this->assertSame('Grace', $result->dataGet($result->getAll()[1], 'name'));
     }
 
     /**
@@ -358,8 +366,8 @@ final class CollectionTest extends TestCase
 
         $this->assertInstanceOf(Collection::class, $result);
         $this->assertCount(2, $result);
-        $this->assertSame(1, $result->getAll()[0]->user->id);
-        $this->assertSame(2, $result->getAll()[1]->user->id);
+        $this->assertSame(1, $result->dataGet($result->getAll()[0], 'user.id'));
+        $this->assertSame(2, $result->dataGet($result->getAll()[1], 'user.id'));
     }
 
     /**
@@ -374,7 +382,6 @@ final class CollectionTest extends TestCase
         $result = (new Collection([$admin, $editor, $admin2]))->where('role', 'admin');
 
         $this->assertSame([$admin, $admin2], $result);
-        $this->assertIsArray($result);
     }
 
     /**
@@ -468,7 +475,9 @@ final class CollectionTest extends TestCase
      */
     public function testSumWithCallable(): void
     {
-        $result = (new Collection([1, 2, 3]))->sum(fn ($item) => $item * 2);
+        $result = (new Collection([1, 2, 3]))->sum(
+            static fn (mixed $item): int|float => is_numeric($item) ? $item * 2 : 0
+        );
 
         $this->assertSame(12, $result);
     }

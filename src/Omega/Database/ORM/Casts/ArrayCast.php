@@ -16,6 +16,7 @@ namespace Omega\Database\ORM\Casts;
 
 use Omega\Database\ORM\AbstractModel;
 
+use function is_scalar;
 use function json_decode;
 use function wp_json_encode;
 
@@ -49,7 +50,7 @@ class ArrayCast implements CastsAttributesInterface
      */
     public function get(AbstractModel $model, string $key, mixed $value, array $attributes): mixed
     {
-        return json_decode($value, true);
+        return json_decode(is_scalar($value) ? (string) $value : '', true);
     }
 
     /**

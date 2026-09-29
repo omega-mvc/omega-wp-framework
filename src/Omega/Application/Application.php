@@ -24,6 +24,7 @@ use function array_filter;
 use function array_map;
 use function array_values;
 use function rtrim;
+use function is_string;
 use function wp_get_theme;
 
 use const DIRECTORY_SEPARATOR;
@@ -56,6 +57,12 @@ use const DIRECTORY_SEPARATOR;
  */
 class Application extends AbstractApplication
 {
+    // Application display name, meant to be overridden by concrete applications.
+    public const NAME = 'omega';
+
+    // Application version, meant to be overridden by concrete applications.
+    public const VERSION = '1.0.0';
+
     #region Properties
     /** @var string Base path of the application. */
     protected string $basePath;
@@ -113,15 +120,14 @@ class Application extends AbstractApplication
 
         $this->id = $id;
 
-        $basePath = rtrim(
-            slash($basePath),
-            DIRECTORY_SEPARATOR
-        );
+        $normalized = slash($basePath);
+
+        $basePath = rtrim(is_string($normalized) ? $normalized : $basePath, DIRECTORY_SEPARATOR);
 
         $this->setBasePath($basePath);
         $this->appRoot = $basePath;
 
-        parent::__construct($id, $basePath);
+        parent::__construct();
     }
     #endregion
 
@@ -147,7 +153,9 @@ class Application extends AbstractApplication
      */
     public function getName(): string
     {
-        return static::NAME;
+        $name = static::NAME;
+
+        return is_string($name) ? $name : '';
     }
 
     /**
@@ -155,7 +163,9 @@ class Application extends AbstractApplication
      */
     public function getVersion(): string
     {
-        return static::VERSION;
+        $version = static::VERSION;
+
+        return is_string($version) ? $version : '';
     }
     #endregion
 
@@ -282,7 +292,10 @@ class Application extends AbstractApplication
      */
     public function config(): ConfigRepository
     {
-        return $this->resolve('config');
+        /** @var ConfigRepository $repository */
+        $repository = $this->resolve('config');
+
+        return $repository;
     }
 
     /**
@@ -292,7 +305,10 @@ class Application extends AbstractApplication
      */
     public function settings(): SettingsRepository
     {
-        return $this->resolve('settings');
+        /** @var SettingsRepository $repository */
+        $repository = $this->resolve('settings');
+
+        return $repository;
     }
     #endregion
 
@@ -352,9 +368,10 @@ class Application extends AbstractApplication
      */
     public function getApplicationCachePath(): string
     {
-        $base = rtrim($this->getBasePath(), "/\\");
+        $base     = rtrim($this->getBasePath(), "/\\");
+        $cacheDir = slash(path: '/bootstrap/cache');
 
-        return $base . slash(path: '/bootstrap/cache');
+        return $base . (is_string($cacheDir) ? $cacheDir : '');
     }
 
     /**

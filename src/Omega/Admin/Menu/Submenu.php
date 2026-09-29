@@ -117,7 +117,10 @@ class Submenu extends AbstractMenuItem
      */
     public function getCallback(): callable
     {
-        return $this->callback;
+        /** @var callable $callback */
+        $callback = $this->callback;
+
+        return $callback;
     }
 
     /**

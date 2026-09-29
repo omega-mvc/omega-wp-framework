@@ -114,10 +114,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/settings', ['Tests\Routing\Support\StubController', 'handle']);
 
         unset($_GET['path']);
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('ok', $output);
     }
@@ -132,10 +132,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/settings', ['Tests\Routing\Support\StubController', 'handle']);
 
         $_GET['path'] = '/settings';
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('ok', $output);
     }
@@ -150,10 +150,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '*', ['Tests\Routing\Support\StubController', 'handle']);
 
         $_GET['path'] = '/something/else';
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('ok', $output);
     }
@@ -168,7 +168,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/settings', ['Tests\Routing\Support\StubController', 'handle']);
 
         $_GET['path'] = '/other';
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         $result = $callback();
 
         $this->assertInstanceOf(WPError::class, $result);
@@ -188,10 +188,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\StubController', 'withString']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('<p>html output</p>', $output);
     }
@@ -205,10 +205,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('ok', $output);
         $this->assertStringContainsString('<pre>', $output);
@@ -223,10 +223,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\StubController', 'returnsNull']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertSame('', $output);
     }
@@ -240,10 +240,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\FormRequestController', 'handle']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('error', $output);
     }
@@ -257,10 +257,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\ConstructorStringController', 'handle']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('<pre>', $output);
         $this->assertStringContainsString('id', $output);
@@ -275,10 +275,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\ConstructorStringController', 'withString']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('<p>html output</p>', $output);
     }
@@ -292,10 +292,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\ConstructorStringController', 'returnsNull']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertSame('', $output);
     }
@@ -309,10 +309,10 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\ConstructorFormRequestController', 'handle']);
 
-        $callback = WordPressRuntime::$submenus[0][5];
+        $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
         $callback();
-        $output = ob_get_clean();
+        $output = (string) ob_get_clean();
 
         $this->assertStringContainsString('error', $output);
     }
@@ -554,7 +554,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router = $this->makeRouter();
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPRestResponse::class, $result);
@@ -573,7 +573,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPError::class, $result);
@@ -594,7 +594,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPRestResponse::class, $result);
@@ -615,7 +615,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPRestResponse::class, $result);
@@ -635,7 +635,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->guards([fn(): bool => false]);
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertFalse($permissionCallback());
     }
 
@@ -648,7 +648,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->guards([fn(): bool => true]);
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertTrue($permissionCallback());
     }
 
@@ -662,7 +662,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = false;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertFalse($permissionCallback());
     }
 
@@ -676,7 +676,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = true;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertTrue($permissionCallback());
     }
 
@@ -690,7 +690,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = true;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertTrue($permissionCallback());
     }
 
@@ -704,7 +704,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = false;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertFalse($permissionCallback());
     }
 
@@ -716,7 +716,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router = $this->makeRouter();
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertTrue($permissionCallback());
     }
 
@@ -730,7 +730,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = true;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertTrue($permissionCallback());
     }
 
@@ -744,7 +744,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\StubController', 'handle']);
 
         WordPressRuntime::$capabilities = true;
-        $permissionCallback = WordPressRuntime::$restRoutes[0][2]['permission_callback'];
+        $permissionCallback = WordPressRuntime::restRouteCallable('permission_callback');
         $this->assertFalse($permissionCallback());
     }
 
@@ -760,7 +760,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $router = $this->makeRouter();
         $router->addRoute('GET', '/items', ['Tests\Routing\Support\ConstructorController', 'handle']);
 
-        $callback = WordPressRuntime::$restRoutes[0][2]['callback'];
+        $callback = WordPressRuntime::restRouteCallable();
         $result = $callback(new WPRestRequest());
 
         $this->assertInstanceOf(WPRestResponse::class, $result);

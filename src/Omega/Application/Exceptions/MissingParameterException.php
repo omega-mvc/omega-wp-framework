@@ -16,6 +16,10 @@ namespace Omega\Application\Exceptions;
 
 use InvalidArgumentException;
 
+use function array_map;
+use function is_scalar;
+use function sprintf;
+
 /**
  * Exception thrown when a required parameter is missing during application creation.
  *
@@ -43,7 +47,12 @@ final class MissingParameterException extends InvalidArgumentException
     public function __construct(string $message, mixed ...$parameters)
     {
         if ($parameters !== []) {
-            $message = sprintf($message, ...$parameters);
+            $values = array_map(
+                static fn(mixed $parameter): string => is_scalar($parameter) ? (string) $parameter : '',
+                $parameters
+            );
+
+            $message = sprintf($message, ...$values);
         }
 
         parent::__construct($message);

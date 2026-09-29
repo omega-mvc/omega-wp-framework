@@ -119,7 +119,7 @@ class Str
      * Example:
      * 'user.profile.email'
      *
-     * @param array<int|string, mixed> $data The target array (by reference)
+     * @param array<string, mixed> $data The target array (by reference)
      * @param string $key Dot-notation key path
      * @param mixed $value Value to assign
      * @return void
@@ -138,7 +138,10 @@ class Str
             $value
         );
 
-        $data = array_replace_recursive($data, $nested);
+        /** @var array<string, mixed> $merged */
+        $merged = array_replace_recursive($data, $nested);
+
+        $data = $merged;
     }
     #endregion
 

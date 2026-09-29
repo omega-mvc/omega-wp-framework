@@ -56,7 +56,7 @@ abstract class AbstractMenuItem
     /** @var string View identifier used to render the menu content. */
     protected string $view = '';
 
-    /** @var int|string|null Menu position in admin sidebar. Lower values appear higher in the menu order. */
+    /** @var mixed Menu position in admin sidebar. Lower values appear higher in the menu order. */
     protected mixed $position = null;
 
     /** @var array<int, mixed> Scripts or assets associated with this menu item. */

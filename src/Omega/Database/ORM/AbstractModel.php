@@ -102,7 +102,7 @@ abstract class AbstractModel implements ArrayAccess
     /** @var string Default foreign key name derived from the model class. */
     protected string $foreignKey;
 
-    /** @var array<string, mixed> Raw model attribute storage. */
+    /** @var array<int|string, mixed> Raw model attribute storage. */
     protected array $data = [];
 
     /** @var bool Indicates whether the model was retrieved from the database. */
@@ -118,7 +118,7 @@ abstract class AbstractModel implements ArrayAccess
     private array $updateData = [];
 
     /** @var Database Database manager instance used by the model. */
-    protected mixed $db;
+    protected Database $db;
     #endregion
 
     #region Lifecycle
@@ -158,7 +158,9 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function __construct(array $data = [], ?string $table = null)
     {
-        $this->db         = ApplicationFactory::app('database');
+        /** @var Database $database */
+        $database         = ApplicationFactory::app('database');
+        $this->db         = $database;
         $this->table      = $table ?? self::getFullTableName();
         $this->foreignKey = $this->modelToForeign(get_called_class());
         $this->data       = $data;
@@ -195,7 +197,7 @@ abstract class AbstractModel implements ArrayAccess
             );
         } else {
             return Database::getTableName(
-                $defaultTableName,
+                is_scalar($defaultTableName) ? (string) $defaultTableName : '',
                 self::getPrefix()
             );
         }
@@ -217,7 +219,7 @@ abstract class AbstractModel implements ArrayAccess
     public static function modelToTable(object|string $model): string
     {
         $reflect              = new ReflectionClass($model);
-        $tableNameUnderscored = preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
+        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
 
         return strtolower($tableNameUnderscored) . 's';
     }
@@ -231,14 +233,16 @@ abstract class AbstractModel implements ArrayAccess
      * Example:
      * UserProfile => user_profile
      *
-     * @param object|class-string $model The model class name or model instance.
+     * @param object|string $model The model class name or model instance.
      * @return string The generated foreign key base name.
      * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
      */
     private function modelToForeign(object|string $model): string
     {
-        $reflect              = new ReflectionClass($model);
-        $tableNameUnderscored = preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
+        /** @var class-string $className */
+        $className = is_object($model) ? $model::class : $model;
+        $reflect   = new ReflectionClass($className);
+        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
 
         return strtolower($tableNameUnderscored);
     }
@@ -267,7 +271,7 @@ abstract class AbstractModel implements ArrayAccess
     public static function getForeignKeyStatic(): string
     {
         $reflect              = new ReflectionClass(get_called_class());
-        $tableNameUnderscored = preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
+        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
 
         return strtolower($tableNameUnderscored) . '_id';
     }
@@ -312,9 +316,10 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function getPrefix(): string
     {
-        $class = get_called_class();
+        $class  = get_called_class();
+        $prefix = static::getDefaultPropertyValue($class, 'prefix', '');
 
-        return static::getDefaultPropertyValue($class, 'prefix', '');
+        return is_scalar($prefix) ? (string) $prefix : '';
     }
 
     /**
@@ -330,7 +335,7 @@ abstract class AbstractModel implements ArrayAccess
     {
         $class = get_called_class();
 
-        return static::getDefaultPropertyValue($class, 'timestamps', false);
+        return (bool) static::getDefaultPropertyValue($class, 'timestamps', false);
     }
 
     /**
@@ -414,7 +419,7 @@ abstract class AbstractModel implements ArrayAccess
     /**
      * Retrieve all records for the current model.
      *
-     * @return Collection<int, AbstractModel> A collection containing all model records.
+     * @return Collection<AbstractModel> A collection containing all model records.
      */
     public static function all(): Collection
     {
@@ -445,6 +450,8 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function whereNull(mixed $column): QueryBuilder
     {
+        $column = is_string($column) ? $column : '';
+
         return self::query()->whereNull($column);
     }
 
@@ -500,7 +507,7 @@ abstract class AbstractModel implements ArrayAccess
     /**
      * Specify the columns that should be selected by the query.
      *
-     * @param string|array<int|string, string> $columns Column name or list of columns to select.
+     * @param array<int, string>|string $columns Column name or list of columns to select.
      * @return QueryBuilder The query builder instance for method chaining.
      */
     public static function select(string|array $columns): QueryBuilder
@@ -520,7 +527,7 @@ abstract class AbstractModel implements ArrayAccess
      * within the provided list of values.
      *
      * @param string $column The database column name.
-     * @param array<int|string, mixed> $values List of accepted values.
+     * @param array<int, mixed> $values List of accepted values.
      * @return QueryBuilder The query builder instance for method chaining.
      */
     public static function whereIn(string $column, array $values = []): QueryBuilder
@@ -545,11 +552,13 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function when(mixed $condition, callable $callback): QueryBuilder
     {
-        if (isset($condition) && !empty($condition) && $condition !== false) {
-            return $callback(self::query(), $condition);
+        if (empty($condition)) {
+            return self::query();
         }
 
-        return self::query();
+        $builder = $callback(self::query(), $condition);
+
+        return $builder instanceof QueryBuilder ? $builder : self::query();
     }
 
     /**
@@ -560,7 +569,8 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function paginate(mixed $perPage): Paginator
     {
-        $builder = self::query();
+        $perPage  = is_numeric($perPage) ? (int) $perPage : 15;
+        $builder  = self::query();
 
         return $builder->paginate($perPage);
     }
@@ -680,9 +690,9 @@ abstract class AbstractModel implements ArrayAccess
      *
      * Otherwise, a new database record is inserted.
      *
-     * @return false|int False on failure or the inserted/affected row count.
+     * @return bool|int False on failure or the inserted/affected row count.
      */
-    public function save(): false|int
+    public function save(): bool|int
     {
         if ($this->wasRetrieved()) {
             $data         = $this->updateData;
@@ -876,15 +886,19 @@ abstract class AbstractModel implements ArrayAccess
 
                     case 'int':
                     case 'integer':
-                        return (int) $value;
+                        return is_scalar($value) ? (int) $value : 0;
 
                     case 'real':
                     case 'float':
                     case 'double':
-                        return (float) $value;
+                        return is_scalar($value) ? (float) $value : 0.0;
 
                     case 'string':
-                        return $value === null ? null : (string) $value;
+                        if ($value === null) {
+                            return null;
+                        }
+
+                        return is_scalar($value) ? (string) $value : '';
                 }
 
                 if (class_exists($cast)) {
@@ -956,15 +970,19 @@ abstract class AbstractModel implements ArrayAccess
 
                     case 'int':
                     case 'integer':
-                        return (int) $value;
+                        return is_scalar($value) ? (int) $value : 0;
 
                     case 'real':
                     case 'float':
                     case 'double':
-                        return (float) $value;
+                        return is_scalar($value) ? (float) $value : 0.0;
 
                     case 'string':
-                        return $value === null ? null : (string) $value;
+                        if ($value === null) {
+                            return null;
+                        }
+
+                        return is_scalar($value) ? (string) $value : '';
                 }
 
                 if (class_exists($cast)) {
@@ -987,7 +1005,7 @@ abstract class AbstractModel implements ArrayAccess
      */
     protected function casts(): array
     {
-        return $this->casts ?? [];
+        return $this->casts;
     }
     #endregion
 
@@ -1051,7 +1069,7 @@ abstract class AbstractModel implements ArrayAccess
      * Related models and collections are recursively converted
      * into arrays.
      *
-     * @return array<string, mixed> The model data as an array.
+     * @return array<int|string, mixed> The model data as an array.
      */
     public function toArray(): array
     {
@@ -1155,7 +1173,9 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetExists(mixed $offset): bool
     {
-        return isset($this->data[$offset]);
+        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+
+        return isset($this->data[$key]);
     }
 
     /**
@@ -1170,11 +1190,13 @@ abstract class AbstractModel implements ArrayAccess
     #[ReturnTypeWillChange]
     public function offsetGet(mixed $offset): mixed
     {
-        if ($this->keyExists($offset)) {
-            return $this->data[$offset];
+        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+
+        if ($this->keyExists($key)) {
+            return $this->data[$key];
         }
 
-        $value = $this->getAttributeValue($offset);
+        $value = $this->getAttributeValue($key);
 
         if ($value !== null) {
             return $value;
@@ -1195,17 +1217,19 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
+        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+
         if ($offset !== null) {
-            $value = $this->setAttributeValue($offset, $value);
+            $value = $this->setAttributeValue($key, $value);
         }
 
         if ($this->wasRetrieved()) {
-            $this->updateData[$offset] = $value;
+            $this->updateData[$key] = $value;
         } else {
             if ($offset === null) {
                 $this->data[] = $value;
             } else {
-                $this->data[$offset] = $value;
+                $this->data[$key] = $value;
             }
         }
     }
@@ -1218,7 +1242,9 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->data[$offset]);
+        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+
+        unset($this->data[$key]);
     }
     #endregion
 }
