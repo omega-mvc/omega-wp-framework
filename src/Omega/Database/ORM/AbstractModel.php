@@ -1059,7 +1059,7 @@ abstract class AbstractModel implements ArrayAccess
 
         foreach ($this->data as $key => $value) {
             if ($value instanceof Collection) {
-                $result[$key] = $value->map(function ($item) {
+                $result[$key] = $value->map(function (mixed $item): mixed {
                     return $item instanceof AbstractModel
                         ? $item->toArray()
                         : $item;

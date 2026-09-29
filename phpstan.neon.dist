@@ -1,5 +1,10 @@
+includes:
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
 parameters:
     level: 10
+    paths:
+        - src
+        - tests
     tmpDir: cache/phpstan
     bootstrapFiles:
         - tests/phpstan-bootstrap.php

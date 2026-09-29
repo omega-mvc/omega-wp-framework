@@ -109,7 +109,10 @@ class Container implements ContainerInterface
      */
     public function bindClass(string $identifier, string $className): void
     {
-        $this->bindings[$identifier] = fn($_, ...$parameters) => $this->resolve($className, ...$parameters);
+        $this->bindings[$identifier] = fn(
+            ContainerInterface $_,
+            mixed ...$parameters
+        ): mixed => $this->resolve($className, ...$parameters);
     }
 
     /**
@@ -133,7 +136,7 @@ class Container implements ContainerInterface
      */
     public function singleton(string $identifier, string|Closure|null $definition = null): void
     {
-        $this->bindFactory($identifier, function ($container) use ($identifier, $definition) {
+        $this->bindFactory($identifier, function (ContainerInterface $container) use ($identifier, $definition): mixed {
             static $instance;
             if ($instance === null) {
                 $instance = ($definition instanceof Closure)
@@ -308,7 +311,7 @@ class Container implements ContainerInterface
         }
 
         return array_map(
-            fn($parameter) => array_key_exists($parameter->getPosition(), $parameters)
+            fn(ReflectionParameter $parameter): mixed => array_key_exists($parameter->getPosition(), $parameters)
                 ? $parameters[$parameter->getPosition()]
                 : $this->resolveMethodParameter($parameter),
             $method->getParameters()

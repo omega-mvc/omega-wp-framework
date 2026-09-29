@@ -235,8 +235,8 @@ class Application extends AbstractApplication
     public function getRestRouteFiles(): array
     {
         return array_values(array_map(
-            fn($route) => $route['path'],
-            array_filter($this->routeFiles, fn($route) => $route['type'] === 'api')
+            fn(array $route): mixed => $route['path'],
+            array_filter($this->routeFiles, fn(array $route): bool => $route['type'] === 'api')
         ));
     }
 
@@ -248,8 +248,8 @@ class Application extends AbstractApplication
     public function getAdminRouteFiles(): array
     {
         return array_values(array_map(
-            fn($route) => $route['path'],
-            array_filter($this->routeFiles, fn($route) => $route['type'] === 'admin')
+            fn(array $route): mixed => $route['path'],
+            array_filter($this->routeFiles, fn(array $route): bool => $route['type'] === 'admin')
         ));
     }
     #endregion

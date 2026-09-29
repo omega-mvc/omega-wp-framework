@@ -425,7 +425,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     {
         $items = $this->items;
 
-        usort($items, function ($a, $b) use ($key) {
+        usort($items, function (mixed $a, mixed $b) use ($key): int {
             return $b->$key <=> $a->$key;
         });
 

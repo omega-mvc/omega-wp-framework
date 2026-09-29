@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Routing;
 
+use Omega\Container\ContainerInterface;
 use Omega\Container\ServiceProvider;
 use ReflectionException;
 
@@ -50,11 +51,11 @@ class RouterServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton('router', function ($app) {
+        $this->app->singleton('router', function (ContainerInterface $app): RouterBuilder {
             return new RouterBuilder($app);
         });
 
-        $this->app->singleton(RouteLoader::class, function ($app) {
+        $this->app->singleton(RouteLoader::class, function (ContainerInterface $app): RouteLoader {
             return new RouteLoader($app);
         });
     }

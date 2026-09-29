@@ -71,7 +71,7 @@ class AdminManager
 
         $current_page = $_GET['page'];
 
-        return array_any($this->hiddenPages, fn($page) => $current_page === $page);
+        return array_any($this->hiddenPages, fn(string $page): bool => $current_page === $page);
     }
 
     /**

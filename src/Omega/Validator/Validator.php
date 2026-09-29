@@ -195,7 +195,7 @@ class Validator
         $rules               = $this->rules();
         $this->validatedData = [];
 
-        array_walk($rules, function ($rule, $field): void {
+        array_walk($rules, function (string $rule, string $field): void {
             $this->validateField($field, $rule);
         });
     }
@@ -249,7 +249,7 @@ class Validator
      */
     private function applyFieldRules(string $field, array $fieldRules, bool $fieldValid): bool
     {
-        array_walk($fieldRules, function ($singleRule) use (&$fieldValid, $field): void {
+        array_walk($fieldRules, function (string $singleRule) use (&$fieldValid, $field): void {
             $this->applySingleRule($field, $singleRule, $fieldValid);
         });
 
@@ -290,7 +290,7 @@ class Validator
      *
      * @return void
      */
-    protected function prepareForValidation()
+    protected function prepareForValidation(): void
     {
         // Prepare the data for validation
     }
@@ -587,7 +587,7 @@ class Validator
      */
     protected function merge(array $fields): void
     {
-        array_walk($fields, function ($value, $key): void {
+        array_walk($fields, function (mixed $value, string $key): void {
             Str::setNestedValue($this->data, $key, $value);
         });
     }

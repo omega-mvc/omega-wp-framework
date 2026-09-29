@@ -165,7 +165,7 @@ class Sanitizer
             return [];
         }
 
-        return array_map(fn($item) => sanitize_text_field(wp_unslash((string)$item)), $value);
+        return array_map(fn(mixed $item): string => sanitize_text_field(wp_unslash((string)$item)), $value);
     }
 
     /**

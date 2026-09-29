@@ -117,7 +117,7 @@ class ResourceCollection
         if ($this->collects) {
             $resourceClass = $this->collects;
             $resources = array_map(
-                static fn($item): array => (new $resourceClass($item))->toArray(),
+                static fn(mixed $item): array => (new $resourceClass($item))->toArray(),
                 $this->collection->getAll()
             );
 

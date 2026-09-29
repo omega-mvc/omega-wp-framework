@@ -320,7 +320,7 @@ class Style extends SymfonyStyle
     {
         if (is_iterable($message)) {
             return implode(PHP_EOL, array_map(
-                fn($m) => (string) $m,
+                fn(mixed $m): string => (string) $m,
                 (array) $message
             ));
         }

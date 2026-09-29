@@ -34,7 +34,12 @@ use const DIRECTORY_SEPARATOR;
 function slash(string|array $path): string|array
 {
     if (is_array($path)) {
-        return array_map(fn($p) => str_replace('/', DIRECTORY_SEPARATOR, $p), $path);
+        return array_map(
+            fn(string|array $p): string|array => is_array($p)
+                ? slash($p)
+                : str_replace('/', DIRECTORY_SEPARATOR, $p),
+            $path
+        );
     }
 
     return str_replace('/', DIRECTORY_SEPARATOR, $path);

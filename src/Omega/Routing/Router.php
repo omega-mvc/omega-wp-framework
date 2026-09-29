@@ -244,7 +244,7 @@ class Router
                                 return false;
                             }
                         } elseif (is_array($guard)) {
-                            if (array_any($guard, fn($g) => is_string($g) && !current_user_can($g))) {
+                            if (array_any($guard, fn(mixed $g): bool => is_string($g) && !current_user_can($g))) {
                                 return false;
                             }
                         }
@@ -369,7 +369,7 @@ class Router
     ): WP_Error|array {
         return array_reduce(
             $method->getParameters(),
-            function ($carry, ReflectionParameter $param) use ($method, $request) {
+            function (mixed $carry, ReflectionParameter $param) use ($method, $request): WP_Error|array {
                 // Se nei passaggi precedenti abbiamo già intercettato un errore, propagalo
                 if ($carry instanceof WP_Error) {
                     return $carry;
@@ -556,7 +556,7 @@ class Router
     {
         preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $uri, $matches);
 
-        return array_reduce($matches[1], function ($uri, $param) {
+        return array_reduce($matches[1], function (string $uri, string $param): string {
             return str_replace('{' . $param . '}', '(?P<' . $param . '>[^/]+)', $uri);
         }, $uri);
     }
@@ -597,11 +597,11 @@ class Router
         $callback($this);
 
         // Remove prefixes and guards from current depth
-        $this->prefixStack = array_filter($this->prefixStack, function ($item) {
+        $this->prefixStack = array_filter($this->prefixStack, function (array $item): bool {
             return $item['depth'] < $this->groupDepth;
         });
 
-        $this->guardStack = array_filter($this->guardStack, function ($item) {
+        $this->guardStack = array_filter($this->guardStack, function (array $item): bool {
             return $item['depth'] < $this->groupDepth;
         });
 
@@ -738,12 +738,12 @@ class Router
             return [];
         }
 
-        $currentGuards = array_filter($this->guardStack, function ($item) {
+        $currentGuards = array_filter($this->guardStack, function (array $item): bool {
             return $item['depth'] <= $this->groupDepth;
         });
 
         return array_merge(...array_map(
-            fn($item) => is_array($item['guards']) ? $item['guards'] : [$item['guards']],
+            fn(array $item): array => is_array($item['guards']) ? $item['guards'] : [$item['guards']],
             array_values($currentGuards)
         ));
     }

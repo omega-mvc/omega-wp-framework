@@ -141,7 +141,7 @@ class Database
         $charsetCollate = $wpdb->get_charset_collate();
         $fullTableName  = self::getTableName($tableName);
 
-        $generatedColumns = array_map(function ($columnName, $columnType) {
+        $generatedColumns = array_map(function (string $columnName, string $columnType): string {
             return "$columnName $columnType";
         }, array_keys($columns), $columns);
 

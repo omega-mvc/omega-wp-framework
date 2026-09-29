@@ -8,8 +8,6 @@
          beStrictAboutOutputDuringTests="true"
          failOnRisky="true"
          failOnWarning="true"
-         testdox="true"
-         testdoxSummary="true"
          colors="true"
 >
     <testsuites>
@@ -24,10 +22,7 @@
     </source>
     <coverage pathCoverage="true">
         <report>
-            <html outputDirectory="cache/coverage-report"/>
+            <html outputDirectory="cache/coverage"/>
         </report>
     </coverage>
-    <logging>
-        <testdoxHtml outputFile="cache/coverage-report/testdox.html"/>
-    </logging>
 </phpunit>

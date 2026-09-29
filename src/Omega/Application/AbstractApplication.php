@@ -100,8 +100,8 @@ abstract class AbstractApplication extends Container implements ApplicationInter
     public function bootstrap(): void
     {
         array_map(
-            fn($provider) => $provider->boot(),
-            array_filter($this->serviceProviders, fn($provider) => method_exists($provider, 'boot'))
+            fn(object $provider): mixed => $provider->boot(),
+            array_filter($this->serviceProviders, fn(object $provider): bool => method_exists($provider, 'boot'))
         );
     }
     #endregion
@@ -148,7 +148,7 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         if (file_exists($providersFile)) {
             $providers = include $providersFile;
             if (is_array($providers)) {
-                array_map(fn($provider) => $this->register($provider), $providers);
+                array_map(fn(object|string $provider): object|string => $this->register($provider), $providers);
             }
         }
     }
