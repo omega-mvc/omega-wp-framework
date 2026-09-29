@@ -18,6 +18,7 @@ use Omega\Collection\Collection;
 use Omega\Http\Exceptions\ResourceMethodNotFoundException;
 use Omega\Http\Json\JsonResource;
 use Omega\Http\Json\ResourceCollection;
+use Omega\Paginator\Paginator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Http\Support\UserResource;
 
@@ -144,6 +145,51 @@ final class JsonResourceTest extends HttpTestCase
 
         $this->assertInstanceOf(ResourceCollection::class, $result);
         $this->assertSame(UserResource::class, $result->collects);
+        $this->assertSame([
+            ['id' => 1, 'name' => 'Ada'],
+            ['id' => 2, 'name' => 'Bob'],
+        ], $result->collection());
+    }
+
+    /**
+     * Test the collection factory wraps a single model into a resource collection.
+     */
+    public function testCollectionFactoryWrapsSingleModel(): void
+    {
+        $collection = new Collection([
+            $this->makeModel(['id' => 5, 'name' => 'Eve']),
+        ]);
+
+        $result = UserResource::collection($collection);
+
+        $this->assertInstanceOf(ResourceCollection::class, $result);
+        $this->assertSame(UserResource::class, $result->collects);
+        $this->assertSame([
+            ['id' => 5, 'name' => 'Eve'],
+        ], $result->collection());
+    }
+
+    /**
+     * Test the collection factory wraps a paginator into a resource collection.
+     */
+    public function testCollectionFactoryWrapsPaginator(): void
+    {
+        $paginator = new Paginator([
+            $this->makeModel(['id' => 1, 'name' => 'Ada']),
+            $this->makeModel(['id' => 2, 'name' => 'Bob']),
+        ], 10, 2, 1);
+
+        $result = UserResource::collection($paginator);
+
+        $this->assertInstanceOf(ResourceCollection::class, $result);
+        $this->assertSame(UserResource::class, $result->collects);
+        $this->assertTrue($result->mergeMeta);
+        $this->assertSame([
+            'total'        => 10,
+            'per_page'     => 2,
+            'current_page' => 1,
+            'last_page'    => 5,
+        ], $result->getMeta());
         $this->assertSame([
             ['id' => 1, 'name' => 'Ada'],
             ['id' => 2, 'name' => 'Bob'],
