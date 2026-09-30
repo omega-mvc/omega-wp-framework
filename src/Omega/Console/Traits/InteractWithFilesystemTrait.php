@@ -61,13 +61,15 @@ trait InteractWithFilesystemTrait
         $finder = new Finder();
         $finder->files()->in($directory);
 
-        foreach ((array)$patterns as $pattern) {
-            $finder->name($pattern);
-        }
+        array_map(
+            static fn (string $pattern): Finder => $finder->name($pattern),
+            (array) $patterns
+        );
 
-        foreach ($exclude as $exPattern) {
-            $finder->notName($exPattern);
-        }
+        array_map(
+            static fn (string $exPattern): Finder => $finder->notName($exPattern),
+            $exclude
+        );
 
         return array_map(
             static fn($file) => $file->getRealPath(),

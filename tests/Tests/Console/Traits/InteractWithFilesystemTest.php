@@ -61,3 +61,36 @@ it('excludes files matching multiple patterns', function (): void {
     expect($files)->toHaveCount(1)
         ->and($files[0])->toEndWith('c.php');
 });
+
+it('excludes files when matching with zero patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', [], ['*.log']);
+
+    expect($files)->toHaveCount(2)
+        ->and($files)->not->toContain(
+            __DIR__ . '/../Fixtures/Files/b.log'
+        );
+});
+
+it('excludes every file when matching with zero patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', [], ['*.txt', '*.log']);
+
+    expect($files)->toHaveCount(1)
+        ->and($files[0])->toEndWith('c.php');
+});
+
+it('excludes a pattern from multiple patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', ['*.txt', '*.log'], ['*.txt']);
+
+    expect($files)->toHaveCount(1)
+        ->and($files[0])->toEndWith('b.log');
+});
+
+it('excludes every pattern from multiple patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', ['*.txt', '*.log'], ['*.txt', '*.log']);
+
+    expect($files)->toHaveCount(0);
+});

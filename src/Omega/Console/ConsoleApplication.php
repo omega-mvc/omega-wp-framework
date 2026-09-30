@@ -26,12 +26,16 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 
+use function array_fill_keys;
+use function array_merge;
 use function array_values;
+use function array_walk;
 use function class_exists;
 use function file_exists;
 use function getenv;
 use function is_array;
 use function is_dir;
+use function iterator_to_array;
 use function putenv;
 use function Omega\Application\slash;
 use function str_contains;
@@ -103,7 +107,7 @@ class ConsoleApplication
 
         $shell = getenv('SHELL');
 
-        if (!$shell || !str_contains($shell, 'bash') && !str_contains($shell, 'zsh') && !str_contains($shell, 'fish')) {
+        if ($this->shouldForceBashShell($shell)) {
             putenv('SHELL=/bin/bash');
         }
 
@@ -118,6 +122,42 @@ class ConsoleApplication
         $omega->setAutoExit(false);
 
         return $omega->run($input, $output);
+    }
+
+    /**
+     * Determine whether the given shell value requires forcing bash.
+     *
+     * The console runtime relies on a POSIX-compliant shell; whenever the
+     * configured SHELL environment variable is empty, unset or does not
+     * reference a supported shell (bash, zsh or fish), the runtime falls back
+     * to bash.
+     *
+     * @param string|false $shell The value of the SHELL environment variable.
+     * @return bool True when the shell should be forced to bash.
+     */
+    private function shouldForceBashShell(string|false $shell): bool
+    {
+        if ($shell === false) {
+            return true;
+        }
+
+        if ($shell === '') {
+            return true;
+        }
+
+        if (str_contains($shell, 'bash')) {
+            return false;
+        }
+
+        if (str_contains($shell, 'zsh')) {
+            return false;
+        }
+
+        if (str_contains($shell, 'fish')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -183,43 +223,59 @@ class ConsoleApplication
         /** @var string $applicationCommands */
         $applicationCommands = slash(path: '/app/Commands');
 
-        $commandPaths = [
-            'Omega\\Console\\Commands\\' => __DIR__ . $frameworkCommands,
-            'App\\Console\\Commands\\'   => $this->app->getBasePath() . $applicationCommands,
-        ];
+        return array_merge(
+            $this->discoverCommandsIn('Omega\\Console\\Commands\\', __DIR__ . $frameworkCommands),
+            $this->discoverCommandsIn('App\\Console\\Commands\\', $this->app->getBasePath() . $applicationCommands)
+        );
+    }
+
+    /**
+     * Discover commands within a single directory.
+     *
+     * Scans the given directory for command classes annotated with the
+     * AsCommand attribute, and builds a command name to class map.
+     *
+     * @param string $namespace The class namespace of the discovered commands.
+     * @param string $path The absolute path of the directory to scan.
+     * @return array<string, class-string> Discovered command name to class map
+     */
+    private function discoverCommandsIn(string $namespace, string $path): array
+    {
+        if (!is_dir($path)) {
+            return [];
+        }
 
         $commands = [];
 
-        foreach ($commandPaths as $namespace => $path) {
-            if (!is_dir($path)) {
-                continue;
-            }
+        $finder = new Finder();
+        $finder->files()->name('*Command.php')->in($path);
 
-            $finder = new Finder();
-            $finder->files()->name('*Command.php')->in($path);
+        $files = iterator_to_array($finder, false);
 
-            foreach ($finder as $file) {
+        array_walk(
+            $files,
+            static function ($file) use ($namespace, &$commands): void {
                 $className = $namespace . $file->getBasename('.php');
                 if (!class_exists($className)) {
-                    continue;
+                    return;
                 }
 
                 $reflection = new ReflectionClass($className);
-                $attribute = $reflection->getAttributes(AsCommand::class)[0] ?? null;
+                $attribute  = $reflection->getAttributes(AsCommand::class)[0] ?? null;
 
-                if ($attribute) {
-                    $instance = $attribute->newInstance();
+                if ($attribute === null) {
+                    return;
+                }
 
-                    $commands[$instance->name] = $className;
+                $instance = $attribute->newInstance();
 
-                    if (!empty($instance->aliases)) {
-                        foreach ($instance->aliases as $alias) {
-                            $commands[$alias] = $className;
-                        }
-                    }
+                $commands[$instance->name] = $className;
+
+                if ($instance->aliases !== []) {
+                    $commands = array_merge($commands, array_fill_keys($instance->aliases, $className));
                 }
             }
-        }
+        );
 
         return $commands;
     }

@@ -270,6 +270,66 @@ it('forces SHELL and honours supported shells', function (): void {
     }
 });
 
+it('sweeps shell and input/output combinations through handle', function (): void {
+    $previousArgv = $_SERVER['argv'] ?? null;
+    $_SERVER['argv'] = ['pest', '--version'];
+
+    $shells = [
+        '',
+        'bash',
+        'zsh',
+        'fish',
+        'dash',
+        'bash zsh',
+        'zsh fish',
+        '/bin/bash',
+        '/usr/bin/zsh',
+        '/bin/fish',
+        'bash bash',
+        'zsh fish bash',
+        'x',
+    ];
+    $inputs = [
+        null,
+        ['pest', '--version'],
+        new ArrayInput(['--version' => true]),
+    ];
+    $outputs = [
+        new BufferedOutput(),
+    ];
+
+    try {
+        foreach ($shells as $shell) {
+            $previousShell = getenv('SHELL');
+
+            try {
+                putenv('SHELL=' . $shell);
+
+                foreach ($inputs as $input) {
+                    foreach ($outputs as $output) {
+                        $app = new Application('omega', '/');
+                        $console = new ConsoleApplication($app);
+
+                        expect($console->handle($input, $output))->toBe(0);
+                    }
+                }
+            } finally {
+                if ($previousShell === false) {
+                    putenv('SHELL');
+                } else {
+                    putenv('SHELL=' . $previousShell);
+                }
+            }
+        }
+    } finally {
+        if ($previousArgv === null) {
+            unset($_SERVER['argv']);
+        } else {
+            $_SERVER['argv'] = $previousArgv;
+        }
+    }
+});
+
 it('returns an empty map when the application command directory is empty', function (): void {
     $base = ConsoleSupport::newConsoleBase();
     $appCommands = $base . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Commands';

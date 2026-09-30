@@ -186,10 +186,18 @@ final class ConsoleBranding extends SymfonyConsole
     {
         $units = ['B', 'KB', 'MB', 'GB'];
 
-        for ($i = 0; $bytes >= 1024 && $i < 3; $i++) {
-            $bytes /= 1024;
+        if ($bytes >= 1073741824) {
+            return round($bytes / 1073741824, 2) . ' ' . $units[3];
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        if ($bytes >= 1048576) {
+            return round($bytes / 1048576, 2) . ' ' . $units[2];
+        }
+
+        if ($bytes >= 1024) {
+            return round($bytes / 1024, 2) . ' ' . $units[1];
+        }
+
+        return $bytes . ' ' . $units[0];
     }
 }
