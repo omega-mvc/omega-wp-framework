@@ -186,7 +186,7 @@ final class ApplicationTest extends ApplicationTestCase
     {
         $app = new Application('sample', $this->themeBasePath());
 
-        $this->assertSame($this->themeBasePath() . '/bootstrap/cache', $app->getApplicationCachePath());
+        $this->assertSame($this->themeBasePath() . '/bootstrap/cache/', $app->getApplicationCachePath());
     }
 
     /**

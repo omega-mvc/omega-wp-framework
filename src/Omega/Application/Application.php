@@ -371,7 +371,7 @@ class Application extends AbstractApplication
         $base = rtrim($this->getBasePath(), "/\\");
 
         /** @var string $cacheDir */
-        $cacheDir = slash(path: '/bootstrap/cache');
+        $cacheDir = slash(path: '/bootstrap/cache/');
 
         return $base . $cacheDir;
     }
