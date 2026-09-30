@@ -302,12 +302,14 @@ class Router
         $reflector = new ReflectionClass($controllerClass);
 
         $constructor = $reflector->getConstructor();
-        /** @var array<int, mixed> $constructorDeps */
-        $constructorDeps = $constructor ? $this->resolveDependencies($constructor) : [];
 
-        $instance = $constructor
-            ? $reflector->newInstanceArgs($constructorDeps)
-            : new $controllerClass();
+        if ($constructor === null) {
+            $instance = new $controllerClass();
+        } else {
+            /** @var array<int, mixed> $constructorDeps */
+            $constructorDeps = $this->resolveDependencies($constructor);
+            $instance = $reflector->newInstanceArgs($constructorDeps);
+        }
 
         $calledMethod = $reflector->getMethod($method);
         $dependencies = $this->resolveDependencies($calledMethod, $request);
@@ -346,12 +348,14 @@ class Router
         $reflector = new ReflectionClass($controllerClass);
 
         $constructor = $reflector->getConstructor();
-        /** @var array<int, mixed> $constructorDeps */
-        $constructorDeps = $constructor ? $this->resolveDependencies($constructor) : [];
 
-        $instance = $constructor
-            ? $reflector->newInstanceArgs($constructorDeps)
-            : new $controllerClass();
+        if ($constructor === null) {
+            $instance = new $controllerClass();
+        } else {
+            /** @var array<int, mixed> $constructorDeps */
+            $constructorDeps = $this->resolveDependencies($constructor);
+            $instance = $reflector->newInstanceArgs($constructorDeps);
+        }
 
         $calledMethod = $reflector->getMethod($method);
         $dependencies = $this->resolveDependencies($calledMethod, $request);

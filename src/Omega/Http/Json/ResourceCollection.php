@@ -18,6 +18,7 @@ use Omega\Collection\Collection;
 use Omega\Database\ORM\AbstractModel;
 use Omega\Paginator\Paginator;
 
+use function array_map;
 use function array_merge;
 use function is_bool;
 
@@ -117,15 +118,14 @@ class ResourceCollection
     {
         if ($this->collects) {
             $resourceClass = $this->collects;
-            /** @var array<int, mixed> $resources */
-            $resources = [];
 
-            foreach ($this->collection->getAll() as $item) {
-                /** @var AbstractModel $item */
-                $resources[] = (new $resourceClass($item))->toArray();
-            }
+            /** @var array<int, AbstractModel> $items */
+            $items = $this->collection->getAll();
 
-            return $resources;
+            return array_map(
+                static fn(AbstractModel $item): array => (new $resourceClass($item))->toArray(),
+                $items
+            );
         }
 
         return $this->collection->toArray();
