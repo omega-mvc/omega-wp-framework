@@ -364,7 +364,7 @@ final class AbstractModelTest extends DatabaseTestCase
      */
     public function testCastsAreExposed(): void
     {
-        $casts = $this->invokeMethod(new Article(), 'casts');
+        $casts = $this->invokeArrayMethod(new Article(), 'casts');
 
         $this->assertSame('int', $casts['views']);
     }
@@ -377,7 +377,7 @@ final class AbstractModelTest extends DatabaseTestCase
         $article = new Article(['views' => '5']);
 
         $this->assertSame(5, $article->views);
-        $this->assertSame('wp_articles', $article->table);
+        $this->assertSame(['title', 'body'], $article->fillable);
     }
 
     /**
@@ -820,7 +820,7 @@ final class AbstractModelTest extends DatabaseTestCase
     {
         $model = new InstancedCastItem();
 
-        $this->assertInstanceOf(BooleanCast::class, $this->invokeMethod($model, 'casts')['state']);
+        $this->assertInstanceOf(BooleanCast::class, $this->invokeArrayMethod($model, 'casts')['state']);
         $this->assertFalse($model->state);
         $this->assertSame(1, $this->setAttributeValue($model, 'state', '1'));
     }
@@ -987,5 +987,22 @@ final class AbstractModelTest extends DatabaseTestCase
     private function invokeMethod(object $target, string $method, mixed ...$arguments): mixed
     {
         return (new ReflectionMethod($target, $method))->invoke($target, ...$arguments);
+    }
+
+    /**
+     * Invoke a method and assert that it returns an array.
+     *
+     * @param object $target The object owning the method.
+     * @param string $method The method name.
+     * @param mixed ...$arguments The arguments passed to the method.
+     * @return array<array-key, mixed> The array returned by the method.
+     */
+    private function invokeArrayMethod(object $target, string $method, mixed ...$arguments): array
+    {
+        $result = $this->invokeMethod($target, $method, ...$arguments);
+
+        $this->assertIsArray($result);
+
+        return $result;
     }
 }

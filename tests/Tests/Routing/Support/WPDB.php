@@ -204,6 +204,10 @@ final class WPDB
                     return (string) $value;
                 }
 
+                if (!is_scalar($value)) {
+                    return "''";
+                }
+
                 return "'" . str_replace("'", "\\'", (string) $value) . "'";
             },
             $query
@@ -239,9 +243,9 @@ final class WPDB
      *
      * @param string|null $query SQL query to execute.
      * @param string $output Unused output type flag kept for signature parity.
-     * @return array<int, object>|object|null The configured result rows.
+     * @return array<int, object> The configured result rows.
      */
-    public function get_results(?string $query = null, string $output = 'OBJECT'): array|object|null
+    public function get_results(?string $query = null, string $output = 'OBJECT'): array
     {
         $this->queries[] = (string) $query;
 
@@ -254,9 +258,9 @@ final class WPDB
      * @param string|null $query SQL query to execute.
      * @param string $output Unused output type flag kept for signature parity.
      * @param int $y Unused row offset kept for signature parity.
-     * @return array<int|string, mixed>|object|null The first configured row, if any.
+     * @return object|null The first configured row, if any.
      */
-    public function get_row(?string $query = null, string $output = 'OBJECT', int $y = 0): array|object|null
+    public function get_row(?string $query = null, string $output = 'OBJECT', int $y = 0): ?object
     {
         $this->queries[] = (string) $query;
 

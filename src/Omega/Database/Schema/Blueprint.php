@@ -238,7 +238,7 @@ class Blueprint
      */
     private function prepareColumns(): array
     {
-        return array_merge(
+        return array_values(array_merge(
             array_map(
                 fn (ColumnDefinition $column): string => $this->generateSingleColumnSql($column),
                 $this->columns
@@ -247,7 +247,7 @@ class Blueprint
             $this->indexKeysSql(),
             $this->primaryKeySql(),
             $this->commandsSql()
-        );
+        ));
     }
 
     /**
@@ -312,7 +312,10 @@ class Blueprint
     private function commandsSql(): array
     {
         return array_values(array_filter(
-            array_map(fn (mixed $command): ?string => $this->commandSql($command), $this->commands),
+            array_map(
+                fn (array|ForeignKeyDefinition $command): ?string => $this->commandSql($command),
+                $this->commands
+            ),
             static fn (?string $sql): bool => $sql !== null
         ));
     }
@@ -320,10 +323,11 @@ class Blueprint
     /**
      * Build the SQL fragment of a single registered command.
      *
-     * @param mixed $command The registered command to render.
+     * @param array{0: string, 1: string, 2?: array<int|string, string>}|ForeignKeyDefinition $command
+     *        The registered command to render.
      * @return string|null The generated fragment, or null when the command is not renderable.
      */
-    private function commandSql(mixed $command): ?string
+    private function commandSql(array|ForeignKeyDefinition $command): ?string
     {
         if ($command instanceof ForeignKeyDefinition) {
             return $command->getForeignKeySql();
@@ -472,8 +476,8 @@ class Blueprint
     /**
      * Add a single column when the table does not have it yet.
      *
-     * @param string           $tableName Fully qualified database table name.
-     * @param ColumnDefinition $column    The column to add.
+     * @param string           $tableName        Fully qualified database table name.
+     * @param ColumnDefinition $columnDefinition The column to add.
      * @return void
      */
     private function addMissingColumn(string $tableName, ColumnDefinition $columnDefinition): void
@@ -547,6 +551,9 @@ class Blueprint
 
         array_walk(
             $commands,
+            /**
+             * @param array{0: 'dropColumn'|'dropIndex'|'dropUnique', 1: string, 2?: array<int|string, string>} $command
+             */
             function (array $command) use ($tableName): void {
                 $this->runAlterCommand($tableName, $command);
             }
@@ -556,7 +563,8 @@ class Blueprint
     /**
      * Collect the queued drop commands, ignoring every other command.
      *
-     * @return list<array<int, string>> The registered drop commands.
+     * @return list<array{0: 'dropColumn'|'dropIndex'|'dropUnique', 1: string, 2?: array<int|string, string>}>
+     *     The registered drop commands.
      */
     private function dropCommands(): array
     {
@@ -565,8 +573,8 @@ class Blueprint
         return array_values(array_filter(
             $arrays,
             static fn (array $command): bool => (
-                in_array($command[0] ?? null, ['dropColumn', 'dropIndex', 'dropUnique'], true)
-                && !empty($command[1] ?? null)
+                in_array($command[0], ['dropColumn', 'dropIndex', 'dropUnique'], true)
+                && !empty($command[1])
             )
         ));
     }
@@ -577,8 +585,9 @@ class Blueprint
      * Drop column and drop index/unique commands are only issued when the
      * target object is still present in the database.
      *
-     * @param string           $tableName Fully qualified database table name.
-     * @param array<int, string> $command The registered drop command to execute.
+     * @param string $tableName Fully qualified database table name.
+     * @param array{0: 'dropColumn'|'dropIndex'|'dropUnique', 1: string, 2?: array<int|string, string>} $command
+     *        The registered drop command to execute.
      * @return void
      */
     private function runAlterCommand(string $tableName, array $command): void
@@ -595,8 +604,9 @@ class Blueprint
     /**
      * Drop a column when the table still exposes it.
      *
-     * @param string            $tableName Fully qualified database table name.
-     * @param array<int, string> $command The registered drop column command.
+     * @param string $tableName Fully qualified database table name.
+     * @param array{0: 'dropColumn'|'dropIndex'|'dropUnique', 1: string, 2?: array<int|string, string>} $command
+     *        The registered drop column command.
      * @return void
      */
     private function dropExistingColumn(string $tableName, array $command): void
@@ -614,8 +624,9 @@ class Blueprint
     /**
      * Drop an index when the table still exposes it.
      *
-     * @param string            $tableName Fully qualified database table name.
-     * @param array<int, string> $command The registered drop index command.
+     * @param string $tableName Fully qualified database table name.
+     * @param array{0: 'dropColumn'|'dropIndex'|'dropUnique', 1: string, 2?: array<int|string, string>} $command
+     *        The registered drop index command.
      * @return void
      */
     private function dropExistingIndex(string $tableName, array $command): void
@@ -636,6 +647,9 @@ class Blueprint
 
         array_walk(
             $commands,
+            /**
+             * @param array{0: 'index'|'unique', 1: string, 2?: array<int|string, string>} $command
+             */
             function (array $command) use ($tableName): void {
                 $this->runIndexCommand($tableName, $command);
             }
@@ -645,7 +659,8 @@ class Blueprint
     /**
      * Collect the queued index and unique commands, ignoring every other command.
      *
-     * @return list<array<int, mixed>> The registered index commands.
+     * @return list<array{0: 'index'|'unique', 1: string, 2?: array<int|string, string>}>
+     *     The registered index commands.
      */
     private function indexCommands(): array
     {
@@ -654,8 +669,8 @@ class Blueprint
         return array_values(array_filter(
             $arrays,
             static fn (array $command): bool => (
-                in_array($command[0] ?? null, ['index', 'unique'], true)
-                && !empty($command[1] ?? null)
+                in_array($command[0], ['index', 'unique'], true)
+                && !empty($command[1])
             )
         ));
     }
@@ -665,13 +680,14 @@ class Blueprint
      *
      * The statement is only issued when the index is not present yet.
      *
-     * @param string             $tableName Fully qualified database table name.
-     * @param array<int, mixed> $command The registered index command to execute.
+     * @param string $tableName Fully qualified database table name.
+     * @param array{0: 'index'|'unique', 1: string, 2?: array<int|string, string>} $command
+     *        The registered index command to execute.
      * @return void
      */
     private function runIndexCommand(string $tableName, array $command): void
     {
-        $indexName = (string) $command[1];
+        $indexName = $command[1];
 
         if ($this->indexExists($tableName, $indexName)) {
             return;
@@ -955,9 +971,9 @@ class Blueprint
      * intended for use with foreign key constraints.
      *
      * @param string $column Name of the foreign ID column.
-     * @return ForeignIdColumnDefinition|ColumnDefinition The configured column definition instance.
+     * @return ForeignIdColumnDefinition The configured column definition instance.
      */
-    public function foreignId(string $column): ForeignIdColumnDefinition|ColumnDefinition
+    public function foreignId(string $column): ForeignIdColumnDefinition
     {
         return $this->addColumnDefinition(new ForeignIdColumnDefinition($this, [
             'type'          => 'bigInteger',
@@ -1074,8 +1090,9 @@ class Blueprint
      * Stores the column definition internally so it can later
      * be included in generated schema SQL statements.
      *
-     * @param ColumnDefinition $definition Column definition instance to register.
-     * @return ColumnDefinition The registered column definition instance.
+     * @template T of ColumnDefinition
+     * @param T $definition Column definition instance to register.
+     * @return T The registered column definition instance.
      */
     protected function addColumnDefinition(ColumnDefinition $definition): ColumnDefinition
     {

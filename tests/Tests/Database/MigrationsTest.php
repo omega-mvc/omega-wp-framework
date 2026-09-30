@@ -456,7 +456,8 @@ final class MigrationsTest extends DatabaseTestCase
     private function oldVersionOf(Migrator $migrator): string
     {
         $property = new \ReflectionProperty($migrator, 'oldVersion');
+        $value    = $property->getValue($migrator);
 
-        return (string) $property->getValue($migrator);
+        return is_scalar($value) ? (string) $value : '';
     }
 }

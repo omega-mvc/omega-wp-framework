@@ -250,8 +250,8 @@ class Migrator
     /**
      * Filter out the migrations already recorded in the migrations table.
      *
-     * @param  array<int, string>  $files       Absolute paths of the available migration files.
-     * @param  array<int, mixed>   $migrations  Identifiers of the already applied migrations.
+     * @param  array<int, string>     $files       Absolute paths of the available migration files.
+     * @param  array<array-key, mixed> $migrations Identifiers of the already applied migrations.
      * @return array<int, string> Absolute paths of the migrations still to apply.
      */
     private function pendingMigrations(array $files, array $migrations): array
@@ -326,7 +326,7 @@ class Migrator
      * Roll back every recorded migration still pointing at an existing file.
      *
      * @param  QueryBuilder  $model       The query builder bound to the migrations table.
-     * @param  array<int, array<string, mixed>>  $migrations  The recorded migration rows.
+     * @param  array<array-key, mixed>  $migrations  The recorded migration rows.
      * @return void
      * @throws ReflectionException
      */
@@ -345,43 +345,53 @@ class Migrator
     /**
      * Keep only the recorded rows carrying an existing migration file.
      *
-     * @param  array<int, array<string, mixed>>  $migrations  The recorded migration rows.
-     * @return array<int, array<string, mixed>> The rows that can be rolled back.
+     * @param  array<array-key, mixed>  $migrations  The recorded migration rows.
+     * @return array<int, array{row: array<array-key, mixed>, file: string}> The rollback targets.
      */
     private function rollbackableRows(array $migrations): array
     {
+        $rows = array_filter(
+            $migrations,
+            static fn (mixed $row): bool => is_array($row)
+        );
+
         return array_values(
             array_filter(
-                $migrations,
-                fn (array $row): bool => $this->rollbackable($row)
+                array_map(
+                    fn (array $row): ?array => $this->rollbackTarget($row),
+                    $rows
+                ),
+                static fn (?array $target): bool => $target !== null
             )
         );
     }
 
     /**
-     * Determine whether a recorded row can be rolled back.
+     * Build the rollback target of a recorded row.
      *
-     * @param  array<string, mixed>  $row  The recorded migration row.
-     * @return bool True when the row carries an existing migration file.
+     * @param  array<array-key, mixed>  $row  The recorded migration row.
+     * @return array{row: array<array-key, mixed>, file: string}|null The rollback target,
+     *                                                             or null when the row
+     *                                                             carries no existing file.
      */
-    private function rollbackable(array $row): bool
+    private function rollbackTarget(array $row): ?array
     {
         $file = $row['file'] ?? null;
 
-        return is_string($file) && file_exists($file);
+        return is_string($file) && file_exists($file) ? ['row' => $row, 'file' => $file] : null;
     }
 
     /**
      * Roll back a single recorded migration and drop its tracking row.
      *
-     * @param  QueryBuilder           $model  The query builder bound to the migrations table.
-     * @param  array<string, mixed>  $row    The recorded migration row.
+     * @param  QueryBuilder  $model  The query builder bound to the migrations table.
+     * @param  array{row: array<array-key, mixed>, file: string}  $target  The rollback target.
      * @return void
      * @throws ReflectionException
      */
-    private function rollbackMigration(QueryBuilder $model, array $row): void
+    private function rollbackMigration(QueryBuilder $model, array $target): void
     {
-        $migration = require_once (string) $row['file'];
+        $migration = require_once $target['file'];
 
         if (!$migration instanceof AbstractMigration) {
             return;
@@ -389,7 +399,7 @@ class Migrator
 
         $migration->down();
 
-        $model->where(['id' => $row['id']])->delete();
+        $model->where(['id' => $target['row']['id']])->delete();
     }
     #endregion
 }

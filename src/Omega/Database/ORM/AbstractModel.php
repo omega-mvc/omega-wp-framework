@@ -193,11 +193,11 @@ abstract class AbstractModel implements ArrayAccess
     {
         $tableName = static::getDefaultPropertyValue(get_called_class(), 'table');
 
-        if (empty($tableName)) {
-            $tableName = self::modelToTable(get_called_class());
+        if (is_scalar($tableName) && !empty($tableName)) {
+            return Database::getTableName((string) $tableName, self::getPrefix());
         }
 
-        return Database::getTableName((string) $tableName, self::getPrefix());
+        return Database::getTableName(self::modelToTable(get_called_class()), self::getPrefix());
     }
 
     /**
@@ -227,7 +227,7 @@ abstract class AbstractModel implements ArrayAccess
      * Example:
      * UserProfile => user_profile
      *
-     * @param object|string $model The model class name or model instance.
+     * @param class-string|object $model The model class name or model instance.
      * @return string The generated foreign key base name.
      * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
      */
@@ -242,7 +242,7 @@ abstract class AbstractModel implements ArrayAccess
      * Example:
      * UserProfile => user_profile
      *
-     * @param object|class-string $class The class name or class instance to inspect.
+     * @param class-string|object $class The class name or class instance to inspect.
      * @return string The snake_case short class name.
      * @throws ReflectionException Thrown when class reflection metadata cannot be resolved.
      */
@@ -321,7 +321,7 @@ abstract class AbstractModel implements ArrayAccess
     {
         $prefix = static::getDefaultPropertyValue(get_called_class(), 'prefix', '');
 
-        return (string) $prefix;
+        return is_scalar($prefix) ? (string) $prefix : '';
     }
 
     /**
@@ -779,7 +779,7 @@ abstract class AbstractModel implements ArrayAccess
     /**
      * Define an inverse one-to-one or many relationship.
      *
-     * @param string $relatedClass The related model class name.
+     * @param class-string $relatedClass The related model class name.
      * @return BelongsTo The configured belongs-to relationship instance.
      * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
      */
@@ -940,7 +940,12 @@ abstract class AbstractModel implements ArrayAccess
         $normalized = strtolower($cast);
         $class      = self::CLASS_CASTS[$normalized] ?? $cast;
 
-        return class_exists($class) ? new $class() : $normalized;
+        if (!class_exists($class)) {
+            return $normalized;
+        }
+
+        /** @var class-string<CastsAttributesInterface> $class */
+        return new $class();
     }
 
     /**

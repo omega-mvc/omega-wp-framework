@@ -14,7 +14,6 @@ declare(strict_types=1);
 
 namespace Omega\Database\Schema;
 
-use function array_filter;
 use function is_string;
 use function md5;
 use function sprintf;
@@ -139,18 +138,18 @@ class ForeignKeyDefinition
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-        $column     = $this->attributes['name'] ?? null;
-        $references = $this->attributes['references'] ?? null;
-        $table      = $this->attributes['on'] ?? null;
+        $column     = $this->stringAttribute('name');
+        $references = $this->stringAttribute('references');
+        $table      = $this->stringAttribute('on');
         $onDelete   = $this->attributes['onDelete'] ?? null;
 
-        if (!$this->isComplete([$column, $references, $table])) {
+        if ($column === null || $references === null || $table === null) {
             return '';
         }
 
         $sql = sprintf(
             'CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)',
-            $this->constraintName((string) $column),
+            $this->constraintName($column),
             $column,
             $wpdb->prefix . $table,
             $references
@@ -164,19 +163,17 @@ class ForeignKeyDefinition
     }
 
     /**
-     * Determine whether every mandatory part of the constraint is filled.
+     * Read a mandatory string attribute of the constraint definition.
      *
-     * @param array<int, mixed> $parts The mandatory constraint parts.
-     * @return bool True when all parts are non empty strings.
+     * @param string $key The attribute name.
+     * @return string|null The attribute value, or null when it is missing,
+     *                     empty or not a string.
      */
-    private function isComplete(array $parts): bool
+    private function stringAttribute(string $key): ?string
     {
-        $missing = array_filter(
-            $parts,
-            static fn (mixed $part): bool => !is_string($part) || $part === ''
-        );
+        $value = $this->attributes[$key] ?? null;
 
-        return $missing === [];
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**

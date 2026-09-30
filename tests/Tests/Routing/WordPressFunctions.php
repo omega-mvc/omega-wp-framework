@@ -291,8 +291,8 @@ function current_time(string $type = 'timestamp', int|bool $gmt = 0): int|string
  * Records the DDL statements it receives so schema creation stays
  * observable without a real WordPress upgrade environment.
  *
- * @param string|string[] $queries CREATE TABLE statement(s) to apply
- * @return array<int, mixed> The recorded statements
+ * @param string|array<int, string> $queries CREATE TABLE statement(s) to apply
+ * @return array<int, string> The recorded statements
  */
 function dbDelta(string|array $queries): array
 {
@@ -316,7 +316,7 @@ function dbDelta(string|array $queries): array
  */
 function wp_json_encode(mixed $data, int $options = 0, int $depth = 512): string|false
 {
-    return json_encode($data, $options, $depth);
+    return json_encode($data, $options, max(1, $depth));
 }
 
 /**
@@ -331,8 +331,15 @@ function wp_json_encode(mixed $data, int $options = 0, int $depth = 512): string
 function esc_sql(mixed $data): string|array
 {
     if (is_array($data)) {
-        return array_map(esc_sql(...), $data);
+        return array_map(
+            static function (mixed $item): string {
+                $escaped = esc_sql($item);
+
+                return is_string($escaped) ? $escaped : '';
+            },
+            $data
+        );
     }
 
-    return addslashes((string) $data);
+    return addslashes(is_scalar($data) ? (string) $data : '');
 }

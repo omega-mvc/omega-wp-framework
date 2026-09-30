@@ -75,9 +75,11 @@ final class DatabaseTest extends DatabaseTestCase
             'body' => 'text',
         ]);
 
-        $this->assertCount(1, WordPressRuntime::$dbDeltaStatements);
+        $statements = WordPressRuntime::$dbDeltaStatements;
 
-        $statement = WordPressRuntime::$dbDeltaStatements[array_key_first(WordPressRuntime::$dbDeltaStatements)];
+        $this->assertCount(1, $statements);
+
+        $statement = $statements[0] ?? '';
 
         $this->assertStringContainsString('CREATE TABLE wp_posts', $statement);
         $this->assertStringContainsString('title varchar(255)', $statement);
@@ -140,6 +142,7 @@ final class DatabaseTest extends DatabaseTestCase
 
         $results = $database->getResults('SELECT * FROM wp_posts');
 
+        $this->assertIsArray($results);
         $this->assertCount(1, $results);
     }
 

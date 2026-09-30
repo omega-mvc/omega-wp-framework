@@ -43,7 +43,7 @@ final class AccessoredWidget extends AbstractModel
      */
     public function label(): Attribute
     {
-        return Attribute::get(static fn (mixed $value): string => 'label:' . (string) $value);
+        return Attribute::get(static fn (string|int|float|bool|null $value): string => 'label:' . (string) $value);
     }
 
     /**
@@ -54,8 +54,8 @@ final class AccessoredWidget extends AbstractModel
     public function slug(): Attribute
     {
         return Attribute::make(
-            static fn (mixed $value): string => strtoupper((string) $value),
-            static fn (mixed $value): string => strtolower((string) $value)
+            static fn (string|int|float|bool|null $value): string => strtoupper((string) $value),
+            static fn (string|int|float|bool|null $value): string => strtolower((string) $value)
         );
     }
 
@@ -66,7 +66,9 @@ final class AccessoredWidget extends AbstractModel
      */
     public function code(): Attribute
     {
-        return Attribute::set(static fn (mixed $value): string => 'code:' . (string) $value);
+        return Attribute::set(
+            static fn (string|int|float|bool|null $value): string => 'code:' . (string) $value
+        );
     }
 
     /**

@@ -1039,7 +1039,7 @@ class QueryBuilder
     {
         $this->whereArray = array_values(array_filter(
             $this->whereArray,
-            static fn(array $item): bool => $item['column'] !== 'deleted_at'
+            static fn(array $item): bool => ($item['column'] ?? null) !== 'deleted_at'
                 || $item['operator'] !== 'IS'
                 || $item['value'] !== '!#####NULL#####!'
         ));

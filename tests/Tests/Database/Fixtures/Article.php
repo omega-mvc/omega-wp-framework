@@ -21,6 +21,12 @@ use Omega\Database\ORM\Relations\HasOne;
 /**
  * Model relying on the table name derived from its class name.
  *
+ * @property mixed $id               Primary key resolved through the magic accessor.
+ * @property mixed $body             Body attribute handled by the mass assignment list.
+ * @property mixed $title            Title attribute handled by the mass assignment list.
+ * @property mixed $views            Integer cast attribute.
+ * @property mixed $fillable         Protected property read through the magic accessor.
+ *
  * @category  Tests
  * @package   Database
  * @subpackage Fixtures

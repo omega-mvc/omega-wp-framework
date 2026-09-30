@@ -20,6 +20,8 @@ use Omega\Database\ORM\Casts\BooleanCast;
 /**
  * Model declaring its casts as ready to use cast instances.
  *
+ * @property mixed $state Boolean cast attribute declared as a cast instance.
+ *
  * @category  Tests
  * @package   Database
  * @subpackage Fixtures

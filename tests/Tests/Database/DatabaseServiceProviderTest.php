@@ -77,7 +77,13 @@ final class DatabaseServiceProviderTest extends DatabaseTestCase
 
         $registered = array_filter(
             WordPressRuntime::$filters,
-            static fn (array $args): bool => $args[0] === 'query' && ($args[1][0] ?? null) === $provider
+            static function (array $args) use ($provider): bool {
+                $callback = $args[1] ?? null;
+
+                return ($args[0] ?? null) === 'query'
+                    && is_array($callback)
+                    && ($callback[0] ?? null) === $provider;
+            }
         );
 
         $this->assertCount(1, $registered);

@@ -19,6 +19,9 @@ use Omega\Database\ORM\AbstractModel;
 /**
  * Model with timestamps, an explicit table and a custom prefix.
  *
+ * @property mixed $id   Primary key resolved through the magic accessor.
+ * @property mixed $body Body attribute resolved through the magic accessor.
+ *
  * @category  Tests
  * @package   Database
  * @subpackage Fixtures
