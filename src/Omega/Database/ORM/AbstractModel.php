@@ -803,8 +803,8 @@ abstract class AbstractModel implements ArrayAccess
     #endregion
 
     #region Attribute Casting
-    /** @var array<string, class-string<CastsAttributesInterface>> Shortcut aliases mapped to cast classes. */
-    private const CLASS_CASTS = [
+    /** Shortcut aliases mapped to cast classes. */
+    private const array CLASS_CASTS = [
         'boolean' => BooleanCast::class,
         'bool'    => BooleanCast::class,
         'array'   => ArrayCast::class,
