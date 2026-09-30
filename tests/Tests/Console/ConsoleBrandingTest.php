@@ -150,7 +150,9 @@ it('formats byte counts in human readable units', function (): void {
     expect($format->invoke($branding, 0))->toBe('0 B')
         ->and($format->invoke($branding, 500))->toBe('500 B')
         ->and($format->invoke($branding, 1024))->toBe('1 KB')
+        ->and($format->invoke($branding, 1536))->toBe('1.5 KB')
         ->and($format->invoke($branding, 1024 * 1024))->toBe('1 MB')
         ->and($format->invoke($branding, 1024 ** 3))->toBe('1 GB')
+        ->and($format->invoke($branding, (int) (2.5 * 1024 ** 3)))->toBe('2.5 GB')
         ->and($format->invoke($branding, 1024 ** 4))->toBe('1024 GB');
 });

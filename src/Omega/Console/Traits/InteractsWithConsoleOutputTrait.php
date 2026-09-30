@@ -92,7 +92,7 @@ trait InteractsWithConsoleOutputTrait
      * Each item is converted to a string before its visible width is
      * calculated.
      *
-     * @param array<int|string, mixed> $items The values to measure.
+     * @param array<int|string, string> $items The values to measure.
      * @return int The maximum visible width, or zero if the array is empty.
      */
     protected function getVisibleMaxWidth(array $items): int
@@ -101,8 +101,8 @@ trait InteractsWithConsoleOutputTrait
             return 0;
         }
 
-        return array_reduce($items, function ($max, $item) {
-            return max($max, $this->getVisibleWidth((string) $item));
+        return array_reduce($items, function (int $max, string $item): int {
+            return max($max, $this->getVisibleWidth($item));
         }, 0);
     }
 

@@ -26,7 +26,6 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 
-use function is_string;
 use function array_values;
 use function class_exists;
 use function file_exists;
@@ -116,6 +115,8 @@ class ConsoleApplication
 
         $this->configureCommandLoader($omega);
 
+        $omega->setAutoExit(false);
+
         return $omega->run($input, $output);
     }
 
@@ -155,13 +156,15 @@ class ConsoleApplication
     {
         $cacheFile = $this->app->getApplicationCachePath() . 'commands.php';
 
-        $merged = file_exists($cacheFile)
-            ? require $cacheFile
-            : $this->discoverCommands();
+        if (file_exists($cacheFile)) {
+            $merged = require $cacheFile;
+
+            $commands = is_array($merged) ? $merged : [];
+        } else {
+            $commands = $this->discoverCommands();
+        }
 
         /** @var array<string, class-string<Command>> $commands */
-        $commands = is_array($merged) ? $merged : [];
-
         $console->setCommandLoader(new CommandLoader($this->app, $commands));
     }
 
@@ -175,13 +178,14 @@ class ConsoleApplication
      */
     public function discoverCommands(): array
     {
+        /** @var string $frameworkCommands */
         $frameworkCommands   = slash(path: '/Commands');
+        /** @var string $applicationCommands */
         $applicationCommands = slash(path: '/app/Commands');
 
         $commandPaths = [
-            'Omega\\Console\\Commands\\' => __DIR__ . (is_string($frameworkCommands) ? $frameworkCommands : ''),
-            'App\\Console\\Commands\\'   => $this->app->getBasePath()
-                . (is_string($applicationCommands) ? $applicationCommands : ''),
+            'Omega\\Console\\Commands\\' => __DIR__ . $frameworkCommands,
+            'App\\Console\\Commands\\'   => $this->app->getBasePath() . $applicationCommands,
         ];
 
         $commands = [];

@@ -7,6 +7,8 @@ namespace Tests\Console;
 use Omega\Application\Application;
 use Omega\Console\ConsoleApplication;
 use Omega\Console\ConsoleBranding;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Tests\Console\Fixtures\ConsoleApplicationHarness;
 use Tests\Console\Fixtures\ConsoleSupport;
 use Tests\Console\Fixtures\DemoCommand;
@@ -189,5 +191,124 @@ it('executes console requests in a subprocess', function (): void {
             $scenario['output'],
             $scenario['shell'],
         ))->toBe(0);
+    }
+});
+
+it('handles a null input reading the process argv', function (): void {
+    $previous = $_SERVER['argv'] ?? null;
+    $_SERVER['argv'] = ['pest', '--version'];
+
+    try {
+        $app = new Application('omega', '/');
+        $console = new ConsoleApplication($app);
+        $output = new BufferedOutput();
+
+        expect($console->handle(null, $output))->toBe(0);
+    } finally {
+        if ($previous === null) {
+            unset($_SERVER['argv']);
+        } else {
+            $_SERVER['argv'] = $previous;
+        }
+    }
+});
+
+it('handles an array input as a version request', function (): void {
+    $app = new Application('omega', '/');
+    $console = new ConsoleApplication($app);
+    $output = new BufferedOutput();
+
+    $exit = $console->handle(['pest', '--version'], $output);
+
+    expect($exit)->toBe(0)
+        ->and($output->fetch())->toContain('omega Framework:');
+});
+
+it('runs a discovered command through handle', function (): void {
+    $app = new Application('omega', '/');
+    $console = new ConsoleApplication($app);
+    $output = new BufferedOutput();
+
+    $exit = $console->handle(['pest', 'ciao'], $output);
+
+    expect($exit)->toBe(0)
+        ->and($output->fetch())->toContain('Ciao Mondo!.');
+});
+
+it('passes through a pre-built ArrayInput', function (): void {
+    $app = new Application('omega', '/');
+    $console = new ConsoleApplication($app);
+    $output = new BufferedOutput();
+
+    expect($console->handle(new ArrayInput(['--version' => true]), $output))->toBe(0);
+});
+
+it('creates a ConsoleOutput when none is provided', function (): void {
+    $app = new Application('omega', '/');
+    $console = new ConsoleApplication($app);
+
+    expect($console->handle(['pest', '--version']))->toBe(0);
+});
+
+it('forces SHELL and honours supported shells', function (): void {
+    $app = new Application('omega', '/');
+    $console = new ConsoleApplication($app);
+    $previous = getenv('SHELL');
+
+    foreach (['/bin/bash', '/usr/bin/zsh', '/usr/bin/fish', '', '/usr/bin/dash'] as $shell) {
+        try {
+            putenv('SHELL=' . $shell);
+
+            expect($console->handle(['pest', '--version'], new BufferedOutput()))->toBe(0);
+        } finally {
+            if ($previous === false) {
+                putenv('SHELL');
+            } else {
+                putenv('SHELL=' . $previous);
+            }
+        }
+    }
+});
+
+it('returns an empty map when the application command directory is empty', function (): void {
+    $base = ConsoleSupport::newConsoleBase();
+    $appCommands = $base . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Commands';
+    mkdir($appCommands, 0777, true);
+
+    try {
+        $app = new Application('omega', $base);
+        $console = new ConsoleApplicationHarness($app);
+
+        $map = $console->discoverCommands();
+
+        expect($map)->not->toHaveKey('discover:one');
+    } finally {
+        @rmdir($appCommands);
+        @rmdir(dirname($appCommands));
+        ConsoleSupport::removeConsoleBase($base);
+    }
+});
+
+it('ignores discovered files whose class is not autoloadable', function (): void {
+    $base = ConsoleSupport::newConsoleBase();
+    $appCommands = $base . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Commands';
+    mkdir($appCommands, 0777, true);
+    file_put_contents(
+        $appCommands . DIRECTORY_SEPARATOR . 'GhostCommand.php',
+        '<?php namespace App\Console\Commands; class GhostCommand {}'
+    );
+
+    try {
+        $app = new Application('omega', $base);
+        $console = new ConsoleApplicationHarness($app);
+
+        $map = $console->discoverCommands();
+
+        expect($map)->not->toHaveKey('ghost:run');
+    } finally {
+        @unlink($appCommands . DIRECTORY_SEPARATOR . 'GhostCommand.php');
+        @rmdir($appCommands);
+        @rmdir(dirname($appCommands));
+        ConsoleSupport::removeConsoleBase($base);
     }
 });

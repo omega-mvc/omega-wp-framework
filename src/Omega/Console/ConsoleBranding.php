@@ -133,23 +133,26 @@ final class ConsoleBranding extends SymfonyConsole
      */
     protected function renderRuntimeInfo(OutputInterface $output): void
     {
-        $env    = $this->app->getEnvironment();
-        $debug  = $this->app->isDebugMode() ? 'ON' : 'OFF';
-        $php    = PHP_VERSION;
-        $memory = $this->formatBytes(memory_get_usage(true));
+        $env       = $this->app->getEnvironment();
+        $debug     = $this->app->isDebugMode();
+        $php       = PHP_VERSION;
+        $memory    = $this->formatBytes(memory_get_usage(true));
 
         $cacheFile = $this->app->getApplicationCachePath() . 'commands.php';
-        $isCached  = file_exists($cacheFile) ? 'YES' : 'NO';
+        $isCached  = file_exists($cacheFile);
+
+        [$debugColor, $debugLabel]   = $debug ? ['green', 'ON'] : ['red', 'OFF'];
+        [$cachedColor, $cachedLabel] = $isCached ? ['green', 'YES'] : ['yellow', 'NO'];
 
         $output->writeln(sprintf(
             '<fg=gray> Environment:</> <fg=yellow>%s</>  |  <fg=gray>Debug:</> <fg=%s>%s</>  |  '
             . '<fg=gray>PHP:</> %s  |  <fg=gray>Command Cache:</> <fg=%s>%s</>  |  <fg=gray>Memory:</> %s',
             $env,
-            $debug === 'ON' ? 'green' : 'red',
-            $debug,
+            $debugColor,
+            $debugLabel,
             $php,
-            $isCached === 'YES' ? 'green' : 'yellow',
-            $isCached,
+            $cachedColor,
+            $cachedLabel,
             $memory
         ));
     }

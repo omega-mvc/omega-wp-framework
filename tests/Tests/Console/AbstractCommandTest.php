@@ -8,21 +8,28 @@ use Omega\Application\Application;
 use Omega\Console\AbstractCommand;
 use Omega\Console\ConsoleBranding;
 use Omega\Console\Exceptions\InvalidArgumentException;
+use ReflectionMethod;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Tester\CommandTester;
 use Tests\Console\Fixtures\BadArgumentCountCommand;
 use Tests\Console\Fixtures\BadArgumentDescriptionCommand;
 use Tests\Console\Fixtures\BadArgumentModeCommand;
+use Tests\Console\Fixtures\BadArgumentNotArrayCommand;
+use Tests\Console\Fixtures\BadArgumentTooManyCommand;
 use Tests\Console\Fixtures\BadOptionCountCommand;
 use Tests\Console\Fixtures\BadOptionDescriptionCommand;
 use Tests\Console\Fixtures\BadOptionModeCommand;
+use Tests\Console\Fixtures\BadOptionNotArrayCommand;
 use Tests\Console\Fixtures\BadOptionShortcutCommand;
+use Tests\Console\Fixtures\BadOptionTooManyCommand;
 use Tests\Console\Fixtures\BadSuggestedValuesCommand;
 use Tests\Console\Fixtures\CallerCommand;
 use Tests\Console\Fixtures\DemoCommand;
 use Tests\Console\Fixtures\MinimalCommand;
 use Tests\Console\Fixtures\NoAttributeCommand;
 use Tests\Console\Fixtures\NullReturnCommand;
+use Tests\Console\Fixtures\ShortcutOptionsCommand;
 use Tests\Console\Fixtures\SuggestedArrayCommand;
 use Tests\Console\Fixtures\TargetCommand;
 use Tests\Console\Fixtures\ThrowingTargetCommand;
@@ -154,3 +161,39 @@ it('throws when an option shortcut is invalid', function (): void {
 it('throws when suggested values are neither an array nor a closure', function (): void {
     new BadSuggestedValuesCommand();
 })->throws(InvalidArgumentException::class);
+
+it('throws when an argument configuration is not an array', function (): void {
+    new BadArgumentNotArrayCommand();
+})->throws(InvalidArgumentException::class);
+
+it('throws when an argument configuration has too many elements', function (): void {
+    new BadArgumentTooManyCommand();
+})->throws(InvalidArgumentException::class);
+
+it('throws when an option configuration is not an array', function (): void {
+    new BadOptionNotArrayCommand();
+})->throws(InvalidArgumentException::class);
+
+it('throws when an option configuration has too many elements', function (): void {
+    new BadOptionTooManyCommand();
+})->throws(InvalidArgumentException::class);
+
+it('accepts a null shortcut, an array shortcut and a four element option configuration', function (): void {
+    $command = new ShortcutOptionsCommand();
+
+    expect($command->getDefinition()->hasOption('o1'))->toBeTrue()
+        ->and($command->getDefinition()->getOption('o1')->getDefault())->toBe('default')
+        ->and($command->getDefinition()->getOption('o2')->getShortcut())->toBe('a|b');
+});
+
+it('accepts a closure as suggested values when registered directly', function (): void {
+    $command = new DemoCommand();
+
+    (new ReflectionMethod(AbstractCommand::class, 'registerOption'))->invoke(
+        $command,
+        'pick',
+        ['p', InputOption::VALUE_OPTIONAL, 'Pick', null, static fn (array $values): array => $values],
+    );
+
+    expect($command->getDefinition()->hasOption('pick'))->toBeTrue();
+});

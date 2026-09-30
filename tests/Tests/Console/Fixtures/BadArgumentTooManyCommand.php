@@ -14,16 +14,22 @@ declare(strict_types=1);
 
 namespace Tests\Console\Fixtures;
 
-use Omega\Console\ConsoleApplication;
-use Symfony\Component\Console\Application as SymfonyApplication;
+use Omega\Console\AbstractCommand;
+use Omega\Console\Attribute\AsCommand;
 
 /**
- * ConsoleApplication subclass that exposes its protected members for testing.
+ * Argument configuration with too many elements that must throw.
  */
-class ConsoleApplicationHarness extends ConsoleApplication
+#[AsCommand(
+    name: 'demo:bad-argument-too-many',
+    arguments: [
+        'name' => [1, 'Description', null, 'extra'],
+    ],
+)]
+class BadArgumentTooManyCommand extends AbstractCommand
 {
-    public function exposeConfigureCommandLoader(SymfonyApplication $console): void
+    public function __invoke(): int
     {
-        $this->configureCommandLoader($console);
+        return self::SUCCESS;
     }
 }

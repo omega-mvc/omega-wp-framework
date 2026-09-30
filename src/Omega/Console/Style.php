@@ -20,7 +20,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+use function array_map;
+use function implode;
+use function is_iterable;
 use function is_string;
+use function rtrim;
 
 /**
  * Provides a customized console style for Omega commands.
@@ -81,33 +85,34 @@ class Style extends SymfonyStyle
      *
      * Every non-empty line is automatically indented before being written.
      *
-     * @param string|array<int|string, string> $messages The message or messages to write.
+     * @param string|iterable<int|string, string> $messages The message or messages to write.
      * @param int<0, 511> $type The output verbosity type.
      * @return void
      */
     #[Override]
     public function writeln(string|iterable $messages, int $type = self::OUTPUT_NORMAL): void
     {
-        foreach ((array) $messages as $message) {
-            $message = (string) $message;
+        array_map(
+            function (mixed $message) use ($type): void {
+                $message = rtrim((string) $message, "\r\n");
 
-            $message = rtrim($message, "\r\n");
+                if ($message !== '') {
+                    $message = $this->indent . $message;
+                    $this->isLastLineEmpty = false;
+                } else {
+                    $this->isLastLineEmpty = true;
+                }
 
-            if ($message !== '') {
-                $message = $this->indent . $message;
-                $this->isLastLineEmpty = false;
-            } else {
-                $this->isLastLineEmpty = true;
-            }
-
-            parent::writeln($message, $type);
-        }
+                parent::writeln($message, $type);
+            },
+            (array) $messages
+        );
     }
 
     /**
      * Displays a success message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -125,7 +130,7 @@ class Style extends SymfonyStyle
     /**
      * Displays an error message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -143,7 +148,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a warning message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -161,7 +166,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a comment message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -179,7 +184,7 @@ class Style extends SymfonyStyle
     /**
      * Displays a note message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -197,7 +202,7 @@ class Style extends SymfonyStyle
     /**
      * Displays an informational message.
      *
-     * @param string|array<int|string, string> $message The message to display.
+     * @param string|iterable<int|string, string> $message The message to display.
      * @return void
      */
     #[Override]
@@ -318,7 +323,7 @@ class Style extends SymfonyStyle
      * Iterable messages are converted into a single string separated by
      * line breaks.
      *
-     * @param string|array<int|string, string> $message The message to normalize.
+     * @param string|iterable<int|string, string> $message The message to normalize.
      * @return string The normalized message.
      */
     private function processMessage(string|iterable $message): string

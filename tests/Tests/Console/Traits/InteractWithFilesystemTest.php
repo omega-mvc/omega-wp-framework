@@ -46,3 +46,18 @@ it('excludes files matching the given patterns', function (): void {
             __DIR__ . '/../Fixtures/Files/b.log'
         );
 });
+
+it('matches every file with zero patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', []);
+
+    expect($files)->toHaveCount(3);
+});
+
+it('excludes files matching multiple patterns', function (): void {
+    $probe = new FilesystemProbe();
+    $files = $probe->find(__DIR__ . '/../Fixtures/Files', '*', ['*.txt', '*.log']);
+
+    expect($files)->toHaveCount(1)
+        ->and($files[0])->toEndWith('c.php');
+});

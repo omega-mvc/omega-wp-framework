@@ -27,6 +27,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Terminal;
 use Throwable;
 
+use function array_keys;
+use function array_map;
 use function count;
 use function is_array;
 use function is_int;
@@ -150,14 +152,13 @@ abstract class AbstractCommand extends Command
      */
     protected function configure(): void
     {
-        $reflection = new ReflectionClass($this);
-        $attribute = $reflection->getAttributes(AsCommand::class)[0] ?? null;
+        $attributes = (new ReflectionClass($this))->getAttributes(AsCommand::class);
 
-        if (!$attribute) {
+        if ($attributes === []) {
             return;
         }
 
-        $settings = $attribute->newInstance();
+        $settings = $attributes[0]->newInstance();
 
         $this->setName($settings->name);
 
@@ -168,60 +169,280 @@ abstract class AbstractCommand extends Command
         $this->setAliases($settings->aliases);
         $this->setHidden($settings->hidden);
 
-        foreach ($settings->arguments as $name => $config) {
-            $argumentName = (string) $name;
+        array_map(
+            fn (mixed $argumentName, mixed $argumentConfig) => $this->registerArgument(
+                (string) $argumentName,
+                $argumentConfig
+            ),
+            array_keys($settings->arguments),
+            $settings->arguments
+        );
 
-            if (!is_array($config) || count($config) < 2 || count($config) > 3) {
-                throw new InvalidArgumentException(
-                    "Argument configuration for '$argumentName' must be an array with 2 or 3 elements: "
-                    . "[mode:int, description:string, default?]"
-                );
-            }
+        array_map(
+            fn (mixed $optionName, mixed $optionConfig) => $this->registerOption(
+                (string) $optionName,
+                $optionConfig
+            ),
+            array_keys($settings->options),
+            $settings->options
+        );
+    }
 
-            [$mode, $description] = $config;
+    /**
+     * Register a single command argument definition.
+     *
+     * @param string $argumentName Name of the argument as defined in the AsCommand attribute.
+     * @param mixed  $config       Argument configuration array: [mode, description, default?].
+     * @return void
+     * @throws InvalidArgumentException When the argument configuration is invalid.
+     */
+    private function registerArgument(string $argumentName, mixed $config): void
+    {
+        $this->assertArgumentShape($argumentName, $config);
 
-            if (!is_int($mode)) {
-                throw new InvalidArgumentException("Argument '$argumentName': mode must be an integer.");
-            }
-            if (!is_string($description)) {
-                throw new InvalidArgumentException("Argument '$argumentName': description must be a string.");
-            }
+        [$mode, $description] = $config;
 
-            $this->addArgument($argumentName, $mode, $description, $config[2] ?? null);
+        $this->assertArgumentMode($argumentName, $mode);
+        $this->assertArgumentDescription($argumentName, $description);
+
+        $this->addArgument($argumentName, $mode, $description, $config[2] ?? null);
+    }
+
+    /**
+     * Validate the shape of an argument configuration.
+     *
+     * @param string $argumentName Name of the argument as defined in the AsCommand attribute.
+     * @param mixed  $config       Argument configuration value.
+     * @return void
+     * @throws InvalidArgumentException When the argument configuration is invalid.
+     * @phpstan-assert array{0: mixed, 1: mixed, 2?: mixed} $config
+     */
+    private function assertArgumentShape(string $argumentName, mixed $config): void
+    {
+        if (!is_array($config)) {
+            throw new InvalidArgumentException(
+                "Argument configuration for '$argumentName' must be an array with 2 or 3 elements: "
+                . "[mode:int, description:string, default?]"
+            );
         }
 
-        foreach ($settings->options as $name => $config) {
-            $optionName = (string) $name;
+        $size = count($config);
 
-            if (!is_array($config) || count($config) < 3 || count($config) > 5) {
-                throw new InvalidArgumentException(
-                    "Option configuration for '$optionName' must be an array with 3-5 elements: "
-                    . "[shortcut:string|array|null, mode:int, description:string, default?, "
-                    . "suggestedValues?]"
-                );
-            }
-
-            $shortcut        = $config[0];
-            $mode            = $config[1];
-            $description     = $config[2];
-            $default         = $config[3] ?? null;
-            $suggestedValues = $config[4] ?? [];
-
-            if (!is_int($mode)) {
-                throw new InvalidArgumentException("Option '$optionName': mode must be an integer.");
-            }
-            if (!is_string($description)) {
-                throw new InvalidArgumentException("Option '$optionName': description must be a string.");
-            }
-            if (!is_null($shortcut) && !is_string($shortcut) && !is_array($shortcut)) {
-                throw new InvalidArgumentException("Option '$optionName': shortcut must be string, array or null.");
-            }
-            if (!is_array($suggestedValues) && !$suggestedValues instanceof Closure) {
-                throw new InvalidArgumentException("Option '$optionName': suggestedValues must be array or Closure.");
-            }
-
-            $this->addOption($optionName, $shortcut, $mode, $description, $default, $suggestedValues);
+        if ($size < 2) {
+            throw new InvalidArgumentException(
+                "Argument configuration for '$argumentName' must be an array with 2 or 3 elements: "
+                . "[mode:int, description:string, default?]"
+            );
         }
+
+        if ($size > 3) {
+            throw new InvalidArgumentException(
+                "Argument configuration for '$argumentName' must be an array with 2 or 3 elements: "
+                . "[mode:int, description:string, default?]"
+            );
+        }
+    }
+
+    /**
+     * Assert that a mode value is an integer.
+     *
+     * @param string $entity  Entity type used in the error message ('Argument' or 'Option').
+     * @param string $name    Definition name used in the error message.
+     * @param mixed  $mode    Mode value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the mode is not an integer.
+     * @phpstan-assert int $mode
+     */
+    private function assertMode(string $entity, string $name, mixed $mode): void
+    {
+        if (!is_int($mode)) {
+            throw new InvalidArgumentException("$entity '$name': mode must be an integer.");
+        }
+    }
+
+    /**
+     * Assert that a description value is a string.
+     *
+     * @param string $entity      Entity type used in the error message ('Argument' or 'Option').
+     * @param string $name        Definition name used in the error message.
+     * @param mixed  $description Description value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the description is not a string.
+     * @phpstan-assert string $description
+     */
+    private function assertDescription(string $entity, string $name, mixed $description): void
+    {
+        if (!is_string($description)) {
+            throw new InvalidArgumentException("$entity '$name': description must be a string.");
+        }
+    }
+
+    /**
+     * Assert that the mode and description of an argument are valid.
+     *
+     * @param string $argumentName Name of the argument.
+     * @param mixed  $mode         Mode value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the mode is not an integer.
+     * @phpstan-assert int $mode
+     */
+    private function assertArgumentMode(string $argumentName, mixed $mode): void
+    {
+        $this->assertMode('Argument', $argumentName, $mode);
+    }
+
+    /**
+     * Assert that the argument description is valid.
+     *
+     * @param string $argumentName Name of the argument.
+     * @param mixed  $description  Description value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the description is not a string.
+     * @phpstan-assert string $description
+     */
+    private function assertArgumentDescription(string $argumentName, mixed $description): void
+    {
+        $this->assertDescription('Argument', $argumentName, $description);
+    }
+
+    /**
+     * Register a single command option definition.
+     *
+     * @param string $optionName Name of the option as defined in the AsCommand attribute.
+     * @param mixed  $config     Option configuration array: [shortcut, mode, description, default?, suggestedValues?].
+     * @return void
+     * @throws InvalidArgumentException When the option configuration is invalid.
+     */
+    private function registerOption(string $optionName, mixed $config): void
+    {
+        $this->assertOptionShape($optionName, $config);
+
+        [$default, $suggestedValues] = match (count($config)) {
+            5 => [$config[3] ?? null, $config[4] ?? []],
+            4 => [$config[3] ?? null, []],
+            default => [null, []],
+        };
+
+        $this->assertOptionMode($optionName, $config[1]);
+        $this->assertOptionDescription($optionName, $config[2]);
+        $this->assertOptionShortcut($optionName, $config[0]);
+        $this->assertOptionSuggestedValues($optionName, $suggestedValues);
+
+        $this->addOption($optionName, $config[0], $config[1], $config[2], $default, $suggestedValues);
+    }
+
+    /**
+     * Validate the shape of an option configuration.
+     *
+     * @param string $optionName Name of the option as defined in the AsCommand attribute.
+     * @param mixed  $config     Option configuration value.
+     * @return void
+     * @throws InvalidArgumentException When the option configuration is invalid.
+     * @phpstan-assert array{0: mixed, 1: mixed, 2: mixed, 3?: mixed, 4?: mixed} $config
+     */
+    private function assertOptionShape(string $optionName, mixed $config): void
+    {
+        if (!is_array($config)) {
+            throw new InvalidArgumentException(
+                "Option configuration for '$optionName' must be an array with 3-5 elements: "
+                . "[shortcut:string|array|null, mode:int, description:string, default?, "
+                . "suggestedValues?]"
+            );
+        }
+
+        $size = count($config);
+
+        if ($size < 3) {
+            throw new InvalidArgumentException(
+                "Option configuration for '$optionName' must be an array with 3-5 elements: "
+                . "[shortcut:string|array|null, mode:int, description:string, default?, "
+                . "suggestedValues?]"
+            );
+        }
+
+        if ($size > 5) {
+            throw new InvalidArgumentException(
+                "Option configuration for '$optionName' must be an array with 3-5 elements: "
+                . "[shortcut:string|array|null, mode:int, description:string, default?, "
+                . "suggestedValues?]"
+            );
+        }
+    }
+
+    /**
+     * Assert that the mode of an option is valid.
+     *
+     * @param string $optionName Name of the option.
+     * @param mixed  $mode       Mode value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the mode is not an integer.
+     * @phpstan-assert int $mode
+     */
+    private function assertOptionMode(string $optionName, mixed $mode): void
+    {
+        $this->assertMode('Option', $optionName, $mode);
+    }
+
+    /**
+     * Assert that the option description is valid.
+     *
+     * @param string $optionName  Name of the option.
+     * @param mixed  $description Description value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the description is not a string.
+     * @phpstan-assert string $description
+     */
+    private function assertOptionDescription(string $optionName, mixed $description): void
+    {
+        $this->assertDescription('Option', $optionName, $description);
+    }
+
+    /**
+     * Assert that the option shortcut is a string, an array or null.
+     *
+     * @param string $optionName Name of the option.
+     * @param mixed  $shortcut   Shortcut value to validate.
+     * @return void
+     * @throws InvalidArgumentException When the shortcut is invalid.
+     * @phpstan-assert string|array<string>|null $shortcut
+     */
+    private function assertOptionShortcut(string $optionName, mixed $shortcut): void
+    {
+        if ($shortcut === null) {
+            return;
+        }
+
+        if (is_string($shortcut)) {
+            return;
+        }
+
+        if (is_array($shortcut)) {
+            return;
+        }
+
+        throw new InvalidArgumentException("Option '$optionName': shortcut must be string, array or null.");
+    }
+
+    /**
+     * Assert that the suggested values are an array or a Closure.
+     *
+     * @param string $optionName       Name of the option.
+     * @param mixed  $suggestedValues Suggested values to validate.
+     * @return void
+     * @throws InvalidArgumentException When the suggested values are invalid.
+     * @phpstan-assert array<int, mixed>|\Closure $suggestedValues
+     */
+    private function assertOptionSuggestedValues(string $optionName, mixed $suggestedValues): void
+    {
+        if (is_array($suggestedValues)) {
+            return;
+        }
+
+        if ($suggestedValues instanceof \Closure) {
+            return;
+        }
+
+        throw new InvalidArgumentException("Option '$optionName': suggestedValues must be array or Closure.");
     }
 
     /**

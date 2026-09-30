@@ -14,16 +14,22 @@ declare(strict_types=1);
 
 namespace Tests\Console\Fixtures;
 
-use Omega\Console\ConsoleApplication;
-use Symfony\Component\Console\Application as SymfonyApplication;
+use Omega\Console\AbstractCommand;
+use Omega\Console\Attribute\AsCommand;
 
 /**
- * ConsoleApplication subclass that exposes its protected members for testing.
+ * Argument configuration that is not an array and must throw.
  */
-class ConsoleApplicationHarness extends ConsoleApplication
+#[AsCommand(
+    name: 'demo:bad-argument-not-array',
+    arguments: [
+        'name' => 'not-an-array',
+    ],
+)]
+class BadArgumentNotArrayCommand extends AbstractCommand
 {
-    public function exposeConfigureCommandLoader(SymfonyApplication $console): void
+    public function __invoke(): int
     {
-        $this->configureCommandLoader($console);
+        return self::SUCCESS;
     }
 }

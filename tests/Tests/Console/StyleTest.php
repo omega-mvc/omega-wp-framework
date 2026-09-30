@@ -107,6 +107,15 @@ it('returns the answer provided by the user', function (): void {
     expect($style->ask('Your name?', 'default'))->toBe('Ada');
 });
 
+it('uses a null default when the default is not a string', function (): void {
+    $input = new ArrayInput([]);
+    $input->setStream(StreamFactory::streamWith("Ada\n"));
+    $output = new BufferedOutput();
+    $style = new Style($input, $output);
+
+    expect($style->ask('Your name?', 7))->toBe('Ada');
+});
+
 it('confirms when the user answers yes', function (): void {
     $input = new ArrayInput([]);
     $input->setStream(StreamFactory::streamWith("yes\n"));
@@ -181,6 +190,30 @@ it('renders an empty iterable message in a styled block', function (): void {
     $style = new Style(new ArrayInput([]), $output);
 
     $style->success([]);
+
+    expect($output->fetch())->toBe('   SUCCESS  ' . PHP_EOL . PHP_EOL);
+});
+
+it('writes no lines when given a traversable message', function (): void {
+    $output = new BufferedOutput();
+    $style = new Style(new ArrayInput([]), $output);
+
+    $style->writeln((static function (): iterable {
+        yield 'first';
+        yield 'second';
+    })());
+
+    expect($output->fetch())->toBe('');
+});
+
+it('renders an empty styled block for a traversable message', function (): void {
+    $output = new BufferedOutput();
+    $style = new Style(new ArrayInput([]), $output);
+
+    $style->success((static function (): iterable {
+        yield 'first';
+        yield 'second';
+    })());
 
     expect($output->fetch())->toBe('   SUCCESS  ' . PHP_EOL . PHP_EOL);
 });
