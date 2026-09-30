@@ -17,7 +17,11 @@ namespace Omega\Database\Schema;
 use Omega\Collection\Collection;
 use Omega\Database\Exceptions\SchemaQueryException;
 
+use function array_filter;
+use function array_map;
 use function array_merge;
+use function array_values;
+use function array_walk;
 use function compact;
 use function count;
 use function esc_sql;
@@ -25,6 +29,10 @@ use function implode;
 use function in_array;
 use function is_array;
 use function is_scalar;
+use function preg_match;
+use function sprintf;
+use function str_replace;
+use function strtolower;
 
 /**
  * Blueprint
@@ -123,62 +131,101 @@ class Blueprint
      */
     private function generateSingleColumnSql(ColumnDefinition $column): string
     {
-        $type = $column->getType();
-        $name = $column->getName();
-        $sql = "`$name`";
+        return sprintf(
+            '`%s`%s%s%s%s',
+            $column->getName(),
+            $this->columnTypeSql($column),
+            $this->columnUnsignedSql($column),
+            $this->columnNullabilitySql($column),
+            $this->columnAutoIncrementSql($column)
+        );
+    }
 
-        switch ($type) {
-            case 'bigInteger':
-                $sql .= ' bigint(20)';
-                break;
-            case 'integer':
-                $sql .= ' int(11)';
-                break;
-            case 'boolean':
-                $sql .= ' tinyint(1)';
-                break;
-            case 'string':
-                $length = $column->getLength() ?? 255;
-                $sql .= " varchar($length)";
-                break;
-            case 'timestamp':
-                $sql .= ' timestamp';
-                break;
-            case 'dateTime':
-                $sql .= ' datetime';
-                break;
-            case 'text':
-                $sql .= ' text';
-                break;
-            case 'longText':
-                $sql .= ' longtext';
-                break;
-            case 'json':
-                $sql .= ' json';
-                break;
-            default:
-                $sql .= ' text';
+    /**
+     * Generate the SQL type fragment of a column.
+     *
+     * Unknown types fall back to a plain text column, and string columns
+     * carry their configured length.
+     *
+     * @param ColumnDefinition $column Column definition instance to convert into SQL.
+     * @return string Generated SQL type fragment.
+     */
+    private function columnTypeSql(ColumnDefinition $column): string
+    {
+        $types = [
+            'bigInteger' => ' bigint(20)',
+            'integer'    => ' int(11)',
+            'boolean'    => ' tinyint(1)',
+            'timestamp'  => ' timestamp',
+            'dateTime'   => ' datetime',
+            'text'       => ' text',
+            'longText'   => ' longtext',
+            'json'       => ' json',
+        ];
+
+        if ($column->getType() === 'string') {
+            return sprintf(' varchar(%d)', $column->getLength() ?? 255);
         }
 
-        if (in_array($type, ['integer', 'bigInteger'], true) && $column->isUnsigned()) {
-            $sql .= ' unsigned';
+        return $types[$column->getType()] ?? ' text';
+    }
+
+    /**
+     * Generate the unsigned fragment of a column.
+     *
+     * Only integer columns support the unsigned modifier.
+     *
+     * @param ColumnDefinition $column Column definition instance to inspect.
+     * @return string The unsigned fragment, or an empty string.
+     */
+    private function columnUnsignedSql(ColumnDefinition $column): string
+    {
+        if (!in_array($column->getType(), ['integer', 'bigInteger'], true)) {
+            return '';
         }
 
-        $sql .= $column->isNullable() ? ' DEFAULT NULL' : " NOT NULL";
+        return $column->isUnsigned() ? ' unsigned' : '';
+    }
 
-        if (!$column->isNullable() && $column->getDefault() !== null) {
-            $default = $column->getDefault();
-            $sql .= " DEFAULT '" . esc_sql(is_scalar($default) ? (string) $default : '') . "'";
+    /**
+     * Generate the nullability and default fragments of a column.
+     *
+     * Nullable columns default to NULL, while the remaining ones are
+     * declared NOT NULL and optionally carry their default value.
+     *
+     * @param ColumnDefinition $column Column definition instance to inspect.
+     * @return string Generated nullability fragment.
+     */
+    private function columnNullabilitySql(ColumnDefinition $column): string
+    {
+        if ($column->isNullable()) {
+            return ' DEFAULT NULL';
         }
 
-        if (
-            $column->isAutoIncrement()
-            && in_array($type, ['bigInteger', 'unsignedBigInteger', 'bigIncrements'], true)
-        ) {
-            $sql .= ' AUTO_INCREMENT';
+        $default = $column->getDefault();
+
+        if ($default === null) {
+            return ' NOT NULL';
         }
 
-        return $sql;
+        return " NOT NULL DEFAULT '" . esc_sql(is_scalar($default) ? (string) $default : '') . "'";
+    }
+
+    /**
+     * Generate the auto increment fragment of a column.
+     *
+     * @param ColumnDefinition $column Column definition instance to inspect.
+     * @return string The auto increment fragment, or an empty string.
+     */
+    private function columnAutoIncrementSql(ColumnDefinition $column): string
+    {
+        if (!$column->isAutoIncrement()) {
+            return '';
+        }
+
+        return in_array($column->getType(), ['bigInteger', 'unsignedBigInteger', 'bigIncrements'], true)
+            ? ' AUTO_INCREMENT'
+            : '';
     }
 
     /**
@@ -191,57 +238,109 @@ class Blueprint
      */
     private function prepareColumns(): array
     {
-        $columnsSql = [];
-        $primaryKey = [];
-        $uniqueKeys = [];
-        $indexKeys  = [];
+        return array_merge(
+            array_map(
+                fn (ColumnDefinition $column): string => $this->generateSingleColumnSql($column),
+                $this->columns
+            ),
+            $this->uniqueKeysSql(),
+            $this->indexKeysSql(),
+            $this->primaryKeySql(),
+            $this->commandsSql()
+        );
+    }
 
-        foreach ($this->columns as $column) {
-            $columnsSql[] = $this->generateSingleColumnSql($column);
+    /**
+     * Build the UNIQUE KEY fragment of every unique column.
+     *
+     * @return array<int, string> The generated unique key fragments.
+     */
+    private function uniqueKeysSql(): array
+    {
+        return array_values(array_map(
+            static fn (ColumnDefinition $column): string => sprintf('UNIQUE KEY (`%s`)', $column->getName()),
+            array_filter($this->columns, static fn (ColumnDefinition $column): bool => $column->isUnique())
+        ));
+    }
 
-            if ($column->isPrimary()) {
-                $primaryKey[] = $column->getName();
-            }
+    /**
+     * Build the KEY fragment of every indexed column.
+     *
+     * Columns already covered by a unique or primary key are skipped.
+     *
+     * @return array<int, string> The generated index fragments.
+     */
+    private function indexKeysSql(): array
+    {
+        return array_values(array_map(
+            static fn (ColumnDefinition $column): string => sprintf('KEY (`%s`)', $column->getName()),
+            array_filter(
+                $this->columns,
+                static fn (ColumnDefinition $column): bool
+                    => $column->isIndex() && !$column->isUnique() && !$column->isPrimary()
+            )
+        ));
+    }
 
-            if ($column->isUnique()) {
-                $uniqueKeys[] = $column->getName();
-            }
+    /**
+     * Build the PRIMARY KEY fragment of every primary column.
+     *
+     * @return array<int, string> The generated primary key fragment, if any.
+     */
+    private function primaryKeySql(): array
+    {
+        $primaryKey = array_values(array_map(
+            static fn (ColumnDefinition $column): string => $column->getName(),
+            array_filter($this->columns, static fn (ColumnDefinition $column): bool => $column->isPrimary())
+        ));
 
-            if ($column->isIndex() && !$column->isUnique() && !$column->isPrimary()) {
-                $indexKeys[] = $column->getName();
-            }
+        if ($primaryKey === []) {
+            return [];
         }
 
-        if (!empty($uniqueKeys)) {
-            foreach ($uniqueKeys as $uniqueKey) {
-                $columnsSql[] = "UNIQUE KEY (`$uniqueKey`)";
-            }
+        return [sprintf('PRIMARY KEY (%s)', implode(', ', $primaryKey))];
+    }
+
+    /**
+     * Build the SQL fragment of every registered command.
+     *
+     * Index, unique and foreign key commands are rendered in registration
+     * order; the remaining commands have no column definition to render.
+     *
+     * @return array<int, string> The generated command fragments.
+     */
+    private function commandsSql(): array
+    {
+        return array_values(array_filter(
+            array_map(fn (mixed $command): ?string => $this->commandSql($command), $this->commands),
+            static fn (?string $sql): bool => $sql !== null
+        ));
+    }
+
+    /**
+     * Build the SQL fragment of a single registered command.
+     *
+     * @param mixed $command The registered command to render.
+     * @return string|null The generated fragment, or null when the command is not renderable.
+     */
+    private function commandSql(mixed $command): ?string
+    {
+        if ($command instanceof ForeignKeyDefinition) {
+            return $command->getForeignKeySql();
         }
 
-        if (!empty($indexKeys)) {
-            foreach ($indexKeys as $indexKey) {
-                $columnsSql[] = "KEY (`$indexKey`)";
-            }
+        if (!in_array($command[0], ['index', 'unique'], true)) {
+            return null;
         }
 
-        if (!empty($primaryKey)) {
-            $columnsSql[] = "PRIMARY KEY (" . implode(', ', $primaryKey) . ")";
-        }
+        $keyword = 'unique' === $command[0] ? 'UNIQUE KEY' : 'KEY';
 
-        if (!empty($this->commands)) {
-            foreach ($this->commands as $command) {
-                if ($command instanceof ForeignKeyDefinition) {
-                    $columnsSql[] = $command->getForeignKeySql();
-                } elseif (in_array($command[0], [ 'index', 'unique' ], true)) {
-                    $keyword = 'unique' === $command[0] ? 'UNIQUE KEY' : 'KEY';
-                    $columnsSql[] = "$keyword `{$command[1]}` ("
-                        . $this->quoteIndexColumns($command[2] ?? [])
-                        . ')';
-                }
-            }
-        }
-
-        return $columnsSql;
+        return sprintf(
+            '%s `%s` (%s)',
+            $keyword,
+            $command[1],
+            $this->quoteIndexColumns($command[2] ?? [])
+        );
     }
     #endregion
 
@@ -349,23 +448,58 @@ class Blueprint
             $tableName = $wpdb->prefix . $this->table;
 
             $this->runAlterCommands($tableName);
-
-            foreach ($this->columns as $column) {
-                $columnName = $column->getName();
-
-                if (!$this->columnExists($tableName, $columnName)) {
-                    $columnSql = $this->generateSingleColumnSql($column);
-
-                    $afterColumn = $column->getAfter();
-                    $sql = "ALTER TABLE `$tableName` ADD $columnSql"
-                        . ($afterColumn ? " AFTER `$afterColumn`" : "")
-                        . ";";
-                    $this->query($sql, $tableName);
-                }
-            }
-
+            $this->addMissingColumns($tableName);
             $this->runIndexCommands($tableName);
         }
+    }
+
+    /**
+     * Add every declared column that is not present on the table yet.
+     *
+     * @param string $tableName Fully qualified database table name.
+     * @return void
+     */
+    private function addMissingColumns(string $tableName): void
+    {
+        array_walk(
+            $this->columns,
+            function (ColumnDefinition $column) use ($tableName): void {
+                $this->addMissingColumn($tableName, $column);
+            }
+        );
+    }
+
+    /**
+     * Add a single column when the table does not have it yet.
+     *
+     * @param string           $tableName Fully qualified database table name.
+     * @param ColumnDefinition $column    The column to add.
+     * @return void
+     */
+    private function addMissingColumn(string $tableName, ColumnDefinition $columnDefinition): void
+    {
+        if ($this->columnExists($tableName, $columnDefinition->getName())) {
+            return;
+        }
+
+        $column = $this->generateSingleColumnSql($columnDefinition);
+
+        $sql = "ALTER TABLE `$tableName` ADD $column" . $this->afterClause($columnDefinition) . ';';
+
+        $this->query($sql, $tableName);
+    }
+
+    /**
+     * Build the AFTER clause positioning a column after another one.
+     *
+     * @param ColumnDefinition $column The column being added.
+     * @return string The AFTER clause, or an empty string when unpositioned.
+     */
+    private function afterClause(ColumnDefinition $column): string
+    {
+        $after = $column->getAfter();
+
+        return $after === null ? '' : " AFTER `$after`";
     }
 
     /**
@@ -409,55 +543,150 @@ class Blueprint
      */
     private function runAlterCommands(string $tableName): void
     {
+        $commands = $this->dropCommands();
+
+        array_walk(
+            $commands,
+            function (array $command) use ($tableName): void {
+                $this->runAlterCommand($tableName, $command);
+            }
+        );
+    }
+
+    /**
+     * Collect the queued drop commands, ignoring every other command.
+     *
+     * @return list<array<int, string>> The registered drop commands.
+     */
+    private function dropCommands(): array
+    {
+        $arrays = array_filter($this->commands, static fn (mixed $command): bool => is_array($command));
+
+        return array_values(array_filter(
+            $arrays,
+            static fn (array $command): bool => (
+                in_array($command[0] ?? null, ['dropColumn', 'dropIndex', 'dropUnique'], true)
+                && !empty($command[1] ?? null)
+            )
+        ));
+    }
+
+    /**
+     * Execute a single drop command against the table.
+     *
+     * Drop column and drop index/unique commands are only issued when the
+     * target object is still present in the database.
+     *
+     * @param string           $tableName Fully qualified database table name.
+     * @param array<int, string> $command The registered drop command to execute.
+     * @return void
+     */
+    private function runAlterCommand(string $tableName, array $command): void
+    {
+        if ($command[0] === 'dropColumn') {
+            $this->dropExistingColumn($tableName, $command);
+
+            return;
+        }
+
+        $this->dropExistingIndex($tableName, $command);
+    }
+
+    /**
+     * Drop a column when the table still exposes it.
+     *
+     * @param string            $tableName Fully qualified database table name.
+     * @param array<int, string> $command The registered drop column command.
+     * @return void
+     */
+    private function dropExistingColumn(string $tableName, array $command): void
+    {
+        if (!$this->columnExists($tableName, (string) $command[1])) {
+            return;
+        }
+
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-        foreach ($this->commands as $command) {
-            if (!is_array($command) || empty($command[0])) {
-                continue;
-            }
+        $wpdb->query("ALTER TABLE `$tableName` DROP COLUMN `{$command[1]}`;");
+    }
 
-            if ('dropColumn' === $command[0] && !empty($command[1])) {
-                $columnName = (string)$command[1];
-
-                if ($this->columnExists($tableName, $columnName)) {
-                    $wpdb->query("ALTER TABLE `$tableName` DROP COLUMN `$columnName`;");
-                }
-            }
-
-            if (in_array($command[0], ['dropIndex', 'dropUnique'], true) && !empty($command[1])) {
-                $indexName = (string)$command[1];
-
-                if ($this->indexExists($tableName, $indexName)) {
-                    $wpdb->query("ALTER TABLE `$tableName` DROP INDEX `$indexName`;");
-                }
-            }
+    /**
+     * Drop an index when the table still exposes it.
+     *
+     * @param string            $tableName Fully qualified database table name.
+     * @param array<int, string> $command The registered drop index command.
+     * @return void
+     */
+    private function dropExistingIndex(string $tableName, array $command): void
+    {
+        if (!$this->indexExists($tableName, (string) $command[1])) {
+            return;
         }
+
+        /** @var \wpdb $wpdb */
+        global $wpdb;
+
+        $wpdb->query("ALTER TABLE `$tableName` DROP INDEX `{$command[1]}`;");
     }
 
     private function runIndexCommands(string $tableName): void
     {
+        $commands = $this->indexCommands();
+
+        array_walk(
+            $commands,
+            function (array $command) use ($tableName): void {
+                $this->runIndexCommand($tableName, $command);
+            }
+        );
+    }
+
+    /**
+     * Collect the queued index and unique commands, ignoring every other command.
+     *
+     * @return list<array<int, mixed>> The registered index commands.
+     */
+    private function indexCommands(): array
+    {
+        $arrays = array_filter($this->commands, static fn (mixed $command): bool => is_array($command));
+
+        return array_values(array_filter(
+            $arrays,
+            static fn (array $command): bool => (
+                in_array($command[0] ?? null, ['index', 'unique'], true)
+                && !empty($command[1] ?? null)
+            )
+        ));
+    }
+
+    /**
+     * Execute a single index or unique command against the table.
+     *
+     * The statement is only issued when the index is not present yet.
+     *
+     * @param string             $tableName Fully qualified database table name.
+     * @param array<int, mixed> $command The registered index command to execute.
+     * @return void
+     */
+    private function runIndexCommand(string $tableName, array $command): void
+    {
+        $indexName = (string) $command[1];
+
+        if ($this->indexExists($tableName, $indexName)) {
+            return;
+        }
+
+        $keyword = 'unique' === $command[0] ? 'UNIQUE INDEX' : 'INDEX';
+
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-        foreach ($this->commands as $command) {
-            if (!is_array($command) || empty($command[0]) || empty($command[1])) {
-                continue;
-            }
-
-            if (in_array($command[0], ['index', 'unique'], true)) {
-                $indexName = (string)$command[1];
-
-                if (!$this->indexExists($tableName, $indexName)) {
-                    $keyword = 'unique' === $command[0] ? 'UNIQUE INDEX' : 'INDEX';
-                    $wpdb->query(
-                        "ALTER TABLE `$tableName` ADD $keyword `$indexName` ("
-                        . $this->quoteIndexColumns($command[2] ?? [])
-                        . ");"
-                    );
-                }
-            }
-        }
+        $wpdb->query(
+            "ALTER TABLE `$tableName` ADD $keyword `$indexName` ("
+            . $this->quoteIndexColumns($command[2] ?? [])
+            . ");"
+        );
     }
     #endregion
 
@@ -805,15 +1034,16 @@ class Blueprint
      */
     private function quoteIndexColumns(array $columns): string
     {
-        $quoted = [];
+        $quoted = array_map(
+            static function (string $column): string {
+                if (preg_match('/^(\w+)\s*\((\d+)\)$/', $column, $matches)) {
+                    return "`{$matches[1]}`({$matches[2]})";
+                }
 
-        foreach ($columns as $column) {
-            if (preg_match('/^(\w+)\s*\((\d+)\)$/', $column, $matches)) {
-                $quoted[] = "`{$matches[1]}`({$matches[2]})";
-            } else {
-                $quoted[] = "`$column`";
-            }
-        }
+                return "`$column`";
+            },
+            $columns
+        );
 
         return implode(', ', $quoted);
     }

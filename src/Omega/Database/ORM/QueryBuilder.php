@@ -31,13 +31,17 @@ use ReflectionNamedType;
 use function array_fill;
 use function array_filter;
 use function array_merge;
+use function array_values;
 use function call_user_func;
 use function count;
 use function current_time;
 use function implode;
 use function is_array;
 use function is_callable;
+use function is_int;
+use function is_scalar;
 use function is_string;
+use function max;
 use function strtoupper;
 use function wp_list_pluck;
 
@@ -1023,6 +1027,72 @@ class QueryBuilder
     }
 
     /**
+     * Include soft-deleted records in the query results.
+     *
+     * Removes the automatic `deleted_at IS NULL` condition that is added
+     * by the constructor when the model uses the soft delete trait, so
+     * trashed records are no longer excluded.
+     *
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function withTrashed(): static
+    {
+        $this->whereArray = array_values(array_filter(
+            $this->whereArray,
+            static fn(array $item): bool => $item['column'] !== 'deleted_at'
+                || $item['operator'] !== 'IS'
+                || $item['value'] !== '!#####NULL#####!'
+        ));
+
+        return $this;
+    }
+
+    /**
+     * Restrict the query to soft-deleted records only.
+     *
+     * Includes trashed records and adds a `deleted_at IS NOT NULL` condition
+     * so only records that have been soft-deleted are returned.
+     *
+     * @return static Returns the current query builder instance for chaining.
+     */
+    public function onlyTrashed(): static
+    {
+        $this->withTrashed();
+
+        $this->whereArray[] = [
+            'column'   => 'deleted_at',
+            'value'    => '!#####NULL#####!',
+            'operator' => 'IS NOT',
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Physically remove records matching the current query constraints.
+     *
+     * Unlike delete(), this method always performs a hard delete even when
+     * the model supports soft deletes. Call withTrashed() first when forcing
+     * the deletion of records that were previously soft-deleted, so the
+     * automatic `deleted_at IS NULL` condition does not narrow the query.
+     *
+     * @param array<int, string>|null $whereFormat Optional format specification for the underlying delete operation.
+     * @return bool|int False on failure or the number of affected rows.
+     */
+    public function forceDelete(?array $whereFormat = null): bool|int
+    {
+        $where = [];
+        foreach ($this->whereArray as $item) {
+            if (isset($item['type'])) {
+                continue;
+            }
+            $where[$item['column']] = $item['value'];
+        }
+
+        return $this->db->delete($this->tableName, $where, $whereFormat);
+    }
+
+    /**
      * Update records matching the current query constraints.
      *
      * Builds a dynamic SQL UPDATE statement with bound values and applies all
@@ -1037,6 +1107,11 @@ class QueryBuilder
         $values     = [];
 
         foreach ($columnsValues as $column => $value) {
+            if ($value === null) {
+                $setClauses[] = "{$column} = NULL";
+                continue;
+            }
+
             $setClauses[] = "{$column} = %s";
             $values[]     = $value;
         }

@@ -66,6 +66,13 @@ final class WordPressRuntime
     public static array $options = [];
 
     /**
+     * DDL statements recorded by the dbDelta() stub.
+     *
+     * @var list<string>
+     */
+    public static array $dbDeltaStatements = [];
+
+    /**
      * Recorded calls to update_option(): [name, value, autoload].
      *
      * @var list<array{0:string,1:mixed,2:bool}>
@@ -188,6 +195,7 @@ final class WordPressRuntime
         self::$submenus = [];
         self::$capabilities = true;
         self::$options = [];
+        self::$dbDeltaStatements = [];
         self::$optionUpdates = [];
         self::$fileHeaders = [];
         self::$theme = null;

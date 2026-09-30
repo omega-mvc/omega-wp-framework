@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Database\Schema;
 
+use function array_filter;
 use function is_string;
 use function md5;
 use function sprintf;
@@ -143,29 +144,13 @@ class ForeignKeyDefinition
         $table      = $this->attributes['on'] ?? null;
         $onDelete   = $this->attributes['onDelete'] ?? null;
 
-        if (
-            !is_string($column) || !$column
-            || !is_string($references) || !$references
-            || !is_string($table) || !$table
-        ) {
+        if (!$this->isComplete([$column, $references, $table])) {
             return '';
-        }
-
-        $constraintName = sprintf(
-            '%s_%s_foreign',
-            $wpdb->prefix . $this->blueprint->getTable(),
-            $column
-        );
-
-        if (strlen($constraintName) > 64) {
-            $hash = substr(md5($constraintName), 0, 8);
-            $base = substr($constraintName, 0, 55);
-            $constraintName = $base . '_' . $hash;
         }
 
         $sql = sprintf(
             'CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)',
-            $constraintName,
+            $this->constraintName((string) $column),
             $column,
             $wpdb->prefix . $table,
             $references
@@ -176,6 +161,45 @@ class ForeignKeyDefinition
         }
 
         return $sql;
+    }
+
+    /**
+     * Determine whether every mandatory part of the constraint is filled.
+     *
+     * @param array<int, mixed> $parts The mandatory constraint parts.
+     * @return bool True when all parts are non empty strings.
+     */
+    private function isComplete(array $parts): bool
+    {
+        $missing = array_filter(
+            $parts,
+            static fn (mixed $part): bool => !is_string($part) || $part === ''
+        );
+
+        return $missing === [];
+    }
+
+    /**
+     * Build the constraint name, keeping it inside the MySQL identifier limit.
+     *
+     * Names longer than the limit are truncated and suffixed with a short
+     * hash of the full name, so they stay unique and predictable.
+     *
+     * @param string $column The constrained column name.
+     * @return string The constraint name.
+     */
+    private function constraintName(string $column): string
+    {
+        /** @var \wpdb $wpdb */
+        global $wpdb;
+
+        $name = sprintf('%s_%s_foreign', $wpdb->prefix . $this->blueprint->getTable(), $column);
+
+        if (strlen($name) <= 64) {
+            return $name;
+        }
+
+        return substr($name, 0, 55) . '_' . substr(md5($name), 0, 8);
     }
     #endregion
 }
