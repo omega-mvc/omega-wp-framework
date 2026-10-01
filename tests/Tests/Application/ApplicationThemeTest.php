@@ -1,110 +1,55 @@
 <?php
 
-/**
- * Part of Omega - Tests Application Package.
- *
- * @link      https://omega-mvc.github.io
- * @author    Adriano Giovannini <agisoftt@gmail.com>
- * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
- * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
- * @version   1.0.0
- */
-
 declare(strict_types=1);
 
 namespace Tests\Application;
 
 use Omega\Application\ApplicationTheme;
 use Omega\Application\Exceptions\HeaderNotFoundException;
-use PHPUnit\Framework\Attributes\CoversClass;
+use Tests\Application\Support\ApplicationFixture;
 use Tests\Routing\Support\WPTheme;
 use Tests\Routing\WordPressRuntime;
-use RuntimeException;
 
-/**
- * Tests the ApplicationTheme class behavior.
- *
- * @category  Tests
- * @package   Application
- * @link      https://omega-mvc.github.io
- * @author    Adriano Giovannini <agisoftt@gmail.com>
- * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
- * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
- * @version   1.0.0
- */
-#[CoversClass(ApplicationTheme::class)]
-#[CoversClass(HeaderNotFoundException::class)]
-final class ApplicationThemeTest extends ApplicationTestCase
-{
-    /**
-     * Test the theme application is created with a valid base path.
-     */
-    public function testConstructsWithValidBasePath(): void
-    {
-        $app = new ApplicationTheme('theme', $this->themeBasePath());
+covers(ApplicationTheme::class, HeaderNotFoundException::class);
 
-        $this->assertSame('theme', $app->getId());
-        $this->assertSame($this->themeBasePath(), $app->getBasePath());
-    }
+it('constructs with a valid base path', function (): void {
+    $app = new ApplicationTheme('theme', ApplicationFixture::themeBasePath());
 
-    /**
-     * Test the theme exposes its framework name.
-     */
-    public function testNameReturnsThemeName(): void
-    {
-        $app = new ApplicationTheme('theme', $this->themeBasePath());
+    expect($app->getId())->toBe('theme')
+        ->and($app->getBasePath())->toBe(ApplicationFixture::themeBasePath());
+});
 
-        $this->assertSame('Omega Theme', $app->getName());
-    }
+it('returns the theme name', function (): void {
+    $app = new ApplicationTheme('theme', ApplicationFixture::themeBasePath());
 
-    /**
-     * Test the theme exposes its framework version.
-     */
-    public function testVersionReturnsThemeVersion(): void
-    {
-        $app = new ApplicationTheme('theme', $this->themeBasePath());
+    expect($app->getName())->toBe('Omega Theme');
+});
 
-        $this->assertSame('1.0.0', $app->getVersion());
-    }
+it('returns the theme version', function (): void {
+    $app = new ApplicationTheme('theme', ApplicationFixture::themeBasePath());
 
-    /**
-     * Test a theme header value is returned by wp_get_theme().
-     */
-    public function testGetHeaderFieldReturnsValueFromTheme(): void
-    {
-        WordPressRuntime::$theme = new WPTheme(['Theme Name' => 'Omega Sample']);
+    expect($app->getVersion())->toBe('1.0.0');
+});
 
-        $app = new ApplicationTheme('theme', $this->themeBasePath());
+it('returns a theme header value read by wp_get_theme', function (): void {
+    WordPressRuntime::$theme = new WPTheme(['Theme Name' => 'Omega Sample']);
 
-        $this->assertSame('Omega Sample', $app->getHeaderField('Theme Name'));
-    }
+    $app = new ApplicationTheme('theme', ApplicationFixture::themeBasePath());
 
-    /**
-     * Test an empty theme header raises an exception.
-     */
-    public function testGetHeaderFieldThrowsWhenHeaderValueIsEmpty(): void
-    {
-        WordPressRuntime::$theme = new WPTheme(['Theme Name' => '']);
+    expect($app->getHeaderField('Theme Name'))->toBe('Omega Sample');
+});
 
-        $app = new ApplicationTheme('theme', $this->themeBasePath());
+it('raises an exception for an empty theme header', function (): void {
+    WordPressRuntime::$theme = new WPTheme(['Theme Name' => '']);
 
-        $this->expectException(HeaderNotFoundException::class);
+    $app = new ApplicationTheme('theme', ApplicationFixture::themeBasePath());
 
-        $app->getHeaderField('Theme Name');
-    }
+    $app->getHeaderField('Theme Name');
+})->throws(HeaderNotFoundException::class);
 
-    /**
-     * Test the HeaderNotFoundException is autoloadable under the
-     * Omega\Application\Exceptions namespace and correctly typed.
-     */
-    public function testHeaderNotFoundExceptionIsAutoloadableAndTyped(): void
-    {
-        $this->assertTrue(class_exists(HeaderNotFoundException::class));
-        $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
-        $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
-        $this->assertSame(
-            'Theme header "Theme Name" not found.',
-            (new HeaderNotFoundException('Theme header "%s" not found.', 'Theme Name'))->getMessage()
-        );
-    }
-}
+it('keeps the header not found exception autoloadable and typed', function (): void {
+    expect(class_exists(HeaderNotFoundException::class))->toBeTrue()
+        ->and((new HeaderNotFoundException('sample'))->getMessage())->toBe('sample')
+        ->and((new HeaderNotFoundException('Theme header "%s" not found.', 'Theme Name'))->getMessage())
+        ->toBe('Theme header "Theme Name" not found.');
+});

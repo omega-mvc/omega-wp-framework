@@ -18,7 +18,8 @@ use Omega\Application\Application;
 use Omega\Application\ApplicationFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use Tests\FixturesPathTrait;
+
+use function Omega\Application\slash;
 
 /**
  * Base test case for Config package tests that resolve container services.
@@ -36,9 +37,7 @@ use Tests\FixturesPathTrait;
  */
 abstract class ConfigTestCase extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Register a single application in the shared factory registry.
      */
     protected function setUp(): void
@@ -75,7 +74,7 @@ abstract class ConfigTestCase extends TestCase
      */
     protected function pluginBasePath(): string
     {
-        return $this->setFixturePath('/fixtures/app/plugin/sample');
+        return slash(path: __DIR__ . '/../fixtures/app/plugin/sample');
     }
 
     /**
@@ -85,7 +84,7 @@ abstract class ConfigTestCase extends TestCase
      */
     protected function emptyBasePath(): string
     {
-        return $this->setFixturePath('/fixtures/app');
+        return slash(path: __DIR__ . '/../fixtures/app');
     }
 
     /**

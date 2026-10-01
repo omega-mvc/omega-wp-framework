@@ -19,7 +19,8 @@ use Omega\View\View;
 use Omega\View\ViewServiceProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Tests\FixturesPathTrait;
+
+use function Omega\Application\slash;
 
 /**
  * Tests the ViewServiceProvider registration behavior.
@@ -35,14 +36,12 @@ use Tests\FixturesPathTrait;
 #[CoversClass(ViewServiceProvider::class)]
 final class ViewServiceProviderTest extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Test the provider binds the view service as a singleton.
      */
     public function testRegistersViewSingleton(): void
     {
-        $app = new Application('theme', $this->setFixturePath('/fixtures/app/theme'));
+        $app = new Application('theme', slash(path: __DIR__ . '/../fixtures/app/theme'));
 
         (new ViewServiceProvider($app))->register();
 

@@ -22,10 +22,10 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use stdClass;
-use Tests\FixturesPathTrait;
 use Tests\Http\Support\FakeModel;
 
 use function is_numeric;
+use function Omega\Application\slash;
 use function sprintf;
 
 /**
@@ -42,9 +42,7 @@ use function sprintf;
 #[CoversClass(Collection::class)]
 final class CollectionTest extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Register an application so AbstractModel-based fixtures resolve.
      */
     protected function setUp(): void
@@ -52,7 +50,7 @@ final class CollectionTest extends TestCase
         parent::setUp();
 
         $property = new ReflectionProperty(ApplicationFactory::class, 'apps');
-        $property->setValue(null, ['app' => new Application('app', $this->setFixturePath('/fixtures/app/theme'))]);
+        $property->setValue(null, ['app' => new Application('app', slash(path: __DIR__ . '/../fixtures/app/theme'))]);
     }
 
     /**

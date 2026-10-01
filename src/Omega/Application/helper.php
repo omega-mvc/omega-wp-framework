@@ -29,7 +29,10 @@ use const DIRECTORY_SEPARATOR;
  * and silently skip this declaration if a global `slash()` happened to exist.
  *
  * @param string|array<int|string, mixed> $path The path or list of paths to normalize.
- * @return string|array<int|string, mixed> The normalized path(s) with correct directory separators.
+ * @return ($path is string ? string : array<int|string, mixed>) The normalized
+ *         path(s) with correct directory separators. The conditional return type
+ *         keeps a `string` input mapped to a `string` output, so callers that
+ *         normalize a single path are not forced to handle the array branch.
  */
 function slash(string|array $path): string|array
 {

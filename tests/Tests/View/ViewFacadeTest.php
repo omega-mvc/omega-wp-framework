@@ -21,7 +21,8 @@ use Omega\View\ViewServiceProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use Tests\FixturesPathTrait;
+
+use function Omega\Application\slash;
 
 /**
  * Tests the View facade static proxy.
@@ -37,8 +38,6 @@ use Tests\FixturesPathTrait;
 #[CoversClass(ViewFacade::class)]
 final class ViewFacadeTest extends TestCase
 {
-    use FixturesPathTrait;
-
     /**
      * Invokes a static facade method through the magic static caller.
      *
@@ -79,7 +78,7 @@ final class ViewFacadeTest extends TestCase
      */
     public function testProxiesRenderCallToContainerService(): void
     {
-        $app = new Application('theme', $this->setFixturePath('/fixtures/app/theme'));
+        $app = new Application('theme', slash(path: __DIR__ . '/../fixtures/app/theme'));
         (new ViewServiceProvider($app))->register();
         $this->setFactoryApps(['theme' => $app]);
 

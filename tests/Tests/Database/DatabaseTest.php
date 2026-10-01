@@ -26,6 +26,7 @@ use function array_key_first;
 use function count;
 use function defined;
 use function define;
+use function Omega\Application\slash;
 use function str_contains;
 
 #[CoversClass(Database::class)]
@@ -67,7 +68,7 @@ final class DatabaseTest extends DatabaseTestCase
     public function testCreateOrUpdateTableDelegatesTheStatementToDbDelta(): void
     {
         if (!defined('ABSPATH')) {
-            define('ABSPATH', $this->setFixturePath('/fixtures/app/plugin/wp/'));
+            define('ABSPATH', slash(path: __DIR__ . '/../fixtures/app/plugin/wp/'));
         }
 
         Database::createOrUpdateTable('posts', [

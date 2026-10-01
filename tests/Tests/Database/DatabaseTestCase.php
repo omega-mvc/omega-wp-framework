@@ -17,9 +17,10 @@ namespace Tests\Database;
 use Omega\Application\ApplicationFactory;
 use Omega\Application\ApplicationPlugin;
 use PHPUnit\Framework\TestCase;
-use Tests\FixturesPathTrait;
 use Tests\Routing\Support\WPDB;
 use Tests\Routing\WordPressRuntime;
+
+use function Omega\Application\slash;
 
 /**
  * Base test case for the Database package.
@@ -38,9 +39,7 @@ use Tests\Routing\WordPressRuntime;
  */
 abstract class DatabaseTestCase extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Reset the WordPress runtime registries and the wpdb mock state.
      */
     protected function setUp(): void
@@ -53,7 +52,7 @@ abstract class DatabaseTestCase extends TestCase
 
         ApplicationFactory::createPlugin(
             'sample',
-            $this->setFixturePath('/fixtures/app/plugin/sample')
+            slash(path: __DIR__ . '/../fixtures/app/plugin/sample')
         );
     }
 
@@ -79,7 +78,7 @@ abstract class DatabaseTestCase extends TestCase
     {
         return ApplicationFactory::createPlugin(
             'sample',
-            $this->setFixturePath('/fixtures/app/plugin/sample')
+            slash(path: __DIR__ . '/../fixtures/app/plugin/sample')
         );
     }
 }

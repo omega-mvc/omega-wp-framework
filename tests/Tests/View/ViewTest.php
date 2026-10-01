@@ -20,9 +20,9 @@ use Omega\View\View;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
-use Tests\FixturesPathTrait;
 
 use function ob_get_level;
+use function Omega\Application\slash;
 
 /**
  * Tests the View rendering class.
@@ -39,13 +39,11 @@ use function ob_get_level;
 #[CoversClass(ViewFileNotFoundException::class)]
 final class ViewTest extends TestCase
 {
-    use FixturesPathTrait;
-
     private string $basePath;
 
     protected function setUp(): void
     {
-        $this->basePath = $this->setFixturePath('/fixtures/app/theme');
+        $this->basePath = slash(path: __DIR__ . '/../fixtures/app/theme');
     }
 
     /**

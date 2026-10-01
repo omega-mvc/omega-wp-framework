@@ -18,8 +18,9 @@ use Omega\Application\Application;
 use Omega\Application\ApplicationFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use Tests\FixturesPathTrait;
 use Tests\Routing\WordPressRuntime;
+
+use function Omega\Application\slash;
 
 /**
  * Base test case for Settings package tests that resolve container services.
@@ -37,9 +38,7 @@ use Tests\Routing\WordPressRuntime;
  */
 abstract class SettingsTestCase extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Register a single application and reset the option stub state.
      */
     protected function setUp(): void
@@ -68,7 +67,7 @@ abstract class SettingsTestCase extends TestCase
      */
     protected function makeApplication(): Application
     {
-        return new Application('plugin', $this->setFixturePath('/fixtures/app/plugin/sample'));
+        return new Application('plugin', slash(path: __DIR__ . '/../fixtures/app/plugin/sample'));
     }
 
     /**

@@ -18,8 +18,9 @@ use Omega\Application\Application;
 use Omega\Application\ApplicationFactory;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use Tests\FixturesPathTrait;
 use Tests\Http\Support\FakeModel;
+
+use function Omega\Application\slash;
 
 /**
  * Base test case for Http package tests that need a resolvable application.
@@ -37,9 +38,7 @@ use Tests\Http\Support\FakeModel;
  */
 abstract class HttpTestCase extends TestCase
 {
-    use FixturesPathTrait;
-
-    /**
+/**
      * Register a single application in the shared factory registry.
      */
     protected function setUp(): void
@@ -66,7 +65,7 @@ abstract class HttpTestCase extends TestCase
      */
     protected function makeApplication(): Application
     {
-        return new Application('app', $this->setFixturePath('/fixtures/app/theme'));
+        return new Application('app', slash(path: __DIR__ . '/../fixtures/app/theme'));
     }
 
     /**

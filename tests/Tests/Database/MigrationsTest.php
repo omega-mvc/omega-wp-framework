@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Database\Fixtures\MigrationApplication;
 use Tests\Routing\WordPressRuntime;
 
+use function Omega\Application\slash;
 use function file_get_contents;
 use function file_put_contents;
 use function ini_set;
@@ -181,7 +182,7 @@ final class MigrationsTest extends DatabaseTestCase
      */
     public function testItReturnsNullWithoutMigrationFiles(): void
     {
-        $this->assertNull($this->migrator($this->setFixturePath('/fixtures/database/migrations-extra'))->run());
+        $this->assertNull($this->migrator(slash(path: __DIR__ . '/../fixtures/database/migrations-extra'))->run());
     }
 
     /**
@@ -253,8 +254,8 @@ final class MigrationsTest extends DatabaseTestCase
         $this->wpdb()->varResolver = static fn (string $query): mixed => null;
 
         $applied = $this->migrator(null, [
-            $this->setFixturePath('/fixtures/database/migrations-extra'),
-            $this->setFixturePath('/fixtures/database/migrations-empty'),
+            slash(path: __DIR__ . '/../fixtures/database/migrations-extra'),
+            slash(path: __DIR__ . '/../fixtures/database/migrations-empty'),
         ])->run();
 
         $this->assertSame([
@@ -317,8 +318,9 @@ final class MigrationsTest extends DatabaseTestCase
             (object) [
                 'id'   => 3,
                 'name' => '2026_01_03_000000_not_a_migration',
-                'file' => $this->setFixturePath(
-                    '/fixtures/database/migrations-app/database/migrations/2026_01_03_000000_not_a_migration.php'
+                'file' => slash(
+                    path: __DIR__
+                    . '/../fixtures/database/migrations-app/database/migrations/2026_01_03_000000_not_a_migration.php'
                 ),
             ],
         ];
@@ -353,7 +355,7 @@ final class MigrationsTest extends DatabaseTestCase
      */
     private function freshMigrator(): Migrator
     {
-        return new Migrator(new MigrationApplication($this->setFixturePath('/fixtures/database/fresh-app')));
+        return new Migrator(new MigrationApplication(slash(path: __DIR__ . '/../fixtures/database/fresh-app')));
     }
 
     /**
@@ -364,7 +366,7 @@ final class MigrationsTest extends DatabaseTestCase
      */
     private function freshMigrationFile(string $name): string
     {
-        return $this->setFixturePath("/fixtures/database/fresh-app/database/migrations/$name.php");
+        return slash(path: __DIR__ . '/..' . "/fixtures/database/fresh-app/database/migrations/$name.php");
     }
 
     /**
@@ -375,7 +377,10 @@ final class MigrationsTest extends DatabaseTestCase
      */
     private function migrationsApp(array $migrationFolders = []): MigrationApplication
     {
-        return new MigrationApplication($this->setFixturePath('/fixtures/database/migrations-app'), $migrationFolders);
+        return new MigrationApplication(
+            slash(path: __DIR__ . '/../fixtures/database/migrations-app'),
+            $migrationFolders
+        );
     }
 
     /**
@@ -402,7 +407,7 @@ final class MigrationsTest extends DatabaseTestCase
      */
     private function migrationFile(string $name): string
     {
-        return $this->setFixturePath("/fixtures/database/migrations-app/database/migrations/$name.php");
+        return slash(path: __DIR__ . '/..' . "/fixtures/database/migrations-app/database/migrations/$name.php");
     }
 
     /**
