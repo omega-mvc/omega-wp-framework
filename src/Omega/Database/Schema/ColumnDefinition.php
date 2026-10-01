@@ -101,11 +101,34 @@ class ColumnDefinition
 
         $this->autoIncrement = (bool) ($data['autoIncrement'] ?? false);
         $this->unsigned      = (bool) ($data['unsigned'] ?? false);
-        $this->type          = is_scalar($data['type']) ? (string) $data['type'] : '';
-        $this->name          = is_scalar($data['name']) ? (string) $data['name'] : '';
-        $this->length        = isset($data['length']) && is_numeric($data['length'])
-            ? (int) $data['length']
-            : null;
+        $this->type          = self::stringValue($data['type']);
+        $this->name          = self::stringValue($data['name']);
+        $this->length        = self::intValue($data['length'] ?? null);
+    }
+
+    /**
+     * Read a raw attribute as a string.
+     *
+     * Attributes are normally scalars; anything else is reduced to an empty
+     * string so the builder never interpolates a non printable value.
+     *
+     * @param mixed $value Raw attribute value.
+     * @return string The attribute value as a string.
+     */
+    private static function stringValue(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * Read a raw attribute as a length.
+     *
+     * @param mixed $value Raw attribute value.
+     * @return int|null The attribute value as a positive integer, or null when it is not numeric.
+     */
+    private static function intValue(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
     }
     #endregion
 

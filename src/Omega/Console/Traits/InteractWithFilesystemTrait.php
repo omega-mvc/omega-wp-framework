@@ -17,6 +17,7 @@ namespace Omega\Console\Traits;
 use Symfony\Component\Finder\Finder;
 
 use function array_map;
+use function array_walk;
 use function is_dir;
 use function iterator_to_array;
 
@@ -61,15 +62,16 @@ trait InteractWithFilesystemTrait
         $finder = new Finder();
         $finder->files()->in($directory);
 
-        array_map(
-            static fn (string $pattern): Finder => $finder->name($pattern),
-            (array) $patterns
-        );
+        /** @var array<int, string> $patterns */
+        $patterns = (array) $patterns;
+        array_walk($patterns, static function (string $pattern) use ($finder): void {
+            $finder->name($pattern);
+        });
 
-        array_map(
-            static fn (string $exPattern): Finder => $finder->notName($exPattern),
-            $exclude
-        );
+        /** @var array<int, string> $exclude */
+        array_walk($exclude, static function (string $exPattern) use ($finder): void {
+            $finder->notName($exPattern);
+        });
 
         return array_map(
             static fn($file) => $file->getRealPath(),

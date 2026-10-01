@@ -138,44 +138,92 @@ class ForeignKeyDefinition
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-        $column     = $this->attributes['name'] ?? null;
-        $references = $this->attributes['references'] ?? null;
-        $table      = $this->attributes['on'] ?? null;
-        $onDelete   = $this->attributes['onDelete'] ?? null;
+        $column = $this->stringAttribute('name');
 
-        if (
-            !is_string($column) || !$column
-            || !is_string($references) || !$references
-            || !is_string($table) || !$table
-        ) {
+        if ($column === null) {
             return '';
         }
 
-        $constraintName = sprintf(
-            '%s_%s_foreign',
-            $wpdb->prefix . $this->blueprint->getTable(),
-            $column
-        );
+        $references = $this->stringAttribute('references');
 
-        if (strlen($constraintName) > 64) {
-            $hash = substr(md5($constraintName), 0, 8);
-            $base = substr($constraintName, 0, 55);
-            $constraintName = $base . '_' . $hash;
+        if ($references === null) {
+            return '';
+        }
+
+        $table = $this->stringAttribute('on');
+
+        if ($table === null) {
+            return '';
         }
 
         $sql = sprintf(
             'CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)',
-            $constraintName,
+            $this->constraintName($column),
             $column,
             $wpdb->prefix . $table,
             $references
         );
 
-        if (is_string($onDelete) && $onDelete) {
-            $sql .= ' ON DELETE ' . strtoupper($onDelete);
+        return $sql . $this->deleteAction();
+    }
+
+    /**
+     * Read a mandatory string attribute of the constraint definition.
+     *
+     * @param string $key The attribute name.
+     * @return string|null The attribute value, or null when it is missing,
+     *                     empty or not a string.
+     */
+    private function stringAttribute(string $key): ?string
+    {
+        $value = $this->attributes[$key] ?? null;
+
+        if (!is_string($value)) {
+            return null;
         }
 
-        return $sql;
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * Build the optional ON DELETE clause of the constraint.
+     *
+     * @return string The clause, or an empty string when no action is configured.
+     */
+    private function deleteAction(): string
+    {
+        $onDelete = $this->attributes['onDelete'] ?? null;
+
+        if (!is_string($onDelete)) {
+            return '';
+        }
+
+        $action = strtoupper($onDelete);
+
+        return $action ? ' ON DELETE ' . $action : '';
+    }
+
+    /**
+     * Build the constraint name, keeping it inside the MySQL identifier limit.
+     *
+     * Names longer than the limit are truncated and suffixed with a short
+     * hash of the full name, so they stay unique and predictable.
+     *
+     * @param string $column The constrained column name.
+     * @return string The constraint name.
+     */
+    private function constraintName(string $column): string
+    {
+        /** @var \wpdb $wpdb */
+        global $wpdb;
+
+        $name = sprintf('%s_%s_foreign', $wpdb->prefix . $this->blueprint->getTable(), $column);
+
+        if (strlen($name) <= 64) {
+            return $name;
+        }
+
+        return substr($name, 0, 55) . '_' . substr(md5($name), 0, 8);
     }
     #endregion
 }

@@ -17,11 +17,16 @@ namespace Omega\Database\Migrations;
 use Omega\Application\ApplicationInterface;
 use Omega\Database\Database;
 use Omega\Database\Schema\Blueprint;
+use Omega\Database\ORM\QueryBuilder;
 use Omega\Database\Schema\Schema;
 use ReflectionException;
 use Throwable;
 
+use function array_filter;
+use function array_map;
 use function array_merge;
+use function array_values;
+use function array_walk;
 use function basename;
 use function current_time;
 use function error_log;
@@ -178,19 +183,7 @@ class Migrator
      */
     public function run(): ?array
     {
-        $files = glob("$this->path/database/migrations/*.php");
-        $files = $files === false ? [] : $files;
-
-        $migrationFolders = $this->app->getMigrationFolders();
-
-        if (!empty($migrationFolders)) {
-            foreach ($migrationFolders as $folder) {
-                $extraFiles = glob("$folder/*.php");
-                if ($extraFiles) {
-                    $files = array_merge($files, $extraFiles);
-                }
-            }
-        }
+        $files = $this->migrationFiles();
 
         if (!$files) {
             return null;
@@ -198,34 +191,115 @@ class Migrator
 
         $this->maybeCreateMigrationsTable();
 
-        $model = Database::table($this->tableName);
+        return $this->applyMigrations($files);
+    }
 
+    /**
+     * Collect the migration files shipped with the application and with the extra folders.
+     *
+     * @return array<int, string> Absolute paths of the available migration files.
+     */
+    private function migrationFiles(): array
+    {
+        $folders = array_map(
+            fn (string $folder): array => $this->migrationFolder($folder),
+            $this->app->getMigrationFolders()
+        );
+
+        return array_merge($this->migrationFolder("$this->path/database/migrations"), ...$folders);
+    }
+
+    /**
+     * List the migration files contained in a single directory.
+     *
+     * @param  string  $directory  Absolute path of the directory to scan.
+     * @return array<int, string> Absolute paths of the migration files found, empty when none.
+     */
+    private function migrationFolder(string $directory): array
+    {
+        $files = glob("$directory/*.php");
+
+        return $files === false ? [] : $files;
+    }
+
+    /**
+     * Execute the pending migrations and record them in the migrations table.
+     *
+     * @param  array<int, string>  $files  Absolute paths of the available migration files.
+     * @return array<int, string> The identifiers of the applied migrations.
+     * @throws ReflectionException
+     */
+    private function applyMigrations(array $files): array
+    {
+        $model      = Database::table($this->tableName);
         $migrations = $model->select('name')->get()->pluck('name')->toArray();
-        $applied = [];
 
-        foreach ($files as $file) {
-            $migrationId = basename($file, '.php');
+        $executed = array_map(
+            fn (string $file): ?string => $this->applyMigration($file),
+            $this->pendingMigrations($files, $migrations)
+        );
 
-            if (in_array($migrationId, $migrations, true)) {
-                continue;
-            }
+        return array_values(
+            array_filter(
+                $executed,
+                static fn (?string $migrationId): bool => $migrationId !== null
+            )
+        );
+    }
 
-            $migrated = $this->processMigrationFile($file);
+    /**
+     * Filter out the migrations already recorded in the migrations table.
+     *
+     * @param  array<int, string>     $files       Absolute paths of the available migration files.
+     * @param  array<array-key, mixed> $migrations Identifiers of the already applied migrations.
+     * @return array<int, string> Absolute paths of the migrations still to apply.
+     */
+    private function pendingMigrations(array $files, array $migrations): array
+    {
+        return array_values(
+            array_filter(
+                $files,
+                static fn (string $file): bool => !in_array(basename($file, '.php'), $migrations, true)
+            )
+        );
+    }
 
-            if ($migrated) {
-                $migrations[] = $migrationId;
-                $applied[]    = $migrationId;
-
-                Database::insert(Database::getTableName($this->tableName), [
-                    'name'       => $migrationId,
-                    'file'       => $file,
-                    'created_at' => current_time('mysql'),
-                    'updated_at' => current_time('mysql'),
-                ]);
-            }
+    /**
+     * Execute a single pending migration and record it.
+     *
+     * @param  string  $file  Absolute path of the migration file.
+     * @return string|null The identifier of the applied migration, or null when it failed.
+     * @throws ReflectionException
+     */
+    private function applyMigration(string $file): ?string
+    {
+        if (!$this->processMigrationFile($file)) {
+            return null;
         }
 
-        return $applied;
+        $migrationId = basename($file, '.php');
+
+        $this->recordMigration($file, $migrationId);
+
+        return $migrationId;
+    }
+
+    /**
+     * Store the execution of a migration in the migrations table.
+     *
+     * @param  string  $file          Absolute path of the migration file.
+     * @param  string  $migrationId   Identifier of the migration.
+     * @return void
+     * @throws ReflectionException
+     */
+    private function recordMigration(string $file, string $migrationId): void
+    {
+        Database::insert(Database::getTableName($this->tableName), [
+            'name'       => $migrationId,
+            'file'       => $file,
+            'created_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql'),
+        ]);
     }
     #endregion
 
@@ -243,26 +317,93 @@ class Migrator
     {
         $model = Database::table($this->tableName);
 
-        $migrations = $model->get();
-
-        if (!$migrations->isEmpty()) {
-            foreach ($migrations as $mg) {
-                $file = $mg['file'];
-
-                if (!is_string($file) || !file_exists($file)) {
-                    continue;
-                }
-
-                $migration = require_once $file;
-
-                if ($migration instanceof AbstractMigration) {
-                    $migration->down();
-                    $model->where(['id' => $mg['id']])->delete();
-                }
-            }
-        }
+        $this->rollbackMigrations($model, $model->get()->toArray());
 
         return $this->run();
+    }
+
+    /**
+     * Roll back every recorded migration still pointing at an existing file.
+     *
+     * @param  QueryBuilder  $model       The query builder bound to the migrations table.
+     * @param  array<array-key, mixed>  $migrations  The recorded migration rows.
+     * @return void
+     * @throws ReflectionException
+     */
+    private function rollbackMigrations(QueryBuilder $model, array $migrations): void
+    {
+        $rows = $this->rollbackableRows($migrations);
+
+        array_walk(
+            $rows,
+            function (array $row) use ($model): void {
+                $this->rollbackMigration($model, $row);
+            }
+        );
+    }
+
+    /**
+     * Keep only the recorded rows carrying an existing migration file.
+     *
+     * @param  array<array-key, mixed>  $migrations  The recorded migration rows.
+     * @return array<int, array{row: array<array-key, mixed>, file: string}> The rollback targets.
+     */
+    private function rollbackableRows(array $migrations): array
+    {
+        $rows = array_filter(
+            $migrations,
+            static fn (mixed $row): bool => is_array($row)
+        );
+
+        return array_values(
+            array_filter(
+                array_map(
+                    fn (array $row): ?array => $this->rollbackTarget($row),
+                    $rows
+                ),
+                static fn (?array $target): bool => $target !== null
+            )
+        );
+    }
+
+    /**
+     * Build the rollback target of a recorded row.
+     *
+     * @param  array<array-key, mixed>  $row  The recorded migration row.
+     * @return array{row: array<array-key, mixed>, file: string}|null The rollback target,
+     *                                                             or null when the row
+     *                                                             carries no existing file.
+     */
+    private function rollbackTarget(array $row): ?array
+    {
+        $file = $row['file'] ?? null;
+
+        if (!is_string($file)) {
+            return null;
+        }
+
+        return file_exists($file) ? ['row' => $row, 'file' => $file] : null;
+    }
+
+    /**
+     * Roll back a single recorded migration and drop its tracking row.
+     *
+     * @param  QueryBuilder  $model  The query builder bound to the migrations table.
+     * @param  array{row: array<array-key, mixed>, file: string}  $target  The rollback target.
+     * @return void
+     * @throws ReflectionException
+     */
+    private function rollbackMigration(QueryBuilder $model, array $target): void
+    {
+        $migration = require_once $target['file'];
+
+        if (!$migration instanceof AbstractMigration) {
+            return;
+        }
+
+        $migration->down();
+
+        $model->where(['id' => $target['row']['id']])->delete();
     }
     #endregion
 }

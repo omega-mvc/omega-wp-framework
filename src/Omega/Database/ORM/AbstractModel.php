@@ -32,13 +32,21 @@ use ReflectionException;
 use ReturnTypeWillChange;
 
 use function array_key_exists;
+use function array_keys;
+use function array_map;
 use function array_merge;
+use function array_reduce;
+use function array_walk;
 use function call_user_func;
 use function class_exists;
 use function class_uses;
+use function count;
 use function current_time;
 use function get_called_class;
 use function in_array;
+use function is_int;
+use function is_numeric;
+use function is_scalar;
 use function is_string;
 use function lcfirst;
 use function method_exists;
@@ -165,9 +173,9 @@ abstract class AbstractModel implements ArrayAccess
         $this->foreignKey = $this->modelToForeign(get_called_class());
         $this->data       = $data;
 
-        foreach ($data as $key => $value) {
-            $this->data[$key] = $this->getAttributeValue($key, $value);
-        }
+        array_walk($this->data, function (mixed &$value, int|string $key): void {
+            $value = $this->getAttributeValue((string) $key, $value);
+        });
     }
     #endregion
 
@@ -187,20 +195,36 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function getFullTableName(): string
     {
-        $class = get_called_class();
-        $defaultTableName = static::getDefaultPropertyValue($class, 'table');
+        $tableName = self::customTableName(static::getDefaultPropertyValue(get_called_class(), 'table'));
 
-        if (empty($defaultTableName)) {
-            return Database::getTableName(
-                self::modelToTable(get_called_class()),
-                self::getPrefix()
-            );
-        } else {
-            return Database::getTableName(
-                is_scalar($defaultTableName) ? (string) $defaultTableName : '',
-                self::getPrefix()
-            );
+        if ($tableName === null) {
+            $tableName = self::modelToTable(get_called_class());
         }
+
+        return Database::getTableName($tableName, self::getPrefix());
+    }
+
+    /**
+     * Extract the table name explicitly declared by a model.
+     *
+     * A model may pin its table through the "table" property. When that
+     * property is missing, not scalar or empty, the caller falls back to the
+     * name derived from the class.
+     *
+     * @param  mixed         $tableName The raw value of the "table" property.
+     * @return string|null The declared table name, or null when the model does not declare one.
+     */
+    private static function customTableName(mixed $tableName): ?string
+    {
+        if (!is_scalar($tableName)) {
+            return null;
+        }
+
+        if (empty($tableName)) {
+            return null;
+        }
+
+        return (string) $tableName;
     }
 
     /**
@@ -218,10 +242,7 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function modelToTable(object|string $model): string
     {
-        $reflect              = new ReflectionClass($model);
-        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
-
-        return strtolower($tableNameUnderscored) . 's';
+        return self::underscoredShortName($model) . 's';
     }
 
     /**
@@ -233,18 +254,30 @@ abstract class AbstractModel implements ArrayAccess
      * Example:
      * UserProfile => user_profile
      *
-     * @param object|string $model The model class name or model instance.
+     * @param class-string|object $model The model class name or model instance.
      * @return string The generated foreign key base name.
      * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
      */
     private function modelToForeign(object|string $model): string
     {
-        /** @var class-string $className */
-        $className = is_object($model) ? $model::class : $model;
-        $reflect   = new ReflectionClass($className);
-        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
+        return self::underscoredShortName($model);
+    }
 
-        return strtolower($tableNameUnderscored);
+    /**
+     * Convert the short name of a class into its snake_case representation.
+     *
+     * Example:
+     * UserProfile => user_profile
+     *
+     * @param class-string|object $class The class name or class instance to inspect.
+     * @return string The snake_case short class name.
+     * @throws ReflectionException Thrown when class reflection metadata cannot be resolved.
+     */
+    private static function underscoredShortName(object|string $class): string
+    {
+        $reflect = new ReflectionClass($class);
+
+        return strtolower((string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName()));
     }
 
     /**
@@ -270,10 +303,7 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function getForeignKeyStatic(): string
     {
-        $reflect              = new ReflectionClass(get_called_class());
-        $tableNameUnderscored = (string) preg_replace('/(?<!^)([A-Z])/', '_$1', $reflect->getShortName());
-
-        return strtolower($tableNameUnderscored) . '_id';
+        return self::underscoredShortName(get_called_class()) . '_id';
     }
 
     /**
@@ -316,8 +346,7 @@ abstract class AbstractModel implements ArrayAccess
      */
     public static function getPrefix(): string
     {
-        $class  = get_called_class();
-        $prefix = static::getDefaultPropertyValue($class, 'prefix', '');
+        $prefix = static::getDefaultPropertyValue(get_called_class(), 'prefix', '');
 
         return is_scalar($prefix) ? (string) $prefix : '';
     }
@@ -596,9 +625,12 @@ abstract class AbstractModel implements ArrayAccess
 
         $tableName = $instance->getTableName();
 
-        foreach ($columnsValues as $key => $value) {
-            $columnsValues[$key] = $instance->setAttributeValue($key, $value, $columnsValues);
-        }
+        $keys = array_keys($columnsValues);
+
+        array_walk($keys, static function (int|string $key) use (&$columnsValues, $instance): void {
+            $value = $columnsValues[$key];
+            $columnsValues[$key] = $instance->setAttributeValue((string) $key, $value, $columnsValues);
+        });
 
         if (self::usesTimestamps()) {
             $columnsValues['created_at'] = current_time('mysql');
@@ -675,11 +707,31 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function fill(array $data): void
     {
-        foreach ($data as $key => $value) {
-            if (in_array($key, $this->fillable) || empty($this->fillable)) {
-                $this->updateData[$key] = $value;
+        array_walk($data, function (mixed $value, int|string $key): void {
+            if (!$this->isFillable((string) $key)) {
+                return;
             }
+
+            $this->updateData[(string) $key] = $value;
+        });
+    }
+
+    /**
+     * Determine whether an attribute is accepted by the mass assignment list.
+     *
+     * Models without a fillable list accept every attribute, models with one
+     * only accept the declared attribute names.
+     *
+     * @param  string $key The attribute name.
+     * @return bool True when the attribute may be mass assigned.
+     */
+    private function isFillable(string $key): bool
+    {
+        if (empty($this->fillable)) {
+            return true;
         }
+
+        return in_array($key, $this->fillable);
     }
 
     /**
@@ -777,7 +829,7 @@ abstract class AbstractModel implements ArrayAccess
     /**
      * Define an inverse one-to-one or many relationship.
      *
-     * @param string $relatedClass The related model class name.
+     * @param class-string $relatedClass The related model class name.
      * @return BelongsTo The configured belongs-to relationship instance.
      * @throws ReflectionException Thrown when model reflection metadata cannot be resolved.
      */
@@ -801,6 +853,32 @@ abstract class AbstractModel implements ArrayAccess
     #endregion
 
     #region Attribute Casting
+    /** Shortcut aliases mapped to cast classes. */
+    private const array CLASS_CASTS = [
+        'boolean' => BooleanCast::class,
+        'bool'    => BooleanCast::class,
+        'array'   => ArrayCast::class,
+        'money'   => MoneyCast::class,
+    ];
+
+    /**
+     * Primitive cast aliases handled by scalar coercion.
+     *
+     * Every alias is mapped to the family handled by the scalar coercion,
+     * while unknown definitions fall back to the "raw" family and are returned
+     * untouched.
+     *
+     * @var array<string, string>
+     */
+    private const array SCALAR_ALIASES = [
+        'int'     => 'int',
+        'integer' => 'int',
+        'real'    => 'real',
+        'float'   => 'real',
+        'double'  => 'real',
+        'string'  => 'string',
+    ];
+
     /**
      * Set a raw attribute value on the model instance.
      *
@@ -833,6 +911,19 @@ abstract class AbstractModel implements ArrayAccess
     }
 
     /**
+     * Invoke the accessor or mutator declared for an attribute, if any.
+     *
+     * @param string $key The attribute name.
+     * @return mixed The value returned by the accessor, or null when no accessor is declared.
+     */
+    private function getAttribute(string $key): mixed
+    {
+        $method = $this->getAttributeMethod($key);
+
+        return $method === null ? null : $this->$method();
+    }
+
+    /**
      * Retrieve and transform an attribute value.
      *
      * This method applies:
@@ -848,70 +939,54 @@ abstract class AbstractModel implements ArrayAccess
      */
     private function getAttributeValue(string $key, mixed $value = null): mixed
     {
-        $attributeMethod = $this->getAttributeMethod($key);
+        $getter = $this->getterOf($this->getAttribute($key));
 
-        if ($attributeMethod && method_exists($this, $attributeMethod)) {
-            $attribute = $this->$attributeMethod();
-
-            if ($attribute instanceof Attribute && $attribute->get) {
-                return call_user_func(
-                    $attribute->get,
-                    $value !== null
-                        ? $value
-                        : ($this->data[$key] ?? null),
-                    $this->data
-                );
-            }
+        if ($getter === null) {
+            return $this->castAttribute($key, $value, false);
         }
 
-        $casts = $this->casts();
+        return $this->callGetter($getter, $key, $value);
+    }
 
-        if (array_key_exists($key, $casts)) {
-            $cast = $casts[$key];
-
-            if (is_string($cast)) {
-                switch (strtolower($cast)) {
-                    case 'boolean':
-                    case 'bool':
-                        $cast = BooleanCast::class;
-                        break;
-
-                    case 'array':
-                        $cast = ArrayCast::class;
-                        break;
-
-                    case 'money':
-                        $cast = MoneyCast::class;
-                        break;
-
-                    case 'int':
-                    case 'integer':
-                        return is_scalar($value) ? (int) $value : 0;
-
-                    case 'real':
-                    case 'float':
-                    case 'double':
-                        return is_scalar($value) ? (float) $value : 0.0;
-
-                    case 'string':
-                        if ($value === null) {
-                            return null;
-                        }
-
-                        return is_scalar($value) ? (string) $value : '';
-                }
-
-                if (class_exists($cast)) {
-                    $cast = new $cast();
-                }
-            }
-
-            if ($cast instanceof CastsAttributesInterface) {
-                return $cast->get($this, $key, $value, $this->data);
-            }
+    /**
+     * Extract the getter callback declared by an attribute definition.
+     *
+     * @param  mixed           $attribute The attribute definition returned by the accessor lookup.
+     * @return callable|null The getter callback, or null when the attribute is not readable.
+     */
+    private function getterOf(mixed $attribute): ?callable
+    {
+        if (!$attribute instanceof Attribute) {
+            return null;
         }
 
-        return $value;
+        if (!$attribute->get) {
+            return null;
+        }
+
+        return $attribute->get;
+    }
+
+    /**
+     * Invoke the getter declared by an attribute definition.
+     *
+     * An explicit value always wins, otherwise the value is read from the
+     * current data set and the whole payload is handed over to the callback.
+     *
+     * @param  callable $getter The getter callback declared by the attribute.
+     * @param  string   $key    The attribute name.
+     * @param  mixed    $value  The explicit value, when the caller supplied one.
+     * @return mixed The value produced by the getter callback.
+     */
+    private function callGetter(callable $getter, string $key, mixed $value): mixed
+    {
+        return call_user_func(
+            $getter,
+            $value !== null
+                ? $value
+                : ($this->data[$key] ?? null),
+            $this->data
+        );
     }
 
     /**
@@ -934,68 +1009,189 @@ abstract class AbstractModel implements ArrayAccess
         mixed $value,
         array $data = []
     ): mixed {
-        $attributeMethod = $this->getAttributeMethod($key);
+        $mutator = $this->mutatorOf($this->getAttribute($key));
 
-        if ($attributeMethod && method_exists($this, $attributeMethod)) {
-            $attribute = $this->$attributeMethod();
-
-            if ($attribute instanceof Attribute && $attribute->set) {
-                return call_user_func(
-                    $attribute->set,
-                    $value,
-                    array_merge($data, $this->data)
-                );
-            }
+        if ($mutator === null) {
+            return $this->castAttribute($key, $value, true);
         }
 
+        return call_user_func($mutator, $value, array_merge($data, $this->data));
+    }
+
+    /**
+     * Extract the mutator callback declared by an attribute definition.
+     *
+     * @param  mixed           $attribute The attribute definition returned by the accessor lookup.
+     * @return callable|null The mutator callback, or null when the attribute is not writable.
+     */
+    private function mutatorOf(mixed $attribute): ?callable
+    {
+        if (!$attribute instanceof Attribute) {
+            return null;
+        }
+
+        if (!$attribute->set) {
+            return null;
+        }
+
+        return $attribute->set;
+    }
+
+    /**
+     * Resolve a configured cast definition into an actionable cast handler.
+     *
+     * Cast classes, including the built-in "boolean", "array" and "money" aliases,
+     * are instantiated, while primitive aliases such as "int" or "string" are
+     * returned normalized so that they can be handled by scalar coercion.
+     *
+     * @param mixed $cast The configured cast definition.
+     * @return CastsAttributesInterface|string|false The cast handler, the normalized
+     *                                                primitive alias, or false when the
+     *                                                definition cannot be resolved.
+     */
+    private static function resolveCast(mixed $cast): CastsAttributesInterface|string|false
+    {
+        if (!is_string($cast)) {
+            return $cast instanceof CastsAttributesInterface ? $cast : false;
+        }
+
+        $normalized = strtolower($cast);
+        $class      = self::CLASS_CASTS[$normalized] ?? $cast;
+
+        if (!class_exists($class)) {
+            return $normalized;
+        }
+
+        /** @var class-string<CastsAttributesInterface> $class */
+        return new $class();
+    }
+
+    /**
+     * Coerce a value using a normalized primitive cast alias.
+     *
+     * @param string|false $cast The normalized primitive cast alias.
+     * @param mixed        $value The raw attribute value.
+     * @return mixed The coerced value, or the original value when the alias is unknown.
+     */
+    private static function coerceScalar(string|false $cast, mixed $value): mixed
+    {
+        return match (self::scalarAlias($cast)) {
+            'int'    => self::coerceInt($value),
+            'real'   => self::coerceFloat($value),
+            'string' => self::coerceString($value),
+            default  => $value,
+        };
+    }
+
+    /**
+     * Map a primitive cast alias onto the coercion family that handles it.
+     *
+     * Aliases the scalar layer does not know are mapped to the "raw" family,
+     * which leaves the value untouched, exactly like the previous match did.
+     *
+     * @param  string|false $cast The normalized primitive cast alias.
+     * @return string The coercion family name.
+     */
+    private static function scalarAlias(string|false $cast): string
+    {
+        if ($cast === false) {
+            return 'raw';
+        }
+
+        return self::SCALAR_ALIASES[strtolower($cast)] ?? 'raw';
+    }
+
+    /**
+     * Coerce a value using the "int" primitive cast family.
+     *
+     * Non scalar values have no numeric representation, therefore they collapse
+     * to zero.
+     *
+     * @param  mixed $value The raw attribute value.
+     * @return int The integer representation of the value.
+     */
+    private static function coerceInt(mixed $value): int
+    {
+        if (!is_scalar($value)) {
+            return 0;
+        }
+
+        return (int) $value;
+    }
+
+    /**
+     * Coerce a value using the "real" primitive cast family.
+     *
+     * Non scalar values have no numeric representation, therefore they collapse
+     * to zero.
+     *
+     * @param  mixed $value The raw attribute value.
+     * @return float The float representation of the value.
+     */
+    private static function coerceFloat(mixed $value): float
+    {
+        if (!is_scalar($value)) {
+            return 0.0;
+        }
+
+        return (float) $value;
+    }
+
+    /**
+     * Coerce a value using the "string" primitive cast alias.
+     *
+     * Null values are preserved as null, scalar values are converted to string
+     * and any other value collapses to an empty string.
+     *
+     * @param mixed $value The raw attribute value.
+     * @return mixed The coerced string value.
+     */
+    private static function coerceString(mixed $value): mixed
+    {
+        return $value === null ? null : (is_scalar($value) ? (string) $value : '');
+    }
+
+    /**
+     * Apply the cast configured for an attribute, if any.
+     *
+     * @param string $key The attribute name.
+     * @param mixed $value The raw attribute value.
+     * @param bool $write True when the value is being persisted, false when it is being read.
+     * @return mixed The transformed attribute value.
+     */
+    private function castAttribute(string $key, mixed $value, bool $write): mixed
+    {
         $casts = $this->casts();
 
-        if (array_key_exists($key, $casts)) {
-            $cast = $casts[$key];
-
-            if (is_string($cast)) {
-                switch (strtolower($cast)) {
-                    case 'boolean':
-                    case 'bool':
-                        $cast = BooleanCast::class;
-                        break;
-
-                    case 'array':
-                        $cast = ArrayCast::class;
-                        break;
-
-                    case 'money':
-                        $cast = MoneyCast::class;
-                        break;
-
-                    case 'int':
-                    case 'integer':
-                        return is_scalar($value) ? (int) $value : 0;
-
-                    case 'real':
-                    case 'float':
-                    case 'double':
-                        return is_scalar($value) ? (float) $value : 0.0;
-
-                    case 'string':
-                        if ($value === null) {
-                            return null;
-                        }
-
-                        return is_scalar($value) ? (string) $value : '';
-                }
-
-                if (class_exists($cast)) {
-                    $cast = new $cast();
-                }
-            }
-
-            if ($cast instanceof CastsAttributesInterface) {
-                return $cast->set($this, $key, $value, $this->data);
-            }
+        if (!array_key_exists($key, $casts)) {
+            return $value;
         }
 
-        return $value;
+        $cast = self::resolveCast($casts[$key]);
+
+        return $cast instanceof CastsAttributesInterface
+            ? $this->applyCast($cast, $key, $value, $write)
+            : self::coerceScalar($cast, $value);
+    }
+
+    /**
+     * Hand the attribute value over to a resolved cast handler.
+     *
+     * @param CastsAttributesInterface $cast The resolved cast handler.
+     * @param string $key The attribute name.
+     * @param mixed $value The raw attribute value.
+     * @param bool $write True when the value is being persisted, false when it is being read.
+     * @return mixed The transformed attribute value.
+     */
+    private function applyCast(
+        CastsAttributesInterface $cast,
+        string $key,
+        mixed $value,
+        bool $write
+    ): mixed {
+        return $write
+            ? $cast->set($this, $key, $value, $this->data)
+            : $cast->get($this, $key, $value, $this->data);
     }
 
     /**
@@ -1073,23 +1269,33 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function toArray(): array
     {
-        $result = [];
+        return array_map([$this, 'serializableValue'], $this->data);
+    }
 
-        foreach ($this->data as $key => $value) {
-            if ($value instanceof Collection) {
-                $result[$key] = $value->map(function (mixed $item): mixed {
-                    return $item instanceof AbstractModel
-                        ? $item->toArray()
-                        : $item;
-                });
-            } elseif ($value instanceof AbstractModel) {
-                $result[$key] = $value->toArray();
-            } else {
-                $result[$key] = $value;
-            }
+    /**
+     * Convert a single attribute value into its array representation.
+     *
+     * Collections and nested models are expanded recursively, every other
+     * value is returned untouched.
+     *
+     * @param  mixed $value The attribute value.
+     * @return mixed The value ready to be placed in the array representation.
+     */
+    private function serializableValue(mixed $value): mixed
+    {
+        if ($value instanceof Collection) {
+            return $value->map(function (mixed $item): mixed {
+                return $item instanceof AbstractModel
+                    ? $item->toArray()
+                    : $item;
+            });
         }
 
-        return $result;
+        if ($value instanceof AbstractModel) {
+            return $value->toArray();
+        }
+
+        return $value;
     }
     #endregion
 
@@ -1173,9 +1379,7 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetExists(mixed $offset): bool
     {
-        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
-
-        return isset($this->data[$key]);
+        return isset($this->data[$this->offsetKey($offset)]);
     }
 
     /**
@@ -1190,7 +1394,7 @@ abstract class AbstractModel implements ArrayAccess
     #[ReturnTypeWillChange]
     public function offsetGet(mixed $offset): mixed
     {
-        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+        $key = $this->offsetKey($offset);
 
         if ($this->keyExists($key)) {
             return $this->data[$key];
@@ -1217,21 +1421,9 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+        $key = $this->offsetKey($offset);
 
-        if ($offset !== null) {
-            $value = $this->setAttributeValue($key, $value);
-        }
-
-        if ($this->wasRetrieved()) {
-            $this->updateData[$key] = $value;
-        } else {
-            if ($offset === null) {
-                $this->data[] = $value;
-            } else {
-                $this->data[$key] = $value;
-            }
-        }
+        $this->storeOffsetValue($offset, $key, $this->preparedOffsetValue($offset, $key, $value));
     }
 
     /**
@@ -1242,9 +1434,80 @@ abstract class AbstractModel implements ArrayAccess
      */
     public function offsetUnset(mixed $offset): void
     {
-        $key = is_int($offset) || is_string($offset) ? (string) $offset : '';
+        unset($this->data[$this->offsetKey($offset)]);
+    }
+    #endregion
 
-        unset($this->data[$key]);
+    #region Array Access Helpers
+    /**
+     * Normalize an array access offset into a data key.
+     *
+     * Integer and string offsets address the key they represent, while any
+     * other offset falls back to the empty string, exactly like the inline
+     * normalization used by the array access methods.
+     *
+     * @param  mixed $offset The raw array access offset.
+     * @return string The normalized data key.
+     */
+    private function offsetKey(mixed $offset): string
+    {
+        if (is_int($offset)) {
+            return (string) $offset;
+        }
+
+        if (is_string($offset)) {
+            return $offset;
+        }
+
+        return '';
+    }
+
+    /**
+     * Apply the attribute mutators before an array access assignment.
+     *
+     * Values appended without an explicit offset are stored verbatim, every
+     * other offset is transformed by the configured mutators and casts.
+     *
+     * @param  mixed  $offset The raw array access offset.
+     * @param  string $key    The normalized data key.
+     * @param  mixed  $value  The value being assigned.
+     * @return mixed The value ready to be stored.
+     */
+    private function preparedOffsetValue(mixed $offset, string $key, mixed $value): mixed
+    {
+        if ($offset === null) {
+            return $value;
+        }
+
+        return $this->setAttributeValue($key, $value);
+    }
+
+    /**
+     * Store an array access assignment in the proper data bucket.
+     *
+     * Retrieved models stage the value for the next save, freshly built models
+     * write it to the data map, appending it when no offset was given.
+     *
+     * @param mixed  $offset The raw array access offset.
+     * @param string $key    The normalized data key.
+     * @param mixed  $value  The value ready to be stored.
+     * @return void
+     */
+    private function storeOffsetValue(mixed $offset, string $key, mixed $value): void
+    {
+        if ($this->wasRetrieved()) {
+            $this->updateData[$key] = $value;
+
+            return;
+        }
+
+        if ($offset === null) {
+            $this->data[] = $value;
+
+            return;
+        }
+
+        $this->data[$key] = $value;
     }
     #endregion
 }

@@ -24,6 +24,8 @@ use wpdb;
 use function array_fill;
 use function array_keys;
 use function array_map;
+use function array_merge;
+use function array_values;
 use function count;
 use function dbDelta;
 use function implode;
@@ -331,19 +333,16 @@ class Database
             return false;
         }
 
-        $firstItem    = $data[0];
-        $columns      = array_keys($firstItem);
-        $columnsSql   = implode(', ', $columns);
-        $values       = [];
-        $placeholders = [];
+        $firstItem  = $data[0];
+        $columns    = array_keys($firstItem);
+        $columnsSql = implode(', ', $columns);
+        $rows       = array_values($data);
+        $values     = array_merge(...array_map(static fn (array $item): array => array_values($item), $rows));
 
-        foreach ($data as $item) {
-            foreach ($item as $value) {
-                $values[] = $value;
-            }
-
-            $placeholders[] = '(' . implode(', ', array_fill(0, count($item), '%s')) . ')';
-        }
+        $placeholders = array_map(
+            static fn (array $item): string => '(' . implode(', ', array_fill(0, count($item), '%s')) . ')',
+            $rows
+        );
 
         $values_sql = implode(', ', $placeholders);
 
