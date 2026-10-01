@@ -30,6 +30,7 @@ use stdClass;
 use Tests\Database\Fixtures\AccessoredWidget;
 use Tests\Database\Fixtures\Article;
 use Tests\Database\Fixtures\CastedArticle;
+use Tests\Database\Fixtures\ImplicitRecord;
 use Tests\Database\Fixtures\InstancedCastItem;
 use Tests\Database\Fixtures\SoftDeletePost;
 use Tests\Database\Fixtures\TimestampedNote;
@@ -302,6 +303,25 @@ final class AbstractModelTest extends DatabaseTestCase
     }
 
     /**
+     * Test a cast definition that resolves to no cast at all leaves the value untouched.
+     */
+    public function testCastDefinitionWithoutAnyHandlerLeavesTheValueUntouched(): void
+    {
+        $record = new ImplicitRecord();
+
+        $this->assertSame('kept', $this->getAttributeValue($record, 'marker', 'kept'));
+        $this->assertSame('stored', $this->setAttributeValue($record, 'marker', 'stored'));
+    }
+
+    /**
+     * Test an empty table name falls back to the name derived from the class.
+     */
+    public function testEmptyTableNameFallsBackToTheDerivedOne(): void
+    {
+        $this->assertSame('wp_implicit_records', ImplicitRecord::getFullTableName());
+    }
+
+    /**
      * Test an uncasted attribute is returned as is.
      */
     public function testUncastedAttributeIsReturnedAsIs(): void
@@ -427,6 +447,7 @@ final class AbstractModelTest extends DatabaseTestCase
         $this->assertSame('label:beta', $widget['label']);
         $this->assertSame(3, (new Article(['views' => '3']))->offsetGet('views'));
         $this->assertNull($widget->offsetGet('missing_attribute'));
+        $this->assertSame('label:', (new AccessoredWidget([]))->offsetGet('label'));
     }
 
     /**
@@ -629,6 +650,37 @@ final class AbstractModelTest extends DatabaseTestCase
     }
 
     /**
+     * Test create() returns false on a timestamped model when the insert fails.
+     */
+    public function testCreateReturnsFalseOnATimestampedInsertFailure(): void
+    {
+        $this->wpdb()->failNext = true;
+
+        $this->assertFalse(TimestampedNote::create(['body' => 'nope']));
+    }
+
+    /**
+     * Test create() returns false for every payload size on a failing insert.
+     */
+    public function testCreateReturnsFalseForEveryPayloadSize(): void
+    {
+        $payloads = [
+            [],
+            ['title' => 'a'],
+            ['title' => 'a', 'views' => 1],
+            ['title' => 'a', 'views' => 1, 'body' => 'b'],
+        ];
+
+        foreach ($payloads as $payload) {
+            $this->wpdb()->failNext = true;
+            $this->assertFalse(Article::create($payload));
+
+            $this->wpdb()->failNext = true;
+            $this->assertFalse(TimestampedNote::create($payload));
+        }
+    }
+
+    /**
      * Test update() forwards the values to the database manager.
      */
     public function testUpdateForwardsValuesToDatabase(): void
@@ -690,6 +742,32 @@ final class AbstractModelTest extends DatabaseTestCase
 
         $this->assertSame(1, $note->save());
         $this->assertStringContainsString('body = ', $this->wpdb()->queries[0]);
+    }
+
+    /**
+     * Test fill() handles payloads of every size.
+     */
+    public function testFillHandlesEveryPayloadSize(): void
+    {
+        $payloads = [
+            [],
+            ['body' => 'a'],
+            ['body' => 'a', 'extra' => 'b'],
+            ['body' => 'a', 'extra' => 'b', 'more' => 'c'],
+            ['body' => 'a', 'extra' => 'b', 'more' => 'c', 'other' => 'd'],
+            ['body' => 'a', 'extra' => 'b', 'more' => 'c', 'other' => 'd', 'last' => 'e'],
+        ];
+
+        foreach ($payloads as $payload) {
+            $article = new Article();
+            $article->fill($payload);
+
+            $note = new TimestampedNote();
+            $note->fill($payload);
+
+            $this->assertInstanceOf(Article::class, $article);
+            $this->assertInstanceOf(TimestampedNote::class, $note);
+        }
     }
 
     /**

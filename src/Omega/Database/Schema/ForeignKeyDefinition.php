@@ -138,12 +138,21 @@ class ForeignKeyDefinition
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-        $column     = $this->stringAttribute('name');
-        $references = $this->stringAttribute('references');
-        $table      = $this->stringAttribute('on');
-        $onDelete   = $this->attributes['onDelete'] ?? null;
+        $column = $this->stringAttribute('name');
 
-        if ($column === null || $references === null || $table === null) {
+        if ($column === null) {
+            return '';
+        }
+
+        $references = $this->stringAttribute('references');
+
+        if ($references === null) {
+            return '';
+        }
+
+        $table = $this->stringAttribute('on');
+
+        if ($table === null) {
             return '';
         }
 
@@ -155,11 +164,7 @@ class ForeignKeyDefinition
             $references
         );
 
-        if (is_string($onDelete) && $onDelete) {
-            $sql .= ' ON DELETE ' . strtoupper($onDelete);
-        }
-
-        return $sql;
+        return $sql . $this->deleteAction();
     }
 
     /**
@@ -173,7 +178,29 @@ class ForeignKeyDefinition
     {
         $value = $this->attributes[$key] ?? null;
 
-        return is_string($value) && $value !== '' ? $value : null;
+        if (!is_string($value)) {
+            return null;
+        }
+
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * Build the optional ON DELETE clause of the constraint.
+     *
+     * @return string The clause, or an empty string when no action is configured.
+     */
+    private function deleteAction(): string
+    {
+        $onDelete = $this->attributes['onDelete'] ?? null;
+
+        if (!is_string($onDelete)) {
+            return '';
+        }
+
+        $action = strtoupper($onDelete);
+
+        return $action ? ' ON DELETE ' . $action : '';
     }
 
     /**

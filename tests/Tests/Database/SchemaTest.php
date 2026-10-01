@@ -654,6 +654,22 @@ final class SchemaTest extends DatabaseTestCase
 
         $this->assertSame('', $definition->getForeignKeySql());
 
+        $withoutReferences = new ForeignKeyDefinition($blueprint, ['name' => 'author_id', 'on' => 'authors']);
+
+        $this->assertSame('', $withoutReferences->getForeignKeySql());
+
+        $withoutTable = new ForeignKeyDefinition($blueprint, ['name' => 'author_id', 'references' => 'id']);
+
+        $this->assertSame('', $withoutTable->getForeignKeySql());
+
+        $emptyName = new ForeignKeyDefinition($blueprint, ['name' => '']);
+
+        $this->assertSame('', $emptyName->getForeignKeySql());
+
+        $numericName = new ForeignKeyDefinition($blueprint, ['name' => 42]);
+
+        $this->assertSame('', $numericName->getForeignKeySql());
+
         $complete = new ForeignKeyDefinition($blueprint, [
             'name'       => 'author_id',
             'references' => 'id',
@@ -663,6 +679,25 @@ final class SchemaTest extends DatabaseTestCase
         $this->assertSame(
             'CONSTRAINT wp_books_author_id_foreign FOREIGN KEY (author_id) REFERENCES wp_authors(id)',
             $complete->getForeignKeySql()
+        );
+    }
+
+    /**
+     * Test a non string ON DELETE action is ignored.
+     */
+    public function testItIgnoresANonStringOnDeleteAction(): void
+    {
+        $blueprint = new Blueprint('books');
+        $numeric   = new ForeignKeyDefinition($blueprint, [
+            'name'       => 'author_id',
+            'references' => 'id',
+            'on'         => 'authors',
+            'onDelete'   => 42,
+        ]);
+
+        $this->assertSame(
+            'CONSTRAINT wp_books_author_id_foreign FOREIGN KEY (author_id) REFERENCES wp_authors(id)',
+            $numeric->getForeignKeySql()
         );
     }
 

@@ -185,11 +185,36 @@ final class ConsoleBranding extends SymfonyConsole
     protected function formatBytes(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
+        $index = $this->byteUnitIndex($bytes);
+        $value = $bytes / 1024 ** $index;
 
-        for ($i = 0; $bytes >= 1024 && $i < 3; $i++) {
-            $bytes /= 1024;
+        return round($value, 2) . ' ' . $units[$index];
+    }
+
+    /**
+     * Resolve the unit index used to render a byte count.
+     *
+     * The count is expressed in the largest unit among B, KB, MB and GB,
+     * never scaling beyond GB, mirroring the original iterative division
+     * performed at most three times.
+     *
+     * @param int $bytes The number of bytes to scale.
+     * @return int The index of the matching unit in the bytes unit list.
+     */
+    private function byteUnitIndex(int $bytes): int
+    {
+        if ($bytes < 1024) {
+            return 0;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        if ($bytes < 1024 ** 2) {
+            return 1;
+        }
+
+        if ($bytes < 1024 ** 3) {
+            return 2;
+        }
+
+        return 3;
     }
 }

@@ -93,6 +93,16 @@ final class WPDB
     public array $results = [];
 
     /**
+     * Optional resolver consulted by get_results() before falling back to $results.
+     *
+     * Receives the executed query and returns the raw result set, so tests can
+     * reproduce the object or null results a failing query may produce.
+     *
+     * @var (callable(string): (array<int, object>|object|null))|null
+     */
+    public mixed $resultsResolver = null;
+
+    /**
      * Value returned by get_var().
      */
     public mixed $varValue = null;
@@ -148,6 +158,7 @@ final class WPDB
         $this->last_error     = '';
         $this->charsetCollate = 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
         $this->results      = [];
+        $this->resultsResolver = null;
         $this->varValue     = null;
         $this->varResolver  = null;
         $this->queries      = [];
@@ -243,11 +254,15 @@ final class WPDB
      *
      * @param string|null $query SQL query to execute.
      * @param string $output Unused output type flag kept for signature parity.
-     * @return array<int, object> The configured result rows.
+     * @return array<int, object>|object|null The configured result rows, if any.
      */
-    public function get_results(?string $query = null, string $output = 'OBJECT'): array
+    public function get_results(?string $query = null, string $output = 'OBJECT'): array|object|null
     {
         $this->queries[] = (string) $query;
+
+        if ($this->resultsResolver !== null) {
+            return ($this->resultsResolver)($query ?? '');
+        }
 
         return $this->results;
     }

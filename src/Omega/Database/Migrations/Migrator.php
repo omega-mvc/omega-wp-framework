@@ -378,7 +378,11 @@ class Migrator
     {
         $file = $row['file'] ?? null;
 
-        return is_string($file) && file_exists($file) ? ['row' => $row, 'file' => $file] : null;
+        if (!is_string($file)) {
+            return null;
+        }
+
+        return file_exists($file) ? ['row' => $row, 'file' => $file] : null;
     }
 
     /**

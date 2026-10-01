@@ -25,13 +25,16 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 use function array_values;
+use function array_walk;
 use function class_exists;
 use function file_exists;
 use function getenv;
 use function is_array;
 use function is_dir;
+use function iterator_to_array;
 use function putenv;
 use function Omega\Application\slash;
 use function str_contains;
@@ -103,7 +106,7 @@ class ConsoleApplication
 
         $shell = getenv('SHELL');
 
-        if (!$shell || !str_contains($shell, 'bash') && !str_contains($shell, 'zsh') && !str_contains($shell, 'fish')) {
+        if (!$this->isSupportedShell($shell)) {
             putenv('SHELL=/bin/bash');
         }
 
@@ -118,6 +121,29 @@ class ConsoleApplication
         $omega->setAutoExit(false);
 
         return $omega->run($input, $output);
+    }
+
+    /**
+     * Determine whether the detected shell can host the Omega console.
+     *
+     * @param string|false $shell The SHELL environment value, or false when unset.
+     * @return bool True when the shell is a supported interactive shell.
+     */
+    private function isSupportedShell(string|false $shell): bool
+    {
+        if (!$shell) {
+            return false;
+        }
+
+        if (str_contains($shell, 'bash')) {
+            return true;
+        }
+
+        if (str_contains($shell, 'zsh')) {
+            return true;
+        }
+
+        return str_contains($shell, 'fish');
     }
 
     /**
@@ -190,37 +216,68 @@ class ConsoleApplication
 
         $commands = [];
 
-        foreach ($commandPaths as $namespace => $path) {
+        array_walk($commandPaths, function (string $path, string $namespace) use (&$commands): void {
             if (!is_dir($path)) {
-                continue;
+                return;
             }
 
-            $finder = new Finder();
-            $finder->files()->name('*Command.php')->in($path);
-
-            foreach ($finder as $file) {
-                $className = $namespace . $file->getBasename('.php');
-                if (!class_exists($className)) {
-                    continue;
-                }
-
-                $reflection = new ReflectionClass($className);
-                $attribute = $reflection->getAttributes(AsCommand::class)[0] ?? null;
-
-                if ($attribute) {
-                    $instance = $attribute->newInstance();
-
-                    $commands[$instance->name] = $className;
-
-                    if (!empty($instance->aliases)) {
-                        foreach ($instance->aliases as $alias) {
-                            $commands[$alias] = $className;
-                        }
-                    }
-                }
-            }
-        }
+            $this->discoverCommandsInPath($namespace, $path, $commands);
+        });
 
         return $commands;
+    }
+
+    /**
+     * Discover the command classes found under a single namespace and directory.
+     *
+     * @param string $namespace The namespace prefix matching the scanned directory.
+     * @param string $path The directory holding the command classes.
+     * @param array<string, class-string> $commands The command map being built.
+     * @return void
+     */
+    private function discoverCommandsInPath(string $namespace, string $path, array &$commands): void
+    {
+        $finder = new Finder();
+        $finder->files()->name('*Command.php')->in($path);
+
+        /** @var array<int, SplFileInfo> $files */
+        $files = iterator_to_array($finder, false);
+
+        array_walk($files, function (SplFileInfo $file) use ($namespace, &$commands): void {
+            $className = $namespace . $file->getBasename('.php');
+
+            if (!class_exists($className)) {
+                return;
+            }
+
+            $this->registerDiscoveredCommand($className, $commands);
+        });
+    }
+
+    /**
+     * Register a discovered command class using its AsCommand metadata.
+     *
+     * @param class-string $className The fully qualified command class name.
+     * @param array<string, class-string> $commands The command map being built.
+     * @return void
+     */
+    private function registerDiscoveredCommand(string $className, array &$commands): void
+    {
+        $reflection = new ReflectionClass($className);
+        $attribute  = $reflection->getAttributes(AsCommand::class)[0] ?? null;
+
+        if (!$attribute) {
+            return;
+        }
+
+        $instance = $attribute->newInstance();
+
+        $commands[$instance->name] = $className;
+
+        /** @var array<int|string, string> $aliases */
+        $aliases = $instance->aliases;
+        array_walk($aliases, static function (string $alias) use ($className, &$commands): void {
+            $commands[$alias] = $className;
+        });
     }
 }
