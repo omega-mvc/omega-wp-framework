@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Omega\Console\Traits;
 
+use SplFileInfo;
 use Symfony\Component\Finder\Finder;
 
 use function array_map;
@@ -74,7 +75,7 @@ trait InteractWithFilesystemTrait
         });
 
         return array_map(
-            static fn($file) => $file->getRealPath(),
+            static fn(SplFileInfo $file) => $file->getRealPath(),
             iterator_to_array($finder, false)
         );
     }

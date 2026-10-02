@@ -72,7 +72,7 @@ final class CollectionTest extends TestCase
         $collection = new Collection(['a' => 1, 'b' => 2]);
         $visited    = [];
 
-        $result = $collection->each(function ($item, $key) use (&$visited): void {
+        $result = $collection->each(function (mixed $item, int|string $key) use (&$visited): void {
             $visited[$key] = $item;
         });
 
@@ -88,7 +88,7 @@ final class CollectionTest extends TestCase
         $collection = new Collection([1, 2, 3]);
         $visited    = [];
 
-        $collection->each(function ($item) use (&$visited) {
+        $collection->each(function (mixed $item) use (&$visited) {
             $visited[] = $item;
 
             return $item < 2;
@@ -105,7 +105,7 @@ final class CollectionTest extends TestCase
         $collection = new Collection();
         $visited    = [];
 
-        $result = $collection->each(function ($item) use (&$visited): void {
+        $result = $collection->each(function (mixed $item) use (&$visited): void {
             $visited[] = $item;
         });
 
@@ -314,7 +314,7 @@ final class CollectionTest extends TestCase
      */
     public function testFilterWithCallbackKeepsKeys(): void
     {
-        $result = (new Collection([1, 2, 3, 4]))->filter(fn ($item) => $item > 2);
+        $result = (new Collection([1, 2, 3, 4]))->filter(fn (mixed $item) => $item > 2);
 
         $this->assertInstanceOf(Collection::class, $result);
         $this->assertSame([2 => 3, 3 => 4], $result->getAll());

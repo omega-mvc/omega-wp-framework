@@ -524,10 +524,10 @@ final class AbstractModelTest extends DatabaseTestCase
         $this->assertInstanceOf(QueryBuilder::class, Article::where('id', 1));
         $this->assertInstanceOf(QueryBuilder::class, Article::whereNull('deleted_at'));
         $this->assertInstanceOf(QueryBuilder::class, Article::whereNull(new stdClass()));
-        $this->assertInstanceOf(QueryBuilder::class, Article::whereHas('comments', static fn ($q) => $q));
+        $this->assertInstanceOf(QueryBuilder::class, Article::whereHas('comments', static fn (mixed $q) => $q));
         $this->assertInstanceOf(QueryBuilder::class, Article::select('id'));
         $this->assertInstanceOf(QueryBuilder::class, Article::whereIn('id', [1, 2]));
-        $this->assertInstanceOf(QueryBuilder::class, Article::when(false, static fn ($q) => $q));
+        $this->assertInstanceOf(QueryBuilder::class, Article::when(false, static fn (mixed $q) => $q));
     }
 
     /**
@@ -883,7 +883,7 @@ final class AbstractModelTest extends DatabaseTestCase
      */
     public function testAttributeObjectKeepsCallables(): void
     {
-        $attribute = Attribute::make(static fn ($value) => $value, static fn ($value) => $value);
+        $attribute = Attribute::make(static fn (mixed $value) => $value, static fn (mixed $value) => $value);
 
         $this->assertNotNull($attribute->get);
         $this->assertNotNull($attribute->set);

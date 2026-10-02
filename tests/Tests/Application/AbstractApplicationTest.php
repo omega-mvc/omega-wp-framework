@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Part of Omega - Tests Application Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Application;
@@ -18,108 +28,185 @@ use Omega\Routing\RouteLoader;
 use Omega\Routing\RouterBuilder;
 use Omega\Settings\SettingsRepository;
 use Omega\View\View;
+use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionMethod;
 use Tests\Application\Support\AbstractApplicationStub;
-use Tests\Application\Support\ApplicationFixture;
 use Tests\Application\Support\FakeProvider;
 use Tests\Application\Support\PlainProvider;
 
-covers(AbstractApplication::class);
+/**
+ * Tests the AbstractApplication kernel behavior.
+ *
+ * Drives the abstract kernel class through a concrete stub and covers every
+ * method at 100% line, branch, and path coverage: container bindings, service
+ * provider registration and bootstrapping, CLI detection, and the config file
+ * loading path.
+ *
+ * @category  Tests
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+#[CoversClass(AbstractApplication::class)]
+final class AbstractApplicationTest extends ApplicationTestCase
+{
+    /**
+     * Test the core container bindings and base services are registered.
+     */
+    public function testRegistersCoreBindingsAndBaseServicesInCliMode(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-it('registers the core bindings and the base services in cli mode', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $this->assertSame($app, $app->resolve(ContainerInterface::class));
+        $this->assertSame($app, $app->resolve(Container::class));
+        $this->assertSame($app, $app->resolve(ApplicationInterface::class));
 
-    expect($app->resolve(ContainerInterface::class))->toBe($app)
-        ->and($app->resolve(Container::class))->toBe($app)
-        ->and($app->resolve(ApplicationInterface::class))->toBe($app)
-        ->and($app->resolve('config'))->toBeInstanceOf(ConfigRepository::class)
-        ->and($app->resolve('settings'))->toBeInstanceOf(SettingsRepository::class)
-        ->and($app->resolve('router'))->toBeInstanceOf(RouterBuilder::class)
-        ->and($app->resolve(RouteLoader::class))->toBeInstanceOf(RouteLoader::class)
-        ->and($app->resolve('database'))->toBeInstanceOf(Database::class)
-        ->and($app->resolve('migrator'))->toBeInstanceOf(Migrator::class);
-});
+        $this->assertInstanceOf(ConfigRepository::class, $app->resolve('config'));
+        $this->assertInstanceOf(SettingsRepository::class, $app->resolve('settings'));
+        $this->assertInstanceOf(RouterBuilder::class, $app->resolve('router'));
+        $this->assertInstanceOf(RouteLoader::class, $app->resolve(RouteLoader::class));
+        $this->assertInstanceOf(Database::class, $app->resolve('database'));
+        $this->assertInstanceOf(Migrator::class, $app->resolve('migrator'));
+    }
 
-it('skips the view and admin services in cli mode', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+    /**
+     * Test the view service is not registered in CLI mode.
+     */
+    public function testCliModeSkipsViewAndAdminServices(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-    $app->resolve('view');
-})->throws(ClassNotFoundException::class);
+        $this->expectException(ClassNotFoundException::class);
 
-it('registers the view and admin services outside cli mode', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath(), false);
+        $app->resolve('view');
+    }
 
-    expect($app->resolve('view'))->toBeInstanceOf(View::class)
-        ->and($app->resolve('admin.manager'))->toBeInstanceOf(AdminManager::class);
-});
+    /**
+     * Test the view and admin services are registered outside CLI mode.
+     */
+    public function testNonCliModeRegistersViewAndAdminServices(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath(), false);
 
-it('detects the current process sapi in the cli check', function (): void {
-    $app = new Application('sample', ApplicationFixture::themeBasePath());
+        $this->assertInstanceOf(View::class, $app->resolve('view'));
+        $this->assertInstanceOf(AdminManager::class, $app->resolve('admin.manager'));
+    }
 
-    // ReflectionMethod::setAccessible() is a no-op since PHP 8.1 and is
-    // deprecated since PHP 8.5, so invoking the protected method directly is
-    // equivalent on every supported version.
-    $method = new ReflectionMethod(AbstractApplication::class, 'isCli');
+    /**
+     * Test the kernel CLI detection matches the current process SAPI.
+     */
+    public function testIsCliDetectsCurrentProcessSapi(): void
+    {
+        $app = new Application('sample', $this->themeBasePath());
 
-    expect($method->invoke($app))->toBeTrue();
-});
+        $method = new ReflectionMethod(AbstractApplication::class, 'isCli');
 
-it('registers the providers declared in the config file', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::pluginBasePath());
+        $this->assertTrue($method->invoke($app));
+    }
 
-    expect(FakeProvider::$registerCalls)->toBe(1)
-        ->and($app->resolve('fake.service'))->toBe('fake');
-});
+    /**
+     * Test providers declared in the config file are registered on boot.
+     */
+    public function testRegistersProvidersDeclaredInConfigFile(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->pluginBasePath());
 
-it('ignores a providers file without an array return', function (): void {
-    new AbstractApplicationStub('sample', ApplicationFixture::nonArrayProvidersBasePath());
+        $this->assertSame(1, FakeProvider::$registerCalls);
+        $this->assertSame('fake', $app->resolve('fake.service'));
+    }
 
-    expect(FakeProvider::$registerCalls)->toBe(0);
-});
+    /**
+     * Test a providers file that does not return an array is ignored.
+     */
+    public function testIgnoresProvidersFileWithoutArrayReturn(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->nonArrayProvidersBasePath());
 
-it('boots only the providers exposing a boot method on bootstrap', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $this->assertSame(0, FakeProvider::$registerCalls);
+        $this->assertInstanceOf(AbstractApplication::class, $app);
+    }
 
-    $app->register(FakeProvider::class);
-    $app->register(PlainProvider::class);
+    /**
+     * Test bootstrap() only boots providers that expose a boot() method.
+     */
+    public function testBootstrapBootsOnlyProvidersExposingBootMethod(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-    $app->bootstrap();
+        $app->register(FakeProvider::class);
+        $app->register(PlainProvider::class);
 
-    expect(FakeProvider::$bootCalls)->toBe(1);
-});
+        $app->bootstrap();
 
-it('instantiates and registers a string provider once', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $this->assertSame(1, FakeProvider::$bootCalls);
+    }
 
-    $provider = $app->register(FakeProvider::class);
+    /**
+     * Test a class-string provider is instantiated and registered once.
+     */
+    public function testRegisterWithStringProviderIsInstantiatedOnce(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-    expect($provider)->toBeInstanceOf(FakeProvider::class)
-        ->and(FakeProvider::$registerCalls)->toBe(1)
-        ->and($app->register(FakeProvider::class))->toBe($provider)
-        ->and(FakeProvider::$registerCalls)->toBe(1);
-});
+        $provider = $app->register(FakeProvider::class);
 
-it('stores and registers a provider instance once', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $this->assertInstanceOf(FakeProvider::class, $provider);
+        $this->assertSame(1, FakeProvider::$registerCalls);
 
-    $instance = new FakeProvider($app);
+        $this->assertSame($provider, $app->register(FakeProvider::class));
+        $this->assertSame(1, FakeProvider::$registerCalls);
+    }
 
-    expect($app->register($instance))->toBe($instance)
-        ->and(FakeProvider::$registerCalls)->toBe(1)
-        ->and($app->register($instance))->toBe($instance)
-        ->and(FakeProvider::$registerCalls)->toBe(1);
-});
+    /**
+     * Test a provider instance is stored and registered once.
+     */
+    public function testRegisterWithInstanceProviderIsStoredAsIs(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-it('accepts a string provider without lifecycle methods', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $instance = new FakeProvider($app);
 
-    expect($app->register(PlainProvider::class))->toBeInstanceOf(PlainProvider::class);
-});
+        $this->assertSame($instance, $app->register($instance));
+        $this->assertSame(1, FakeProvider::$registerCalls);
 
-it('stores as-is a provider instance without lifecycle methods', function (): void {
-    $app = new AbstractApplicationStub('sample', ApplicationFixture::themeBasePath());
+        $this->assertSame($instance, $app->register($instance));
+        $this->assertSame(1, FakeProvider::$registerCalls);
+    }
 
-    $instance = new PlainProvider();
+    /**
+     * Test a provider instance without lifecycle methods is accepted and skipped.
+     */
+    public function testRegisterAcceptsStringProviderWithoutLifecycleMethods(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
 
-    expect($app->register($instance))->toBe($instance);
-});
+        $provider = $app->register(PlainProvider::class);
+
+        $this->assertInstanceOf(PlainProvider::class, $provider);
+    }
+
+    /**
+     * Test a provider instance without lifecycle methods is stored as-is.
+     */
+    public function testRegisterAcceptsInstanceProviderWithoutLifecycleMethods(): void
+    {
+        $app = new AbstractApplicationStub('sample', $this->themeBasePath());
+
+        $instance = new PlainProvider();
+
+        $this->assertSame($instance, $app->register($instance));
+    }
+
+    /**
+     * Base path of the fixture whose providers file does not return an array.
+     *
+     * @return string Absolute fixture path
+     */
+    private function nonArrayProvidersBasePath(): string
+    {
+        return $this->setFixturePath('/fixtures/app/providers-nonarray');
+    }
+}

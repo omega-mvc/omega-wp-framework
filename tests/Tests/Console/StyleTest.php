@@ -1,219 +1,320 @@
 <?php
 
+/**
+ * Part of Omega - Tests Console Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Console;
 
 use Omega\Console\Style;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Tests\Console\Fixtures\StreamFactory;
 
-covers(Style::class);
+/**
+ * Tests the Style console output helper.
+ *
+ * @category  Tests
+ * @package   Console
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+#[CoversClass(Style::class)]
+final class StyleTest extends TestCase
+{
+    /**
+     * Test a single line is written indented.
+     */
+    public function testWritesAnIndentedSingleLine(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('writes an indented single line', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln('alpha');
 
-    $style->writeln('alpha');
+        $this->assertSame('  alpha' . PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('  alpha' . PHP_EOL);
-});
+    /**
+     * Test multiple lines are written keeping empty lines unindented.
+     */
+    public function testWritesMultipleLinesKeepingEmptyLinesUnindented(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('writes multiple lines keeping empty lines unindented', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln(['alpha', '', 'beta']);
 
-    $style->writeln(['alpha', '', 'beta']);
+        $this->assertSame('  alpha' . PHP_EOL . PHP_EOL . '  beta' . PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('  alpha' . PHP_EOL . PHP_EOL . '  beta' . PHP_EOL);
-});
+    /**
+     * Test trailing line endings are trimmed before indenting.
+     */
+    public function testTrimsTrailingLineEndingsBeforeIndenting(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('trims trailing line endings before indenting', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln("alpha\r\n");
 
-    $style->writeln("alpha\r\n");
+        $this->assertSame('  alpha' . PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('  alpha' . PHP_EOL);
-});
+    /**
+     * Test all styled message blocks are rendered.
+     */
+    public function testRendersAllStyledMessageBlocks(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('renders all styled message blocks', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->success('done');
+        $style->error('bad');
+        $style->warning('careful');
+        $style->comment('see note');
+        $style->note('remember');
+        $style->info('known');
 
-    $style->success('done');
-    $style->error('bad');
-    $style->warning('careful');
-    $style->comment('see note');
-    $style->note('remember');
-    $style->info('known');
+        $display = $output->fetch();
 
-    $display = $output->fetch();
+        $this->assertStringContainsString('SUCCESS  done', $display);
+        $this->assertStringContainsString('ERROR  bad', $display);
+        $this->assertStringContainsString('WARNING  careful', $display);
+        $this->assertStringContainsString('COMMENT see note', $display);
+        $this->assertStringContainsString('NOTE  remember', $display);
+        $this->assertStringContainsString('INFO  known', $display);
+    }
 
-    expect($display)->toContain('SUCCESS  done')
-        ->and($display)->toContain('ERROR  bad')
-        ->and($display)->toContain('WARNING  careful')
-        ->and($display)->toContain('COMMENT see note')
-        ->and($display)->toContain('NOTE  remember')
-        ->and($display)->toContain('INFO  known');
-});
+    /**
+     * Test iterable messages are accepted in styled blocks.
+     */
+    public function testAcceptsIterableMessagesInStyledBlocks(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('accepts iterable messages in styled blocks', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->success(['first', 'second']);
 
-    $style->success(['first', 'second']);
+        $display = $output->fetch();
 
-    $display = $output->fetch();
+        $this->assertStringContainsString('first', $display);
+        $this->assertStringContainsString('second', $display);
+    }
 
-    expect($display)->toContain('first')
-        ->and($display)->toContain('second');
-});
+    /**
+     * Test a blank line is inserted between blocks that end with content.
+     */
+    public function testInsertsABlankLineBetweenBlocksThatEndWithContent(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('inserts a blank line between blocks that end with content', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln('plain');
+        $style->success('after');
 
-    $style->writeln('plain');
-    $style->success('after');
+        $this->assertStringContainsString('  plain' . PHP_EOL . PHP_EOL . '   SUCCESS', $output->fetch());
+    }
 
-    expect($output->fetch())->toContain('  plain' . PHP_EOL . PHP_EOL . '   SUCCESS');
-});
+    /**
+     * Test titles, sections and text are rendered.
+     */
+    public function testRendersTitlesSectionsAndText(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('renders titles, sections and text', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->title('Title');
+        $style->section('Body');
+        $style->text('hidden note');
+        $style->text(['visible line']);
 
-    $style->title('Title');
-    $style->section('Body');
-    $style->text('hidden note');
-    $style->text(['visible line']);
+        $display = $output->fetch();
 
-    $display = $output->fetch();
+        $this->assertStringContainsString('Title', $display);
+        $this->assertStringContainsString('== Body ==', $display);
+        $this->assertStringContainsString('  hidden note', $display);
+        $this->assertStringContainsString('  visible line', $display);
+    }
 
-    expect($display)->toContain('Title')
-        ->and($display)->toContain('== Body ==')
-        ->and($display)->toContain('  hidden note')
-        ->and($display)->toContain('  visible line');
-});
+    /**
+     * Test the answer provided by the user is returned.
+     */
+    public function testReturnsTheAnswerProvidedByTheUser(): void
+    {
+        $input = new ArrayInput([]);
+        $input->setStream(StreamFactory::streamWith("Ada\n"));
+        $output = new BufferedOutput();
+        $style = new Style($input, $output);
 
-it('returns the answer provided by the user', function (): void {
-    $input = new ArrayInput([]);
-    $input->setStream(StreamFactory::streamWith("Ada\n"));
-    $output = new BufferedOutput();
-    $style = new Style($input, $output);
+        $this->assertSame('Ada', $style->ask('Your name?', 'default'));
+    }
 
-    expect($style->ask('Your name?', 'default'))->toBe('Ada');
-});
+    /**
+     * Test a null default is used when the default is not a string.
+     */
+    public function testUsesANullDefaultWhenTheDefaultIsNotAString(): void
+    {
+        $input = new ArrayInput([]);
+        $input->setStream(StreamFactory::streamWith("Ada\n"));
+        $output = new BufferedOutput();
+        $style = new Style($input, $output);
 
-it('uses a null default when the default is not a string', function (): void {
-    $input = new ArrayInput([]);
-    $input->setStream(StreamFactory::streamWith("Ada\n"));
-    $output = new BufferedOutput();
-    $style = new Style($input, $output);
+        $this->assertSame('Ada', $style->ask('Your name?', 7));
+    }
 
-    expect($style->ask('Your name?', 7))->toBe('Ada');
-});
+    /**
+     * Test the prompt confirms when the user answers yes.
+     */
+    public function testConfirmsWhenTheUserAnswersYes(): void
+    {
+        $input = new ArrayInput([]);
+        $input->setStream(StreamFactory::streamWith("yes\n"));
+        $output = new BufferedOutput();
+        $style = new Style($input, $output);
 
-it('confirms when the user answers yes', function (): void {
-    $input = new ArrayInput([]);
-    $input->setStream(StreamFactory::streamWith("yes\n"));
-    $output = new BufferedOutput();
-    $style = new Style($input, $output);
+        $this->assertTrue($style->confirm('Continue?'));
+    }
 
-    expect($style->confirm('Continue?'))->toBeTrue();
-});
+    /**
+     * Test the default is used as fallback when no answer is provided.
+     */
+    public function testFallsBackToTheDefaultWhenNoAnswerIsProvided(): void
+    {
+        $input = new ArrayInput([]);
+        $input->setStream(StreamFactory::streamWith(''));
+        $output = new BufferedOutput();
+        $style = new Style($input, $output);
 
-it('falls back to the default when no answer is provided', function (): void {
-    $input = new ArrayInput([]);
-    $input->setStream(StreamFactory::streamWith(''));
-    $output = new BufferedOutput();
-    $style = new Style($input, $output);
+        $this->assertFalse($style->confirm('Continue?', false));
+    }
 
-    expect($style->confirm('Continue?', false))->toBeFalse();
-});
+    /**
+     * Test the requested number of blank lines is written.
+     */
+    public function testWritesTheRequestedNumberOfBlankLines(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('writes the requested number of blank lines', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->newLine(2);
 
-    $style->newLine(2);
+        $this->assertSame(PHP_EOL . PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe(PHP_EOL . PHP_EOL);
-});
+    /**
+     * Test a progress bar is created with a message.
+     */
+    public function testCreatesAProgressBarWithAMessage(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('creates a progress bar with a message', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $bar = $style->progressBar(10, 'Working');
 
-    $bar = $style->progressBar(10, 'Working');
+        $this->assertSame(10, $bar->getMaxSteps());
+        $this->assertSame('Working', $bar->getMessage());
 
-    expect($bar->getMaxSteps())->toBe(10)
-        ->and($bar->getMessage())->toBe('Working');
+        $output->fetch();
+    }
 
-    $output->fetch();
-});
+    /**
+     * Test a progress bar is created without a message.
+     */
+    public function testCreatesAProgressBarWithoutAMessage(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('creates a progress bar without a message', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $bar = $style->progressBar(0);
 
-    $bar = $style->progressBar(0);
+        $this->assertSame(0, $bar->getMaxSteps());
+        $this->assertNull($bar->getMessage());
 
-    expect($bar->getMaxSteps())->toBe(0)
-        ->and($bar->getMessage())->toBeNull();
+        $output->fetch();
+    }
 
-    $output->fetch();
-});
+    /**
+     * Test nothing is written when given an empty messages array.
+     */
+    public function testWritesNothingWhenGivenAnEmptyMessagesArray(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('writes nothing when given an empty messages array', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln([]);
 
-    $style->writeln([]);
+        $this->assertSame('', $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('');
-});
+    /**
+     * Test an empty string line is not indented.
+     */
+    public function testDoesNotIndentAnEmptyStringLine(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('does not indent an empty string line', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln('');
 
-    $style->writeln('');
+        $this->assertSame(PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe(PHP_EOL);
-});
+    /**
+     * Test an empty iterable message is rendered in a styled block.
+     */
+    public function testRendersAnEmptyIterableMessageInAStyledBlock(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('renders an empty iterable message in a styled block', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->success([]);
 
-    $style->success([]);
+        $this->assertSame('   SUCCESS  ' . PHP_EOL . PHP_EOL, $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('   SUCCESS  ' . PHP_EOL . PHP_EOL);
-});
+    /**
+     * Test no lines are written when given a traversable message.
+     */
+    public function testWritesNoLinesWhenGivenATraversableMessage(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('writes no lines when given a traversable message', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->writeln((static function (): iterable {
+            yield 'first';
+            yield 'second';
+        })());
 
-    $style->writeln((static function (): iterable {
-        yield 'first';
-        yield 'second';
-    })());
+        $this->assertSame('', $output->fetch());
+    }
 
-    expect($output->fetch())->toBe('');
-});
+    /**
+     * Test an empty styled block is rendered for a traversable message.
+     */
+    public function testRendersAnEmptyStyledBlockForATraversableMessage(): void
+    {
+        $output = new BufferedOutput();
+        $style = new Style(new ArrayInput([]), $output);
 
-it('renders an empty styled block for a traversable message', function (): void {
-    $output = new BufferedOutput();
-    $style = new Style(new ArrayInput([]), $output);
+        $style->success((static function (): iterable {
+            yield 'first';
+            yield 'second';
+        })());
 
-    $style->success((static function (): iterable {
-        yield 'first';
-        yield 'second';
-    })());
-
-    expect($output->fetch())->toBe('   SUCCESS  ' . PHP_EOL . PHP_EOL);
-});
+        $this->assertSame('   SUCCESS  ' . PHP_EOL . PHP_EOL, $output->fetch());
+    }
+}

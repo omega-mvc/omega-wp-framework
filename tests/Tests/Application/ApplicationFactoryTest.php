@@ -1,136 +1,234 @@
 <?php
 
+/**
+ * Part of Omega - Tests Application Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Application;
 
 use Omega\Application\ApplicationFactory;
+use Omega\Application\ApplicationPlugin;
+use Omega\Application\ApplicationTheme;
 use Omega\Application\Exceptions\FileNotFoundException;
 use Omega\Config\ConfigRepository;
+use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionProperty;
-use RuntimeException;
-use Tests\Application\Support\ApplicationFixture;
 use Tests\Application\Support\FakeProvider;
 
-covers(ApplicationFactory::class);
+/**
+ * Tests the ApplicationFactory class behavior.
+ *
+ * @category  Tests
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+#[CoversClass(ApplicationFactory::class)]
+final class ApplicationFactoryTest extends ApplicationTestCase
+{
+    /**
+     * Clear the shared application registry before and after each test.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-beforeEach(function (): void {
-    $property = new ReflectionProperty(ApplicationFactory::class, 'apps');
-    $property->setValue(null, []);
-});
+        $this->resetFactory();
+    }
 
-afterEach(function (): void {
-    $property = new ReflectionProperty(ApplicationFactory::class, 'apps');
-    $property->setValue(null, []);
-});
+    protected function tearDown(): void
+    {
+        $this->resetFactory();
 
-it('bootstraps a plugin application on createPlugin', function (): void {
-    $app = ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
+        parent::tearDown();
+    }
 
-    expect(ApplicationFactory::app())->toBe($app);
-});
+    /**
+     * Test createPlugin builds and bootstraps a plugin application.
+     */
+    public function testCreatePluginBootstrapsApplication(): void
+    {
+        $app = ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
 
-it('bootstraps a theme application on createTheme', function (): void {
-    $app = ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
+        $this->assertInstanceOf(ApplicationPlugin::class, $app);
+        $this->assertSame($app, ApplicationFactory::app());
+    }
 
-    expect(ApplicationFactory::app())->toBe($app);
-});
+    /**
+     * Test createTheme builds and bootstraps a theme application.
+     */
+    public function testCreateThemeBootstrapsApplication(): void
+    {
+        $app = ApplicationFactory::createTheme('theme', $this->themeBasePath());
 
-it('rejects a plugin without an entry file on createPlugin', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::missingPluginBasePath());
-})->throws(FileNotFoundException::class);
+        $this->assertInstanceOf(ApplicationTheme::class, $app);
+        $this->assertSame($app, ApplicationFactory::app());
+    }
 
-it('loads and boots the providers declared in the providers file', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
+    /**
+     * Test createPlugin rejects a plugin without an entry file.
+     */
+    public function testCreatePluginThrowsWhenPluginFileIsMissing(): void
+    {
+        $this->expectException(FileNotFoundException::class);
 
-    expect(FakeProvider::$registerCalls)->toBe(1)
-        ->and(FakeProvider::$bootCalls)->toBe(1);
-});
+        ApplicationFactory::createPlugin('sample', $this->setFixturePath('/fixtures/app/plugin'));
+    }
 
-it('returns the first registered application by default', function (): void {
-    $plugin = ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    $theme = ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
+    /**
+     * Test the providers.php file is loaded and the providers are booted.
+     */
+    public function testCreatePluginLoadsUserProvidersFileAndBootsThem(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
 
-    expect(ApplicationFactory::app())->toBe($plugin)
-        ->and(ApplicationFactory::app())->not->toBe($theme);
-});
+        $this->assertSame(1, FakeProvider::$registerCalls);
+        $this->assertSame(1, FakeProvider::$bootCalls);
+    }
 
-it('returns the requested application by id', function (): void {
-    $plugin = ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    $theme = ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
+    /**
+     * Test app() returns the first registered application by default.
+     */
+    public function testAppReturnsFirstRegisteredApplication(): void
+    {
+        $plugin = ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        $theme = ApplicationFactory::createTheme('theme', $this->themeBasePath());
 
-    expect(ApplicationFactory::app(null, 'theme'))->toBe($theme)
-        ->and(ApplicationFactory::app(null, 'sample'))->toBe($plugin);
-});
+        $this->assertSame($plugin, ApplicationFactory::app());
+        $this->assertNotSame($theme, ApplicationFactory::app());
+    }
 
-it('resolves a service from the first registered application', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
+    /**
+     * Test app() returns the requested application by id.
+     */
+    public function testAppReturnsApplicationById(): void
+    {
+        $plugin = ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        $theme = ApplicationFactory::createTheme('theme', $this->themeBasePath());
 
-    expect(ApplicationFactory::app('config'))->toBeInstanceOf(ConfigRepository::class)
-        ->and(ApplicationFactory::app('fake.service'))->toBe('fake');
-});
+        $this->assertSame($theme, ApplicationFactory::app(null, 'theme'));
+        $this->assertSame($plugin, ApplicationFactory::app(null, 'sample'));
+    }
 
-it('resolves a service from the requested application', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
+    /**
+     * Test app() resolves a service from the first registered application.
+     */
+    public function testAppResolvesServiceFromFirstApplication(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
 
-    $sample = ApplicationFactory::app('config', 'sample');
-    $theme = ApplicationFactory::app('config', 'theme');
+        $this->assertInstanceOf(ConfigRepository::class, ApplicationFactory::app('config'));
+        $this->assertSame('fake', ApplicationFactory::app('fake.service'));
+    }
 
-    expect($sample)->toBeInstanceOf(ConfigRepository::class)
-        ->and($theme)->toBeInstanceOf(ConfigRepository::class);
+    /**
+     * Test app() resolves a service from a specific application.
+     */
+    public function testAppResolvesServiceFromRequestedApplication(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
 
-    // ApplicationFactory::app() is declared mixed, so assert() narrows the
-    // type for static analysis; the expectations above carry the runtime check.
-    assert($sample instanceof ConfigRepository);
-    assert($theme instanceof ConfigRepository);
+        $sample = ApplicationFactory::app('config', 'sample');
+        $theme = ApplicationFactory::app('config', 'theme');
 
-    expect($sample->string('app.environment', ''))->toBe('local')
-        ->and($theme->string('app.environment', ''))->toBe('staging');
-});
+        $this->assertInstanceOf(ConfigRepository::class, $sample);
+        $this->assertInstanceOf(ConfigRepository::class, $theme);
+        $this->assertSame('local', $sample->string('app.environment', ''));
+        $this->assertSame('staging', $theme->string('app.environment', ''));
+    }
 
-it('resolves the owning application from the execution stack', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
-    ApplicationFactory::createPlugin('resolver', ApplicationFixture::resolverBasePath());
+    /**
+     * Test app() resolves the owning application from the execution stack
+     * when a backtrace frame points into an application root directory.
+     */
+    public function testAppResolvesApplicationByBacktrace(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
 
-    $resolved = require ApplicationFixture::resolverBasePath() . '/resolve.php';
+        $resolved = require $this->resolverBasePath() . '/resolve.php';
 
-    expect($resolved)->toBeInstanceOf(ConfigRepository::class);
+        $this->assertInstanceOf(ConfigRepository::class, $resolved);
+        $this->assertSame('resolver', $resolved->string('app.environment', ''));
+    }
 
-    // The resolver script has no declared return type, so assert() narrows it
-    // for static analysis; the expectation above carries the runtime check.
-    assert($resolved instanceof ConfigRepository);
+    /**
+     * Test app() resolves the application by its composer PSR-4 namespace
+     * when no backtrace frame matches an application root.
+     */
+    public function testAppResolvesServiceByPsr4Namespace(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
 
-    expect($resolved->string('app.environment', ''))->toBe('resolver');
-});
+        $this->assertSame('resolver-thing', ApplicationFactory::app('Resolver\Contracts\Thing'));
+    }
 
-it('resolves the application by its composer psr-4 namespace', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    ApplicationFactory::createPlugin('resolver', ApplicationFixture::resolverBasePath());
+    /**
+     * Test app() falls back to the first registered application when no
+     * backtrace frame and no composer namespace match the service name.
+     */
+    public function testAppFallsBackToFirstApplicationWhenNoNamespaceMatches(): void
+    {
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
 
-    expect(ApplicationFactory::app('Resolver\Contracts\Thing'))->toBe('resolver-thing');
-});
+        $this->assertSame('fake', ApplicationFactory::app('fake.service'));
+    }
 
-it('falls back to the first application when no namespace matches', function (): void {
-    ApplicationFactory::createPlugin('sample', ApplicationFixture::pluginBasePath());
-    ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
-    ApplicationFactory::createPlugin('resolver', ApplicationFixture::resolverBasePath());
+    /**
+     * Test app() resolves a service from a non-first application when the
+     * PSR-4 namespace matches it and an earlier app declares no mapping.
+     */
+    public function testAppResolvesServiceFromNonFirstApplicationByPsr4Namespace(): void
+    {
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
 
-    expect(ApplicationFactory::app('fake.service'))->toBe('fake');
-});
+        $this->assertSame('resolver-thing', ApplicationFactory::app('Resolver\Contracts\Thing'));
+    }
 
-it('resolves a service from a non-first application by its psr-4 namespace', function (): void {
-    ApplicationFactory::createTheme('theme', ApplicationFixture::themeBasePath());
-    ApplicationFactory::createPlugin('resolver', ApplicationFixture::resolverBasePath());
+    /**
+     * Test app() throws RuntimeException when the application id is not registered.
+     */
+    public function testAppThrowsExceptionForUnregisteredApplicationId(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("No application registered for id 'unknown'.");
 
-    expect(ApplicationFactory::app('Resolver\Contracts\Thing'))->toBe('resolver-thing');
-});
+        ApplicationFactory::app(null, 'unknown');
+    }
 
-it('throws for an unregistered application id', function (): void {
-    ApplicationFactory::app(null, 'unknown');
-})->throws(RuntimeException::class, "No application registered for id 'unknown'.");
+    /**
+     * Test app() throws when no apps are registered and resolveAppId returns an empty id.
+     */
+    public function testAppThrowsWhenNoApplicationsAreRegistered(): void
+    {
+        $this->expectException(\RuntimeException::class);
 
-it('throws when no applications are registered', function (): void {
-    ApplicationFactory::app('config');
-})->throws(RuntimeException::class);
+        ApplicationFactory::app('config');
+    }
+
+    /**
+     * Reset the shared applications registry via reflection.
+     */
+    private function resetFactory(): void
+    {
+        $property = new ReflectionProperty(ApplicationFactory::class, 'apps');
+        $property->setValue(null, []);
+    }
+}

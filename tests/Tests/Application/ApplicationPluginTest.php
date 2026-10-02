@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Part of Omega - Tests Application Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Application;
@@ -8,80 +18,215 @@ use Omega\Application\ApplicationPlugin;
 use Omega\Application\Exceptions\FileNotFoundException;
 use Omega\Application\Exceptions\HeaderNotFoundException;
 use Omega\Application\Exceptions\WordPressEnvironmentException;
-use Tests\Application\Support\ApplicationFixture;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Tests\Application\Support\FileDataParserDisabledStub;
 use Tests\Routing\WordPressRuntime;
+use InvalidArgumentException;
+use RuntimeException;
 
-covers(
-    ApplicationPlugin::class,
-    FileNotFoundException::class,
-    HeaderNotFoundException::class,
-    WordPressEnvironmentException::class,
-);
+/**
+ * Tests the ApplicationPlugin class behavior.
+ *
+ * @category  Tests
+ * @package   Application
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+#[CoversClass(ApplicationPlugin::class)]
+#[CoversClass(FileNotFoundException::class)]
+#[CoversClass(HeaderNotFoundException::class)]
+#[CoversClass(WordPressEnvironmentException::class)]
+final class ApplicationPluginTest extends ApplicationTestCase
+{
+    /**
+     * Test the plugin application is created with a valid plugin structure.
+     */
+    public function testConstructsWithValidPluginStructure(): void
+    {
+        $app = new ApplicationPlugin('sample', $this->pluginBasePath());
 
-it('constructs with a valid plugin structure', function (): void {
-    $app = new ApplicationPlugin('sample', ApplicationFixture::pluginBasePath());
+        $this->assertSame('sample', $app->getId());
+        $this->assertSame($this->pluginBasePath(), $app->getBasePath());
+    }
 
-    expect($app->getId())->toBe('sample')
-        ->and($app->getBasePath())->toBe(ApplicationFixture::pluginBasePath());
-});
+    /**
+     * Test a missing plugin entry file is rejected.
+     */
+    public function testConstructorThrowsWhenPluginFileIsMissing(): void
+    {
+        $this->expectException(FileNotFoundException::class);
+        $this->expectExceptionMessage('sample');
 
-it('rejects a missing plugin entry file', function (): void {
-    new ApplicationPlugin('sample', ApplicationFixture::missingPluginBasePath());
-})->throws(FileNotFoundException::class, 'sample');
+        new ApplicationPlugin('sample', $this->setFixturePath('/fixtures/app/plugin'));
+    }
 
-it('returns the plugin name', function (): void {
-    $app = new ApplicationPlugin('sample', ApplicationFixture::pluginBasePath());
+    /**
+     * Test the plugin exposes its framework name.
+     */
+    public function testNameReturnsPluginName(): void
+    {
+        $app = new ApplicationPlugin('sample', $this->pluginBasePath());
 
-    expect($app->getName())->toBe('Omega Plugin');
-});
+        $this->assertSame('Omega Plugin', $app->getName());
+    }
 
-it('returns the plugin version', function (): void {
-    $app = new ApplicationPlugin('sample', ApplicationFixture::pluginBasePath());
+    /**
+     * Test the plugin exposes its framework version.
+     */
+    public function testVersionReturnsPluginVersion(): void
+    {
+        $app = new ApplicationPlugin('sample', $this->pluginBasePath());
 
-    expect($app->getVersion())->toBe('1.0.0');
-});
+        $this->assertSame('1.0.0', $app->getVersion());
+    }
 
-it('returns a plugin header value read by get_file_data', function (): void {
-    WordPressRuntime::$fileHeaders = ['Version' => '1.2.3'];
+    /**
+     * Test a plugin header value is returned by get_file_data().
+     */
+    public function testGetHeaderFieldReturnsValueFromPluginFile(): void
+    {
+        WordPressRuntime::$fileHeaders = ['Version' => '1.2.3'];
 
-    $app = new ApplicationPlugin('sample', ApplicationFixture::pluginBasePath());
+        $app = new ApplicationPlugin('sample', $this->pluginBasePath());
 
-    expect($app->getHeaderField('Version'))->toBe('1.2.3');
-});
+        $this->assertSame('1.2.3', $app->getHeaderField('Version'));
+    }
 
-it('raises an exception for an empty plugin header', function (): void {
-    WordPressRuntime::$fileHeaders = ['Version' => ''];
+    /**
+     * Test an empty plugin header raises an exception.
+     */
+    public function testGetHeaderFieldThrowsWhenHeaderValueIsEmpty(): void
+    {
+        WordPressRuntime::$fileHeaders = ['Version' => ''];
 
-    $app = new ApplicationPlugin('sample', ApplicationFixture::pluginBasePath());
+        $app = new ApplicationPlugin('sample', $this->pluginBasePath());
 
-    $app->getHeaderField('Version');
-})->throws(HeaderNotFoundException::class);
+        $this->expectException(HeaderNotFoundException::class);
 
-it('throws when the WordPress parser is missing and no runtime root is available', function (): void {
-    $app = new FileDataParserDisabledStub('sample', ApplicationFixture::pluginBasePath());
+        $app->getHeaderField('Version');
+    }
 
-    $app->getHeaderField('Version');
-})->throws(WordPressEnvironmentException::class, 'WordPress environment is not available.');
+    /**
+     * Test getHeaderField throws when the WordPress parser is missing and
+     * no WordPress runtime root is available.
+     */
+    public function testGetHeaderFieldThrowsWhenWordPressEnvironmentIsMissing(): void
+    {
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
 
-it('keeps the file not found exception autoloadable and typed', function (): void {
-    expect(class_exists(FileNotFoundException::class))->toBeTrue()
-        ->and((new FileNotFoundException('sample'))->getMessage())->toBe('sample')
-        ->and((new FileNotFoundException('The file "%s" was not found.', 'sample.php'))->getMessage())
-        ->toBe('The file "sample.php" was not found.');
-});
+        $this->expectException(WordPressEnvironmentException::class);
+        $this->expectExceptionMessage('WordPress environment is not available.');
 
-it('keeps the header not found exception autoloadable and typed', function (): void {
-    expect(class_exists(HeaderNotFoundException::class))->toBeTrue()
-        ->and((new HeaderNotFoundException('sample'))->getMessage())->toBe('sample')
-        ->and((new HeaderNotFoundException('Plugin header "%s" not found.', 'Version'))->getMessage())
-        ->toBe('Plugin header "Version" not found.');
-});
+        $app->getHeaderField('Version');
+    }
 
-it('keeps the WordPress environment exception autoloadable and typed', function (): void {
-    expect(class_exists(WordPressEnvironmentException::class))->toBeTrue()
-        ->and((new WordPressEnvironmentException('sample'))->getMessage())->toBe('sample')
-        ->and((new WordPressEnvironmentException('WordPress environment "%s" is not available.', 'test'))
-            ->getMessage())
-        ->toBe('WordPress environment "test" is not available.');
-});
+    /**
+     * Test getHeaderField loads the WordPress parser file when ABSPATH is
+     * present and then reads the header value.
+     */
+    #[RunInSeparateProcess]
+    public function testGetHeaderFieldLoadsFileDataParserWhenWordPressIsPresent(): void
+    {
+        // Load the class before ABSPATH is defined so the branch opcodes stay
+        // identical across PHPUnit processes (PHP constant-folds
+        // `defined('ABSPATH')` when the constant is already known at compile
+        // time), keeping branch coverage mergeable across processes.
+        class_exists(FileDataParserDisabledStub::class);
+
+        define('ABSPATH', $this->setFixturePath('/fixtures/app/plugin/wp/'));
+
+        WordPressRuntime::$fileHeaders = ['Version' => '1.2.3'];
+
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
+
+        $this->assertSame('1.2.3', $app->getHeaderField('Version'));
+        $this->assertTrue(defined($this->fixtureParserConstant()));
+    }
+
+    /**
+     * Test getHeaderField loads the WordPress parser file when ABSPATH is
+     * present and still reports an empty header value.
+     */
+    #[RunInSeparateProcess]
+    public function testGetHeaderFieldLoadsFileDataParserAndThrowsOnEmptyHeader(): void
+    {
+        // Load the class before ABSPATH is defined so the branch opcodes stay
+        // identical across PHPUnit processes (PHP constant-folds
+        // `defined('ABSPATH')` when the constant is already known at compile
+        // time), keeping branch coverage mergeable across processes.
+        class_exists(FileDataParserDisabledStub::class);
+
+        define('ABSPATH', $this->setFixturePath('/fixtures/app/plugin/wp/'));
+
+        WordPressRuntime::$fileHeaders = ['Version' => ''];
+
+        $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
+
+        $this->expectException(HeaderNotFoundException::class);
+
+        $app->getHeaderField('Version');
+    }
+
+    /**
+     * Test the FileNotFoundException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testFileNotFoundExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(FileNotFoundException::class));
+        $this->assertInstanceOf(InvalidArgumentException::class, new FileNotFoundException('sample'));
+        $this->assertSame('sample', (new FileNotFoundException('sample'))->getMessage());
+        $this->assertSame(
+            'The file "sample.php" was not found.',
+            (new FileNotFoundException('The file "%s" was not found.', 'sample.php'))->getMessage()
+        );
+    }
+
+    /**
+     * Test the HeaderNotFoundException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testHeaderNotFoundExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(HeaderNotFoundException::class));
+        $this->assertInstanceOf(RuntimeException::class, new HeaderNotFoundException('sample'));
+        $this->assertSame('sample', (new HeaderNotFoundException('sample'))->getMessage());
+        $this->assertSame(
+            'Plugin header "Version" not found.',
+            (new HeaderNotFoundException('Plugin header "%s" not found.', 'Version'))->getMessage()
+        );
+    }
+
+    /**
+     * Test the WordPressEnvironmentException is autoloadable under the
+     * Omega\Application\Exceptions namespace and correctly typed.
+     */
+    public function testWordPressEnvironmentExceptionIsAutoloadableAndTyped(): void
+    {
+        $this->assertTrue(class_exists(WordPressEnvironmentException::class));
+        $this->assertInstanceOf(RuntimeException::class, new WordPressEnvironmentException('sample'));
+        $this->assertSame('sample', (new WordPressEnvironmentException('sample'))->getMessage());
+        $this->assertSame(
+            'WordPress environment "test" is not available.',
+            (new WordPressEnvironmentException('WordPress environment "%s" is not available.', 'test'))->getMessage()
+        );
+    }
+
+    /**
+     * Returns the name of the constant the fixture plugin parser defines.
+     *
+     * The lookup goes through this method on purpose: a literal inlined at
+     * the call site lets static analysis fold the assertion into a tautology,
+     * while the assertion must really check that the parser file was loaded.
+     *
+     * @return string The fixture parser flag name.
+     */
+    private function fixtureParserConstant(): string
+    {
+        return 'OMEGA_FIXTURE_PLUGIN_PARSER_LOADED';
+    }
+}

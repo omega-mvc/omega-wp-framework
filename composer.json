@@ -12,17 +12,18 @@
     ],
     "require": {
         "php": "^8.4",
-        "vlucas/phpdotenv": "^5.6"
+        "vlucas/phpdotenv": "^5.6",
+        "symfony/console": "^8.1",
+        "symfony/finder": "^8.1"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",
         "php-stubs/wordpress-stubs": "^6.9",
         "squizlabs/php_codesniffer": "^4.0",
-        "pestphp/pest": "^5.2",
-        "pestphp/pest-plugin-phpstan": "^5.2",
-        "pestphp/pest-plugin-type-coverage": "^5.0",
         "szepeviktor/phpstan-wordpress": "^2.0",
-        "phpunit/php-code-coverage": "dev-omega as 14.3.5"
+        "phpunit/php-code-coverage": "dev-omega as 14.3.5",
+        "phpunit/phpunit": "^13.3",
+        "tomasvotruba/type-coverage": "^2.4"
     },
     "repositories": [
         {

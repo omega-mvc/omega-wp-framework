@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Part of Omega - Tests Console Package.
+ *
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Console;
@@ -8,6 +18,8 @@ use Omega\Application\Application;
 use Omega\Console\AbstractCommand;
 use Omega\Console\ConsoleBranding;
 use Omega\Console\Exceptions\InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputOption;
@@ -34,166 +46,305 @@ use Tests\Console\Fixtures\SuggestedArrayCommand;
 use Tests\Console\Fixtures\TargetCommand;
 use Tests\Console\Fixtures\ThrowingTargetCommand;
 
-covers(AbstractCommand::class);
+/**
+ * Tests the AbstractCommand attribute driven configuration.
+ *
+ * @category  Tests
+ * @package   Console
+ * @link      https://omega-mvc.github.io
+ * @author    Adriano Giovannini <agisoftt@gmail.com>
+ * @copyright Copyright (c) 2025 - 2026 Adriano Giovannini (https://omega-mvc.github.io)
+ * @license   https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
+ * @version   1.0.0
+ */
+#[CoversClass(AbstractCommand::class)]
+final class AbstractCommandTest extends TestCase
+{
+    /**
+     * Test the command is configured from the AsCommand attribute.
+     */
+    public function testConfiguresTheCommandFromTheAsCommandAttribute(): void
+    {
+        $command = new DemoCommand();
 
-it('configures the command from the AsCommand attribute', function (): void {
-    $command = new DemoCommand();
+        $this->assertSame('demo:hello', $command->getName());
+        $this->assertSame('Demonstrates a command with arguments and options.', $command->getDescription());
+        $this->assertSame(['demo:h'], $command->getAliases());
+        $this->assertFalse($command->isHidden());
+        $this->assertTrue($command->getDefinition()->hasArgument('name'));
+        $this->assertTrue($command->getDefinition()->hasOption('greet'));
+        $this->assertSame('World', $command->getDefinition()->getArgument('name')->getDefault());
+    }
 
-    expect($command->getName())->toBe('demo:hello')
-        ->and($command->getDescription())->toBe('Demonstrates a command with arguments and options.')
-        ->and($command->getAliases())->toBe(['demo:h'])
-        ->and($command->isHidden())->toBeFalse()
-        ->and($command->getDefinition()->hasArgument('name'))->toBeTrue()
-        ->and($command->getDefinition()->hasOption('greet'))->toBeTrue()
-        ->and($command->getDefinition()->getArgument('name')->getDefault())->toBe('World');
-});
+    /**
+     * Test the hidden flag and the empty definitions are applied.
+     */
+    public function testAppliesTheHiddenFlagAndEmptyDefinitions(): void
+    {
+        $command = new MinimalCommand();
 
-it('applies the hidden flag and empty definitions', function (): void {
-    $command = new MinimalCommand();
+        $this->assertSame('demo:minimal', $command->getName());
+        $this->assertTrue($command->isHidden());
+        $this->assertSame('', $command->getDescription());
+        $this->assertSame([], $command->getDefinition()->getArguments());
+        $this->assertSame([], $command->getDefinition()->getOptions());
+    }
 
-    expect($command->getName())->toBe('demo:minimal')
-        ->and($command->isHidden())->toBeTrue()
-        ->and($command->getDescription())->toBe('')
-        ->and($command->getDefinition()->getArguments())->toBe([])
-        ->and($command->getDefinition()->getOptions())->toBe([]);
-});
+    /**
+     * Test a command works without an AsCommand attribute.
+     */
+    public function testWorksWithoutAnAsCommandAttribute(): void
+    {
+        $command = new NoAttributeCommand();
 
-it('works without an AsCommand attribute', function (): void {
-    $command = new NoAttributeCommand();
+        $result = (new CommandTester($command))->run([]);
 
-    $result = (new CommandTester($command))->run([]);
+        $this->assertSame(Command::SUCCESS, $result->statusCode);
+        $this->assertStringContainsString('no-attribute', $result->getDisplay());
+    }
 
-    expect($result->statusCode)->toBe(Command::SUCCESS)
-        ->and($result->getDisplay())->toContain('no-attribute');
-});
+    /**
+     * Test the default argument value is used when none is provided.
+     */
+    public function testUsesTheDefaultArgumentValueWhenNoneIsProvided(): void
+    {
+        $result = (new CommandTester(new DemoCommand()))->run([]);
 
-it('uses the default argument value when none is provided', function (): void {
-    $result = (new CommandTester(new DemoCommand()))->run([]);
+        $this->assertSame(Command::SUCCESS, $result->statusCode);
+        $this->assertStringContainsString('hello=World|false', $result->getDisplay());
+    }
 
-    expect($result->statusCode)->toBe(Command::SUCCESS)
-        ->and($result->getDisplay())->toContain('hello=World|false');
-});
+    /**
+     * Test the provided argument and option values are used.
+     */
+    public function testUsesTheProvidedArgumentAndOptionValues(): void
+    {
+        $result = (new CommandTester(new DemoCommand()))->run([
+            'name' => 'Ada',
+            '--greet' => true,
+        ]);
 
-it('uses the provided argument and option values', function (): void {
-    $result = (new CommandTester(new DemoCommand()))->run([
-        'name' => 'Ada',
-        '--greet' => true,
-    ]);
+        $this->assertSame(Command::SUCCESS, $result->statusCode);
+        $this->assertStringContainsString('hello=Ada|true', $result->getDisplay());
+    }
 
-    expect($result->statusCode)->toBe(Command::SUCCESS)
-        ->and($result->getDisplay())->toContain('hello=Ada|true');
-});
+    /**
+     * Test success is returned when invoke returns nothing.
+     */
+    public function testReturnsSuccessWhenInvokeReturnsNothing(): void
+    {
+        $result = (new CommandTester(new NullReturnCommand()))->run([]);
 
-it('returns success when __invoke returns nothing', function (): void {
-    $result = (new CommandTester(new NullReturnCommand()))->run([]);
+        $this->assertSame(Command::SUCCESS, $result->statusCode);
+        $this->assertStringContainsString('null-returned', $result->getDisplay());
+    }
 
-    expect($result->statusCode)->toBe(Command::SUCCESS)
-        ->and($result->getDisplay())->toContain('null-returned');
-});
+    /**
+     * Test a command can run another command through the application.
+     */
+    public function testRunsAnotherCommandThroughTheApplication(): void
+    {
+        $app = new Application('omega', '/');
+        $console = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
+        $console->addCommand(new CallerCommand());
+        $console->addCommand(new TargetCommand());
 
-it('runs another command through the application', function (): void {
-    $app = new Application('omega', '/');
-    $console = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
-    $console->addCommand(new CallerCommand());
-    $console->addCommand(new TargetCommand());
+        $result = (new CommandTester($console->find('demo:caller')))->run([]);
 
-    $result = (new CommandTester($console->find('demo:caller')))->run([]);
+        $this->assertSame(Command::SUCCESS, $result->statusCode);
+        $this->assertStringContainsString('caller-run', $result->getDisplay());
+        $this->assertStringContainsString('target-run:World', $result->getDisplay());
+    }
 
-    expect($result->statusCode)->toBe(Command::SUCCESS)
-        ->and($result->getDisplay())->toContain('caller-run')
-        ->and($result->getDisplay())->toContain('target-run:World');
-});
+    /**
+     * Test a failure is reported when the called command throws.
+     */
+    public function testReportsAFailureWhenTheCalledCommandThrows(): void
+    {
+        $app = new Application('omega', '/');
+        $console = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
+        $console->addCommand(new CallerCommand());
+        $console->addCommand(new ThrowingTargetCommand());
 
-it('reports a failure when the called command throws', function (): void {
-    $app = new Application('omega', '/');
-    $console = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
-    $console->addCommand(new CallerCommand());
-    $console->addCommand(new ThrowingTargetCommand());
+        $result = (new CommandTester($console->find('demo:caller')))->run([]);
 
-    $result = (new CommandTester($console->find('demo:caller')))->run([]);
+        $this->assertSame(Command::FAILURE, $result->statusCode);
+        $this->assertStringContainsString(
+            "Unable to execute command 'demo:target': boom",
+            $result->getDisplay()
+        );
+    }
 
-    expect($result->statusCode)->toBe(Command::FAILURE)
-        ->and($result->getDisplay())->toContain("Unable to execute command 'demo:target': boom");
-});
+    /**
+     * Test a failure is reported when the command has no application.
+     */
+    public function testReportsAFailureWhenTheCommandHasNoApplication(): void
+    {
+        $result = (new CommandTester(new CallerCommand()))->run([]);
 
-it('reports a failure when the command has no application', function (): void {
-    $result = (new CommandTester(new CallerCommand()))->run([]);
+        $this->assertSame(Command::FAILURE, $result->statusCode);
+        $this->assertStringContainsString(
+            "Unable to execute command 'demo:target': no console application found",
+            $result->getDisplay()
+        );
+    }
 
-    expect($result->statusCode)->toBe(Command::FAILURE)
-        ->and($result->getDisplay())
-        ->toContain("Unable to execute command 'demo:target': no console application found");
-});
+    /**
+     * Test option suggested values are supported as an array.
+     */
+    public function testSupportsOptionSuggestedValuesAsAnArray(): void
+    {
+        $command = new SuggestedArrayCommand();
 
-it('supports option suggested values as an array', function (): void {
-    $command = new SuggestedArrayCommand();
+        $this->assertTrue($command->getDefinition()->getOption('sug')->hasCompletion());
+    }
 
-    expect($command->getDefinition()->getOption('sug')->hasCompletion())->toBeTrue();
-});
+    /**
+     * Test an argument configuration with too few elements throws.
+     */
+    public function testThrowsWhenAnArgumentConfigurationHasTooFewElements(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an argument configuration has too few elements', function (): void {
-    new BadArgumentCountCommand();
-})->throws(InvalidArgumentException::class);
+        new BadArgumentCountCommand();
+    }
 
-it('throws when an option configuration has too few elements', function (): void {
-    new BadOptionCountCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an option configuration with too few elements throws.
+     */
+    public function testThrowsWhenAnOptionConfigurationHasTooFewElements(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an argument mode is not an integer', function (): void {
-    new BadArgumentModeCommand();
-})->throws(InvalidArgumentException::class);
+        new BadOptionCountCommand();
+    }
 
-it('throws when an argument description is not a string', function (): void {
-    new BadArgumentDescriptionCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an argument mode that is not an integer throws.
+     */
+    public function testThrowsWhenAnArgumentModeIsNotAnInteger(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an option mode is not an integer', function (): void {
-    new BadOptionModeCommand();
-})->throws(InvalidArgumentException::class);
+        new BadArgumentModeCommand();
+    }
 
-it('throws when an option description is not a string', function (): void {
-    new BadOptionDescriptionCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an argument description that is not a string throws.
+     */
+    public function testThrowsWhenAnArgumentDescriptionIsNotAString(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an option shortcut is invalid', function (): void {
-    new BadOptionShortcutCommand();
-})->throws(InvalidArgumentException::class);
+        new BadArgumentDescriptionCommand();
+    }
 
-it('throws when suggested values are neither an array nor a closure', function (): void {
-    new BadSuggestedValuesCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an option mode that is not an integer throws.
+     */
+    public function testThrowsWhenAnOptionModeIsNotAnInteger(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an argument configuration is not an array', function (): void {
-    new BadArgumentNotArrayCommand();
-})->throws(InvalidArgumentException::class);
+        new BadOptionModeCommand();
+    }
 
-it('throws when an argument configuration has too many elements', function (): void {
-    new BadArgumentTooManyCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an option description that is not a string throws.
+     */
+    public function testThrowsWhenAnOptionDescriptionIsNotAString(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('throws when an option configuration is not an array', function (): void {
-    new BadOptionNotArrayCommand();
-})->throws(InvalidArgumentException::class);
+        new BadOptionDescriptionCommand();
+    }
 
-it('throws when an option configuration has too many elements', function (): void {
-    new BadOptionTooManyCommand();
-})->throws(InvalidArgumentException::class);
+    /**
+     * Test an invalid option shortcut throws.
+     */
+    public function testThrowsWhenAnOptionShortcutIsInvalid(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('accepts a null shortcut, an array shortcut and a four element option configuration', function (): void {
-    $command = new ShortcutOptionsCommand();
+        new BadOptionShortcutCommand();
+    }
 
-    expect($command->getDefinition()->hasOption('o1'))->toBeTrue()
-        ->and($command->getDefinition()->getOption('o1')->getDefault())->toBe('default')
-        ->and($command->getDefinition()->getOption('o2')->getShortcut())->toBe('a|b');
-});
+    /**
+     * Test suggested values that are neither an array nor a closure throw.
+     */
+    public function testThrowsWhenSuggestedValuesAreNeitherAnArrayNorAClosure(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-it('accepts a closure as suggested values when registered directly', function (): void {
-    $command = new DemoCommand();
+        new BadSuggestedValuesCommand();
+    }
 
-    (new ReflectionMethod(AbstractCommand::class, 'registerOption'))->invoke(
-        $command,
-        'pick',
-        ['p', InputOption::VALUE_OPTIONAL, 'Pick', null, static fn (array $values): array => $values],
-    );
+    /**
+     * Test an argument configuration that is not an array throws.
+     */
+    public function testThrowsWhenAnArgumentConfigurationIsNotAnArray(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
 
-    expect($command->getDefinition()->hasOption('pick'))->toBeTrue();
-});
+        new BadArgumentNotArrayCommand();
+    }
+
+    /**
+     * Test an argument configuration with too many elements throws.
+     */
+    public function testThrowsWhenAnArgumentConfigurationHasTooManyElements(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BadArgumentTooManyCommand();
+    }
+
+    /**
+     * Test an option configuration that is not an array throws.
+     */
+    public function testThrowsWhenAnOptionConfigurationIsNotAnArray(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BadOptionNotArrayCommand();
+    }
+
+    /**
+     * Test an option configuration with too many elements throws.
+     */
+    public function testThrowsWhenAnOptionConfigurationHasTooManyElements(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BadOptionTooManyCommand();
+    }
+
+    /**
+     * Test a null shortcut, an array shortcut and a four element option
+     * configuration are accepted.
+     */
+    public function testAcceptsANullShortcutAnArrayShortcutAndAFourElementOptionConfiguration(): void
+    {
+        $command = new ShortcutOptionsCommand();
+
+        $this->assertTrue($command->getDefinition()->hasOption('o1'));
+        $this->assertSame('default', $command->getDefinition()->getOption('o1')->getDefault());
+        $this->assertSame('a|b', $command->getDefinition()->getOption('o2')->getShortcut());
+    }
+
+    /**
+     * Test a closure is accepted as suggested values when registered directly.
+     */
+    public function testAcceptsAClosureAsSuggestedValuesWhenRegisteredDirectly(): void
+    {
+        $command = new DemoCommand();
+
+        (new ReflectionMethod(AbstractCommand::class, 'registerOption'))->invoke(
+            $command,
+            'pick',
+            ['p', InputOption::VALUE_OPTIONAL, 'Pick', null, static fn (array $values): array => $values],
+        );
+
+        $this->assertTrue($command->getDefinition()->hasOption('pick'));
+    }
+}

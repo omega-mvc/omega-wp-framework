@@ -16,9 +16,8 @@ namespace Tests\Application;
 
 use PHPUnit\Framework\TestCase;
 use Tests\Application\Support\FakeProvider;
+use Tests\FixturesPathTrait;
 use Tests\Routing\WordPressRuntime;
-
-use function Omega\Application\slash;
 
 /**
  * Base test case for the Application package.
@@ -36,6 +35,8 @@ use function Omega\Application\slash;
  */
 abstract class ApplicationTestCase extends TestCase
 {
+    use FixturesPathTrait;
+
     /**
      * Reset the provider counters and the WordPress runtime registries.
      */
@@ -54,7 +55,7 @@ abstract class ApplicationTestCase extends TestCase
      */
     protected function pluginBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app/plugin/sample');
+        return $this->setFixturePath('/fixtures/app/plugin/sample');
     }
 
     /**
@@ -64,7 +65,7 @@ abstract class ApplicationTestCase extends TestCase
      */
     protected function themeBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app/theme');
+        return $this->setFixturePath('/fixtures/app/theme');
     }
 
     /**
@@ -74,7 +75,7 @@ abstract class ApplicationTestCase extends TestCase
      */
     protected function emptyBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app');
+        return $this->setFixturePath('/fixtures/app');
     }
 
     /**
@@ -87,7 +88,7 @@ abstract class ApplicationTestCase extends TestCase
      */
     protected function resolverBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app/plugin/resolver');
+        return $this->setFixturePath('/fixtures/app/plugin/resolver');
     }
 
     /**
@@ -100,6 +101,6 @@ abstract class ApplicationTestCase extends TestCase
      */
     protected function localeBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app/plugin/locale');
+        return $this->setFixturePath('/fixtures/app/plugin/locale');
     }
 }

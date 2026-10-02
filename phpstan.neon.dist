@@ -1,5 +1,5 @@
 includes:
-    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+    - vendor/tomasvotruba/type-coverage/config/extension.neon
     - vendor/szepeviktor/phpstan-wordpress/extension.neon
 parameters:
     level: 10
@@ -9,3 +9,25 @@ parameters:
     tmpDir: cache/phpstan
     bootstrapFiles:
         - tests/phpstan-bootstrap.php
+    type_coverage:
+        return_type: 100
+        param_type: 100
+        property_type: 100
+        constant_type: 100
+    ignoreErrors:
+        # The four entries below are deliberate fixtures that exist to exercise the
+        # "no type declared" code paths. Typing them would break the test that needs them.
+        - identifier: typeCoverage.paramTypeCoverage
+          path: tests/Tests/Container/ContainerTest.php
+        # ContainerTest::testShouldThrowExceptionIfInvocationParameterHasNoType expects
+        # DependencyResolutionException, thrown precisely because $message has no type.
+        - identifier: typeCoverage.paramTypeCoverage
+          path: tests/Tests/Routing/Support/UntypedParamController.php
+        # RouterResolveDependenciesTest::testResolveDependenciesHandlesUntypedParameter asserts
+        # the default-value fallback taken when ReflectionParameter::getType() returns null.
+        - identifier: typeCoverage.returnTypeCoverage
+          path: tests/Tests/Database/Fixtures/QuerySubject.php
+        # QuerySubject::untyped() is documented as "declared without a return type" on purpose.
+        - identifier: typeCoverage.returnTypeCoverage
+          path: tests/Tests/Console/Fixtures/StreamFactory.php
+        # StreamFactory::streamWith() returns a resource, which PHP has no native type for.
