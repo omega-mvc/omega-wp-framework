@@ -208,7 +208,22 @@ class Blueprint
             return ' NOT NULL';
         }
 
-        return " NOT NULL DEFAULT '" . esc_sql(is_scalar($default) ? (string) $default : '') . "'";
+        if (! is_scalar($default)) {
+            return ' NOT NULL';
+        }
+
+        $defaultString = (string) $default;
+        $lower         = strtolower($defaultString);
+
+        if ('current_timestamp' === $lower) {
+            return ' NOT NULL DEFAULT CURRENT_TIMESTAMP';
+        }
+
+        if (preg_match('/^-?(?:[1-9]\d*|0)$/', $defaultString)) {
+            return ' NOT NULL DEFAULT ' . $defaultString;
+        }
+
+        return " NOT NULL DEFAULT '" . esc_sql($defaultString) . "'";
     }
 
     /**
@@ -526,7 +541,6 @@ class Blueprint
         /** @var \wpdb $wpdb */
         global $wpdb;
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         if (false === $wpdb->query($sql)) {
             throw new SchemaQueryException(
                 sprintf('Schema statement failed for table %s: %s', $tableName, $wpdb->last_error)
