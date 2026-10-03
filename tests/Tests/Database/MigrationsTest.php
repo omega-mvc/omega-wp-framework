@@ -114,22 +114,15 @@ final class MigrationsTest extends DatabaseTestCase
     }
 
     /**
-     * Test a failing table creation is logged instead of bubbling up.
+     * Test a failing table creation is rethrown in CLI context instead of only logged.
      */
-    public function testItLogsAFailingMigrationsTableCreation(): void
+    public function testItRethrowsAFailingMigrationsTableCreation(): void
     {
         $this->wpdb()->varResolver = static fn (string $query): mixed => null;
         $this->wpdb()->failNext     = true;
 
-        $log = $this->captureErrorLog(function (): void {
-            $this->migrator()->maybeCreateMigrationsTable();
-        });
-
-        $this->assertStringContainsString(
-            'Omega WP: could not create migrations table migrations_migrations: '
-            . 'Schema statement failed for table wp_migrations_migrations: query failed',
-            $log
-        );
+        $this->expectException(\Throwable::class);
+        $this->migrator()->maybeCreateMigrationsTable();
     }
 
     /**

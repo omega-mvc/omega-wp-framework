@@ -209,7 +209,7 @@ class Blueprint
         }
 
         if (! is_scalar($default)) {
-            return ' NOT NULL';
+            return ' NOT NULL DEFAULT \'\'';
         }
 
         $defaultString = (string) $default;
@@ -217,6 +217,11 @@ class Blueprint
 
         if ('current_timestamp' === $lower) {
             return ' NOT NULL DEFAULT CURRENT_TIMESTAMP';
+        }
+
+        // Boolean columns are emitted as quoted '0'/'1' literals for tinyint(1).
+        if ('boolean' === $column->getType() && ($defaultString === '0' || $defaultString === '1')) {
+            return " NOT NULL DEFAULT '" . esc_sql($defaultString) . "'";
         }
 
         if (preg_match('/^-?(?:[1-9]\d*|0)$/', $defaultString)) {

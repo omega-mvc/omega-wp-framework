@@ -114,6 +114,7 @@ final class ApplicationPluginTest extends ApplicationTestCase
      * Test getHeaderField throws when the WordPress parser is missing and
      * no WordPress runtime root is available.
      */
+    #[RunInSeparateProcess]
     public function testGetHeaderFieldThrowsWhenWordPressEnvironmentIsMissing(): void
     {
         $app = new FileDataParserDisabledStub('sample', $this->pluginBasePath());
