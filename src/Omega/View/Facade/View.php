@@ -29,7 +29,7 @@ use Omega\View\View as ViewClass;
  * Example:
  *
  * ```php
- * View::make('dashboard.index', ['user' => $user]);
+ * View::render('dashboard.index', ['user' => $user]);
  * ```
  *
  * @category   Omega
@@ -41,7 +41,7 @@ use Omega\View\View as ViewClass;
  * @license    https://www.gnu.org/licenses/gpl-3.0-standalone.html     GPL V3.0+
  * @version    1.0.0
  *
- * @method static void make(string $view, array<string, mixed> $data = [])
+ * @method static string render(string $view, array<string, mixed> $data = [])
  *
  * @see ViewClass
  */

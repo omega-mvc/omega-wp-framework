@@ -59,7 +59,7 @@ interface ViewInterface
      *
      * Example:
      *
-     * make('admin.dashboard', ['title' => 'Dashboard']);
+     * render('admin.dashboard', ['title' => 'Dashboard']);
      *
      * makes the variable $title available inside:
      *

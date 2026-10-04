@@ -66,6 +66,20 @@ final class ViewTest extends TestCase
     }
 
     /**
+     * Test the template scope is isolated from the locals of the renderer.
+     *
+     * Including the file directly from render() used to expose $view, $viewPath,
+     * $data and $this to the template, which could then print them by mistake.
+     */
+    public function testIsolatesTheTemplateScopeFromTheRendererLocals(): void
+    {
+        $this->assertSame(
+            'view=no viewPath=no data=no this=no locals=none name=Omega',
+            $this->makeRenderer()->render('scope', ['name' => 'Omega'])
+        );
+    }
+
+    /**
      * Test a missing view file raises an exception.
      */
     public function testThrowsWhenViewFileDoesNotExist(): void

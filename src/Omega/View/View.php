@@ -69,6 +69,12 @@ class View implements ViewInterface
     /**
      * {@inheritdoc}
      *
+     * The template is evaluated inside a static closure rather than directly in
+     * this method, so that the locals of render() stay invisible to it. Without
+     * that isolation a template also sees $view, $viewPath and the application
+     * through $this, and can leak them into its own output by mistake; here the
+     * extracted data and the closure parameters are the only state it reads.
+     *
      * @param array<string, mixed> $data
      */
     public function render(string $view, array $data = []): string
@@ -79,17 +85,24 @@ class View implements ViewInterface
             throw new ViewFileNotFoundException($view);
         }
 
+        $template = static function (string $__path, array $__variables): void {
+            // EXTR_SKIP stops a data key from hijacking the path being included.
+            extract($__variables, EXTR_SKIP);
+
+            include $__path;
+        };
+
         ob_start();
 
         try {
-            extract($data, EXTR_SKIP);
-            include $viewPath;
+            $template($viewPath, $data);
+
+            return (string) ob_get_clean();
         } catch (Throwable $e) {
             ob_end_clean();
+
             throw $e;
         }
-
-        return (string) ob_get_clean();
     }
     #endregion
 
