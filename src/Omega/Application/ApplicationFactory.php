@@ -160,10 +160,13 @@ class ApplicationFactory
      * the service-namespace scan, and the first registered app is the final
      * fallback.
      *
+     * Exposed so that consumers caching per-application state, such as
+     * AbstractFacade, can scope their entries to the owning application.
+     *
      * @param string|null $service Service name.
      * @return string The resolved application id.
      */
-    private static function resolveAppId(?string $service): string
+    public static function resolveAppId(?string $service): string
     {
         if (!self::needsResolution()) {
             return (string) array_key_first(self::$apps);

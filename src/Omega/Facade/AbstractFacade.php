@@ -43,7 +43,16 @@ use RuntimeException;
 abstract class AbstractFacade implements FacadeInterface
 {
     #region Properties
-    /** @var array<string, mixed> Cached resolved instances indexed by their facade accessor. */
+    /**
+     * Cached resolved instances, indexed by the owning application id and then
+     * by the facade accessor.
+     *
+     * The application id is part of the key because ApplicationFactory picks
+     * the container from the execution context, so the very same accessor can
+     * resolve against different applications within one request.
+     *
+     * @var array<string, array<string, mixed>>
+     */
     protected static array $resolvedInstance = [];
     #endregion
 
@@ -100,8 +109,10 @@ abstract class AbstractFacade implements FacadeInterface
     /**
      * Resolve a facade instance from the container or cache.
      *
-     * If the instance has not already been cached, the method delegates the
-     * resolution process to the application container factory.
+     * The cache is keyed by the application that owns the instance, not by the
+     * accessor alone: ApplicationFactory resolves the container from the
+     * execution context, so two applications exposing the same accessor would
+     * otherwise share the first instance resolved.
      *
      * @param string $name The container binding key.
      * @return mixed The resolved instance.
@@ -111,11 +122,13 @@ abstract class AbstractFacade implements FacadeInterface
      */
     protected static function resolveFacadeInstance(string $name): mixed
     {
-        if (isset(static::$resolvedInstance[$name])) {
-            return static::$resolvedInstance[$name];
+        $appId = ApplicationFactory::resolveAppId($name);
+
+        if (isset(static::$resolvedInstance[$appId][$name])) {
+            return static::$resolvedInstance[$appId][$name];
         }
 
-        return static::$resolvedInstance[$name] = ApplicationFactory::app($name);
+        return static::$resolvedInstance[$appId][$name] = ApplicationFactory::app($name, $appId);
     }
     #endregion
 
@@ -123,12 +136,17 @@ abstract class AbstractFacade implements FacadeInterface
     /**
      * Remove a specific resolved instance from the cache.
      *
+     * The accessor is cleared for every application, since the caller names
+     * the binding key and not the application holding it.
+     *
      * @param string $name The container binding key.
      * @return void
      */
     public static function clearResolvedInstance(string $name): void
     {
-        unset(static::$resolvedInstance[$name]);
+        foreach (static::$resolvedInstance as $appId => $instances) {
+            unset(static::$resolvedInstance[$appId][$name]);
+        }
     }
 
     /**

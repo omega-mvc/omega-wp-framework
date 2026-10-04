@@ -81,19 +81,52 @@ abstract class FacadeTestCase extends TestCase
      */
     protected function pluginBasePath(): string
     {
-        return slash(path: __DIR__ . '/../fixtures/app/plugin/sample');
+        return $this->fixturesRoot() . '/plugin/sample';
+    }
+
+    /**
+     * Base path of the theme fixture.
+     *
+     * @return string Absolute theme fixture path
+     */
+    protected function themeBasePath(): string
+    {
+        return $this->fixturesRoot() . '/theme';
+    }
+
+    /**
+     * Base path of the resolver plugin fixture, including its entry file.
+     *
+     * @return string Absolute resolver fixture path
+     */
+    protected function resolverBasePath(): string
+    {
+        return $this->fixturesRoot() . '/plugin/resolver';
+    }
+
+    /**
+     * Absolute path of the app fixtures root, free of relative segments.
+     *
+     * ApplicationFactory matches application roots against the file paths in
+     * the execution stack, so an unresolved "../" would never match.
+     *
+     * @return string Absolute fixtures root path
+     */
+    private function fixturesRoot(): string
+    {
+        return slash(path: dirname(__DIR__) . '/fixtures/app');
     }
 
     /**
      * Read the current facade resolved-instance cache.
      *
-     * @return array<string, mixed> Cached instances keyed by accessor
+     * @return array<string, array<string, mixed>> Cached instances keyed by application id, then accessor
      */
     protected function resolvedInstances(): array
     {
         $property = new ReflectionProperty(AbstractFacade::class, 'resolvedInstance');
 
-        /** @var array<string, mixed> $instances */
+        /** @var array<string, array<string, mixed>> $instances */
         $instances = $property->getValue(null);
 
         return $instances;
@@ -102,7 +135,7 @@ abstract class FacadeTestCase extends TestCase
     /**
      * Overwrite the facade resolved-instance cache.
      *
-     * @param array<string, mixed> $instances Cached instances keyed by accessor
+     * @param array<string, array<string, mixed>> $instances Cached instances keyed by application id, then accessor
      */
     protected function setResolvedInstances(array $instances): void
     {

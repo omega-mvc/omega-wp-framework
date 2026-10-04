@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Tests\Facade;
 
+use Omega\Application\ApplicationFactory;
 use Omega\Config\ConfigRepository;
 use Omega\Config\Facades\Config as ConfigFacade;
 use Omega\Facade\AbstractFacade;
@@ -71,7 +72,44 @@ final class AbstractFacadeTest extends FacadeTestCase
     public function testResolvedInstanceIsCached(): void
     {
         $this->assertSame(ConfigFacade::getFacadeRoot(), ConfigFacade::getFacadeRoot());
-        $this->assertArrayHasKey('config', $this->resolvedInstances());
+        $this->assertArrayHasKey('config', $this->resolvedInstances()['plugin']);
+    }
+
+    /**
+     * Test the cache entry is scoped to the application that resolved it, so a
+     * second application exposing the same accessor gets its own instance
+     * instead of the one already cached for the first.
+     */
+    public function testItScopesTheCachedInstanceToTheOwningApplication(): void
+    {
+        $this->setFactoryApps([]);
+
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+        ApplicationFactory::createPlugin('resolver', $this->resolverBasePath());
+
+        $this->assertSame('local', ConfigFacade::get('app.environment'));
+
+        $fromResolverRoot = require $this->resolverBasePath() . '/resolve-config.php';
+
+        $this->assertSame('resolver', $fromResolverRoot);
+    }
+
+    /**
+     * Test swapping the application in the registry resolves the accessor again
+     * instead of serving the instance cached for the previous application.
+     */
+    public function testItResolvesAgainAfterTheApplicationIsSwapped(): void
+    {
+        $this->setFactoryApps([]);
+
+        ApplicationFactory::createPlugin('sample', $this->pluginBasePath());
+
+        $this->assertSame('local', ConfigFacade::get('app.environment'));
+
+        $this->setFactoryApps([]);
+        ApplicationFactory::createTheme('theme', $this->themeBasePath());
+
+        $this->assertSame('staging', ConfigFacade::get('app.environment'));
     }
 
     /**
@@ -81,11 +119,28 @@ final class AbstractFacadeTest extends FacadeTestCase
     {
         $configRoot = ConfigFacade::getFacadeRoot();
 
-        $this->setResolvedInstances(['config' => $configRoot, 'settings' => $configRoot]);
+        $this->setResolvedInstances(['plugin' => ['config' => $configRoot, 'settings' => $configRoot]]);
 
         AbstractFacade::clearResolvedInstance('config');
 
-        $this->assertSame(['settings' => $configRoot], $this->resolvedInstances());
+        $this->assertSame(['plugin' => ['settings' => $configRoot]], $this->resolvedInstances());
+    }
+
+    /**
+     * Test a single cached instance can be cleared for every application at once.
+     */
+    public function testClearResolvedInstanceRemovesTheEntryOfEveryApplication(): void
+    {
+        $configRoot = ConfigFacade::getFacadeRoot();
+
+        $this->setResolvedInstances([
+            'plugin' => ['config' => $configRoot, 'settings' => $configRoot],
+            'theme'  => ['config' => $configRoot],
+        ]);
+
+        AbstractFacade::clearResolvedInstance('config');
+
+        $this->assertSame(['plugin' => ['settings' => $configRoot], 'theme' => []], $this->resolvedInstances());
     }
 
     /**
@@ -95,7 +150,7 @@ final class AbstractFacadeTest extends FacadeTestCase
     {
         $configRoot = ConfigFacade::getFacadeRoot();
 
-        $this->setResolvedInstances(['config' => $configRoot, 'settings' => $configRoot]);
+        $this->setResolvedInstances(['plugin' => ['config' => $configRoot, 'settings' => $configRoot]]);
 
         AbstractFacade::clearResolvedInstances();
 
@@ -107,7 +162,7 @@ final class AbstractFacadeTest extends FacadeTestCase
      */
     public function testCallStaticThrowsWhenFacadeRootIsNotSet(): void
     {
-        $this->setResolvedInstances(['config' => false]);
+        $this->setResolvedInstances(['plugin' => ['config' => false]]);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('A facade root has not been set.');
