@@ -17,7 +17,9 @@ namespace Tests\Database;
 use Omega\Database\Migrations\AbstractMigration;
 use Omega\Database\Migrations\Migrator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Tests\Database\Fixtures\MigrationApplication;
+use Tests\Database\Fixtures\WebContextMigrator;
 use Tests\Routing\WordPressRuntime;
 
 use function Omega\Application\slash;
@@ -123,6 +125,48 @@ final class MigrationsTest extends DatabaseTestCase
 
         $this->expectException(\Throwable::class);
         $this->migrator()->maybeCreateMigrationsTable();
+    }
+
+    /**
+     * Test a failing table creation is rethrown under WP-CLI.
+     */
+    #[RunInSeparateProcess]
+    public function testItRethrowsAFailingMigrationsTableCreationUnderWpCli(): void
+    {
+        // Compile the migrator while WP_CLI is still undefined so `defined('WP_CLI')`
+        // stays a runtime call instead of being constant folded, which keeps the
+        // branch opcodes identical across the PHPUnit processes and lets the
+        // coverage data merge cleanly.
+        class_exists(Migrator::class);
+
+        define('WP_CLI', true);
+
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+        $this->wpdb()->failNext     = true;
+
+        $this->expectException(\Throwable::class);
+        $this->migrator()->maybeCreateMigrationsTable();
+    }
+
+    /**
+     * Test a failing table creation is logged instead of rethrown on a web request.
+     */
+    public function testItLogsAFailingMigrationsTableCreationOnAWebRequest(): void
+    {
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+        $this->wpdb()->failNext     = true;
+
+        $migrator = new WebContextMigrator($this->migrationsApp());
+
+        $log = $this->captureErrorLog(static function () use ($migrator): void {
+            $migrator->maybeCreateMigrationsTable();
+        });
+
+        $this->assertStringContainsString(
+            'Omega WP: could not create migrations table migrations_migrations: '
+            . 'Schema statement failed for table wp_migrations_migrations: query failed',
+            $log
+        );
     }
 
     /**

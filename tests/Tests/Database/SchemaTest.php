@@ -316,6 +316,83 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
+     * Test a current timestamp default is emitted as a bare SQL keyword.
+     *
+     * The literal must not be quoted, otherwise MySQL stores the string
+     * "current_timestamp" instead of evaluating the function.
+     */
+    public function testItEmitsTheCurrentTimestampDefaultAsABareKeyword(): void
+    {
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+
+        Schema::create('books', static function (Blueprint $table): void {
+            $table->timestamp('published_at')->default('CURRENT_TIMESTAMP');
+            $table->timestamp('lower_case')->default('current_timestamp');
+        });
+
+        $sql = $this->createStatement();
+
+        $this->assertStringContainsString('`published_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP', $sql);
+        $this->assertStringContainsString('`lower_case` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP', $sql);
+        $this->assertFalse($this->hasStatement("DEFAULT 'CURRENT_TIMESTAMP'"));
+    }
+
+    /**
+     * Test a numeric default is left unquoted so MySQL keeps its numeric type.
+     */
+    public function testItLeavesANumericDefaultUnquoted(): void
+    {
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+
+        Schema::create('books', static function (Blueprint $table): void {
+            $table->integer('rating')->default(0);
+            $table->integer('year')->default(2026);
+            $table->bigInteger('balance')->default(-1);
+            $table->integer('numeric_string')->default('7');
+            $table->integer('not_numeric')->default('many');
+        });
+
+        $sql = $this->createStatement();
+
+        $this->assertStringContainsString('`rating` int(11) NOT NULL DEFAULT 0', $sql);
+        $this->assertStringContainsString('`year` int(11) NOT NULL DEFAULT 2026', $sql);
+        $this->assertStringContainsString('`balance` bigint(20) NOT NULL DEFAULT -1', $sql);
+        $this->assertStringContainsString('`numeric_string` int(11) NOT NULL DEFAULT 7', $sql);
+        $this->assertStringContainsString("`not_numeric` int(11) NOT NULL DEFAULT 'many'", $sql);
+    }
+
+    /**
+     * Test a string default is emitted as a quoted and escaped literal.
+     */
+    public function testItQuotesAndEscapesAStringDefault(): void
+    {
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+
+        Schema::create('books', static function (Blueprint $table): void {
+            $table->string('status')->default('draft');
+        });
+
+        $this->assertStringContainsString("`status` varchar(255) NOT NULL DEFAULT 'draft'", $this->createStatement());
+    }
+
+    /**
+     * Test a false boolean default is emitted as the quoted '0' literal.
+     *
+     * A tinyint(1) column keeps its quoted representation, unlike integer
+     * columns whose '0' default stays unquoted.
+     */
+    public function testItQuotesTheFalseBooleanDefault(): void
+    {
+        $this->wpdb()->varResolver = static fn (string $query): mixed => null;
+
+        Schema::create('books', static function (Blueprint $table): void {
+            $table->boolean('disabled')->default(false);
+        });
+
+        $this->assertStringContainsString("`disabled` tinyint(1) NOT NULL DEFAULT '0'", $this->createStatement());
+    }
+
+    /**
      * Test the auto increment clause is limited to integer columns.
      */
     public function testItOmitsAutoIncrementForNonIntegerColumns(): void

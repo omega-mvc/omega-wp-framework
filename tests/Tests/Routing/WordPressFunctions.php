@@ -82,6 +82,19 @@ function add_submenu_page(mixed ...$args): string
 }
 
 /**
+ * Stub for remove_submenu_page().
+ *
+ * Records the call and returns.
+ *
+ * @param mixed ...$args Positional arguments forwarded by WordPress
+ * @return void
+ */
+function remove_submenu_page(mixed ...$args): void
+{
+    WordPressRuntime::$removedSubmenus[] = $args;
+}
+
+/**
  * Stub for current_user_can().
  *
  * @param string $capability Capability being checked
@@ -374,4 +387,176 @@ function esc_sql(mixed $data): string|array
     }
 
     return addslashes(is_scalar($data) ? (string) $data : '');
+}
+
+if (!function_exists('has_action')) {
+    /**
+     * Stub for has_action().
+     */
+    function has_action(mixed $hook, mixed $callback = null): int|bool
+    {
+        $found = false;
+
+        foreach (Tests\Routing\WordPressRuntime::$actions as $action) {
+            if ($action[0] !== $hook) {
+                continue;
+            }
+            if ($callback === null) {
+                $found = true;
+                break;
+            }
+            if (($action[1] ?? null) === $callback) {
+                $found = true;
+                break;
+            }
+        }
+
+        if ($found === false) {
+            return false;
+        }
+
+        if ($callback === null) {
+            return true;
+        }
+
+        $priority = $action[2] ?? 10;
+
+        return is_numeric($priority) ? (int) $priority : 10;
+    }
+}
+
+
+if (!function_exists('remove_all_actions')) {
+    /**
+     * Stub for remove_all_actions().
+     */
+    function remove_all_actions(mixed $hook): void
+    {
+        Tests\Routing\WordPressRuntime::$actions = array_values(array_filter(
+            Tests\Routing\WordPressRuntime::$actions,
+            fn (array $action): bool => $action[0] !== $hook
+        ));
+    }
+}
+
+
+if (!function_exists('remove_action')) {
+    /**
+     * Stub for remove_action().
+     */
+    function remove_action(mixed $hook, mixed $callback, int $priority = 10): void
+    {
+        Tests\Routing\WordPressRuntime::$actions = array_values(array_filter(
+            Tests\Routing\WordPressRuntime::$actions,
+            fn (array $action): bool => !($action[0] === $hook && ($action[1] ?? null) === $callback)
+        ));
+    }
+}
+
+
+if (!function_exists('wp_create_nonce')) {
+    /**
+     * Stub for wp_create_nonce().
+     */
+    function wp_create_nonce(string $action = ''): string
+    {
+        return 'nonce-' . md5($action);
+    }
+}
+
+
+if (!function_exists('wp_verify_nonce')) {
+    /**
+     * Stub for wp_verify_nonce().
+     */
+    function wp_verify_nonce(mixed $nonce, string $action = ''): bool
+    {
+        return true;
+    }
+}
+
+
+if (!function_exists('wp_unslash')) {
+    /**
+     * Stub for wp_unslash().
+     */
+    function wp_unslash(string $value): string
+    {
+        return stripslashes($value);
+    }
+}
+
+
+if (!function_exists('esc_url_raw')) {
+    /**
+     * Stub for esc_url_raw().
+     */
+    function esc_url_raw(string $url): string
+    {
+        if (strpos($url, 'javascript:') === 0) {
+            return '';
+        }
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return '';
+        }
+        return $url;
+    }
+}
+
+
+if (!function_exists('sanitize_email')) {
+    /**
+     * Stub for sanitize_email().
+     */
+    function sanitize_email(string $email): string
+    {
+        $san = (string) filter_var($email, FILTER_SANITIZE_EMAIL);
+        if (filter_var($san, FILTER_VALIDATE_EMAIL) === false) {
+            return '';
+        }
+        return $san;
+    }
+}
+
+
+if (!function_exists('sanitize_textarea_field')) {
+    /**
+     * Stub for sanitize_textarea_field().
+     */
+    function sanitize_textarea_field(string $str): string
+    {
+        return strip_tags($str);
+    }
+}
+
+
+if (!function_exists('rest_sanitize_boolean')) {
+    /**
+     * Stub for rest_sanitize_boolean().
+     */
+    function rest_sanitize_boolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int)$value === 1;
+        }
+        if (is_string($value)) {
+            $value = strtolower(trim($value));
+            return in_array($value, ['true', '1', 'yes', 'on'], true);
+        }
+        return false;
+    }
+}
+
+
+if (!function_exists('__')) {
+    /**
+     * Stub for __().
+     */
+    function __(string $text, string $domain = 'default'): string
+    {
+        return $text;
+    }
 }

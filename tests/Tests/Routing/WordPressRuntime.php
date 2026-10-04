@@ -54,6 +54,13 @@ final class WordPressRuntime
     public static array $submenus = [];
 
     /**
+     * Recorded calls to remove_submenu_page(): list of positional argument arrays.
+     *
+     * @var list<array<int|string, mixed>>
+     */
+    public static array $removedSubmenus = [];
+
+    /**
      * Capability check result returned by the current_user_can() stub.
      */
     public static bool $capabilities = true;
@@ -193,6 +200,7 @@ final class WordPressRuntime
         self::$restRoutes = [];
         self::$menus = [];
         self::$submenus = [];
+        self::$removedSubmenus = [];
         self::$capabilities = true;
         self::$options = [];
         self::$dbDeltaStatements = [];
