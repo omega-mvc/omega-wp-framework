@@ -109,6 +109,84 @@ final class EnvTest extends TestCase
     }
 
     /**
+     * Test the default is returned verbatim, without any type conversion.
+     *
+     * A default is what the caller wants when the key is in no source, so a
+     * default reading "null" has to stay the string "null" and stay
+     * distinguishable from a key that resolves to a real null.
+     *
+     * @param mixed $default The default handed to the accessor.
+     * @return void
+     */
+    #[DataProvider('defaultValueProvider')]
+    public function testItReturnsTheDefaultWithoutCastingIt(mixed $default): void
+    {
+        $this->assertSame($default, Env::get('NON_EXISTING_KEY', $default));
+    }
+
+    /** @return array<string, array<int, mixed>> */
+    public static function defaultValueProvider(): array
+    {
+        return [
+            'null as a string'   => ['null'],
+            'empty as a string'  => ['empty'],
+            'true as a string'   => ['true'],
+            'false as a string'  => ['false'],
+            'zero as a string'   => ['007'],
+            'numeric as string'  => ['42'],
+            'typo as a string'   => ['flase'],
+            'plain as a string'  => ['localhost'],
+            'real null'          => [null],
+            'real false'         => [false],
+            'real int'           => [42],
+            'real float'         => [3.14],
+            'real empty array'   => [[]],
+        ];
+    }
+
+    /**
+     * Test a value read from the process environment is still converted.
+     *
+     * The default is the only thing that must stay verbatim: values that do
+     * come from a source keep the documented conversions.
+     *
+     * @return void
+     */
+    public function testItStillCastsValuesComingFromTheSystemEnvironment(): void
+    {
+        putenv('SYSTEM_BOOL=false');
+        putenv('SYSTEM_NULL=null');
+        putenv('SYSTEM_NUMBER=42');
+
+        $this->assertFalse(Env::get('SYSTEM_BOOL'));
+        $this->assertNull(Env::get('SYSTEM_NULL'));
+        $this->assertSame(42, Env::get('SYSTEM_NUMBER'));
+
+        putenv('SYSTEM_BOOL');
+        putenv('SYSTEM_NULL');
+        putenv('SYSTEM_NUMBER');
+    }
+
+    /**
+     * Test a stored value is converted even when it reads like a default.
+     *
+     * The two cases must stay apart: a file holding the string "null" is a
+     * configuration value and resolves to null, while a caller passing "null"
+     * as a default gets the string back.
+     *
+     * @return void
+     */
+    public function testItDistinguishesAStoredValueFromAReadDefault(): void
+    {
+        $reflection = new ReflectionClass(Env::class);
+        $valuesProp = $reflection->getProperty('values');
+        $valuesProp->setValue(null, ['STORED_NULL' => 'null']);
+
+        $this->assertNull(Env::get('STORED_NULL'));
+        $this->assertSame('null', Env::get('STORED_MISSING', 'null'));
+    }
+
+    /**
      * Test string conversion rules for boolean, null, empty, numeric values.
      *
      * @param string $key

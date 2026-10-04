@@ -63,23 +63,27 @@ class Env
     /**
      * Retrieve an environment variable by key with optional default value.
      *
-     * Automatically converts string values to proper types:
-     * - "true" or "(true)" => true
-     * - "false" or "(false)" => false
-     * - "null" or "(null)" => null
-     * - "empty" or "(empty)" => empty string
+     * A value read from the loaded store or from the process environment is
+     * converted to its native PHP type:
+     * - "true" => true
+     * - "false" => false
+     * - "null" => null
+     * - "empty" => empty string
      * - numeric strings => integers or floats
      *
+     * The default is returned verbatim and is never converted: it describes
+     * what the caller wants when the key is in no source, not something read
+     * from a configuration file.
+     *
      * @param string $key The environment variable key to retrieve.
-     * @param mixed $default The default value to return if the key is not found.
-     * @return mixed The value of the environment variable, cast if applicable, or $default.
+     * @param mixed $default The value to return when the key is in no source.
+     * @return mixed The cast environment value, or the untouched default.
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        // Chiamata corretta al metodo statico
-        $value = self::resolveValue($key, $default);
+        [$value, $fromSource] = self::resolveValue($key, $default);
 
-        return is_string($value) ? self::cast($value) : $value;
+        return ($fromSource && is_string($value)) ? self::cast($value) : $value;
     }
 
     /**
@@ -91,22 +95,26 @@ class Env
      * location, the provided default value is returned.
      *
      * This method does not perform any type casting; it only resolves the
-     * raw value source.
+     * raw value source and reports which of the two it took.
      *
      * @param string $key The environment variable name to resolve.
-     * @param mixed $default The default value returned when the variable
-     *                       is not defined in the loaded values or system environment.
-     * @return mixed The raw environment value if found, otherwise the default value.
+     * @param mixed $default The value returned when the variable is not
+     *                       defined in the loaded values or system environment.
+     * @return array{0: mixed, 1: bool} The resolved value, and whether it came from a source.
      */
-    private static function resolveValue(string $key, mixed $default): mixed
+    private static function resolveValue(string $key, mixed $default): array
     {
         if (array_key_exists($key, self::$values)) {
-            return self::$values[$key];
+            return [self::$values[$key], true];
         }
 
         $envValue = getenv($key);
 
-        return ($envValue !== false) ? $envValue : $default;
+        if ($envValue !== false) {
+            return [$envValue, true];
+        }
+
+        return [$default, false];
     }
 
     /**
@@ -124,9 +132,8 @@ class Env
      * passed to castNumeric() to determine whether it represents a numeric
      * value. Otherwise the original string will be returned unchanged.
      *
-     * Additionally, common typographical mistakes such as "tru", "flase",
-     * or "nul" will trigger an exception to prevent silent misconfiguration
-     * in environment files.
+     * A misspelled keyword is not detected and is returned unchanged, like
+     * any other unrecognised value.
      *
      * @param string $value The raw string value retrieved from the environment.
      * @return mixed The value converted to its corresponding PHP type, or the
