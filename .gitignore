@@ -1,7 +1,4 @@
 /vendor
 composer.lock
-phpcs.xml
-/docs
 /cache
-/REGISTER.md
-/REPORT.md
+
