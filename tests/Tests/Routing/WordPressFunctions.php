@@ -389,6 +389,22 @@ function esc_sql(mixed $data): string|array
     return addslashes(is_scalar($data) ? (string) $data : '');
 }
 
+if (!function_exists('did_action')) {
+    /**
+     * Stub for did_action().
+     *
+     * Reports how many times a hook has already been dispatched, reading the
+     * registry the tests populate through WordPressRuntime::$firedActions.
+     *
+     * @param string $hook Hook name to query.
+     * @return int Number of times the hook has already fired, 0 when never.
+     */
+    function did_action(string $hook): int
+    {
+        return Tests\Routing\WordPressRuntime::$firedActions[$hook] ?? 0;
+    }
+}
+
 if (!function_exists('has_action')) {
     /**
      * Stub for has_action().

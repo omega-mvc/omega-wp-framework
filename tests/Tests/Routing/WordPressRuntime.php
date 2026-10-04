@@ -121,6 +121,18 @@ final class WordPressRuntime
     public static array $textdomains = [];
 
     /**
+     * Recorded calls to did_action(): number of times each hook has already
+     * been dispatched, keyed by hook name.
+     *
+     * WordPress snapshots the priority list of a hook before dispatching it,
+     * so code that hooks itself on an action already in progress never runs.
+     * Tests mark a hook as fired here to reproduce that timing.
+     *
+     * @var array<string, int>
+     */
+    public static array $firedActions = [];
+
+    /**
      * When true, the rest_ensure_response() stub returns a WP_Error instead
      * of wrapping the payload in a WPRestResponse.
      */
@@ -210,6 +222,7 @@ final class WordPressRuntime
         self::$filters = [];
         self::$actions = [];
         self::$textdomains = [];
+        self::$firedActions = [];
         self::$forceRestError = false;
     }
 }

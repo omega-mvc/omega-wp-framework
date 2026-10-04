@@ -55,9 +55,9 @@ final class LocalizationServiceProviderTest extends ApplicationTestCase
     }
 
     /**
-     * Test the provider registers the init hook on boot.
+     * Test the provider registers the init hook on boot, after the plugin bootstrap.
      */
-    public function testBootRegistersInitHook(): void
+    public function testBootRegistersInitHookAfterTheBootstrapPriority(): void
     {
         $app      = ApplicationFactory::createPlugin('locale', $this->localeBasePath());
         $provider = new LocalizationServiceProvider($app);
@@ -66,7 +66,45 @@ final class LocalizationServiceProviderTest extends ApplicationTestCase
 
         $actions = WordPressRuntime::$actions;
 
-        $this->assertSame(['init', [$provider, 'init']], end($actions));
+        $this->assertSame(['init', [$provider, 'init'], 20], end($actions));
+    }
+
+    /**
+     * Test boot loads the text domain at once when the kernel is built after `init`.
+     *
+     * WordPress snapshots the priority list of a hook before dispatching it, so a
+     * callback registered while `init` is still running never runs: waiting for
+     * another `init` would leave the text domain unloaded for the whole request.
+     */
+    public function testBootLoadsTheTextDomainAtOnceWhenInitAlreadyFired(): void
+    {
+        WordPressRuntime::$firedActions['init'] = 1;
+
+        $app      = ApplicationFactory::createPlugin('locale', $this->localeBasePath());
+        $provider = new LocalizationServiceProvider($app);
+
+        $provider->boot();
+
+        $this->assertSame(
+            [['plugin', 'locale', false, 'locale/resources/languages']],
+            WordPressRuntime::$textdomains
+        );
+    }
+
+    /**
+     * Test boot hooks nothing when it falls back to the immediate registration.
+     */
+    public function testBootHooksNothingWhenInitAlreadyFired(): void
+    {
+        WordPressRuntime::$firedActions['init'] = 3;
+
+        $app      = ApplicationFactory::createPlugin('locale', $this->localeBasePath());
+        $provider = new LocalizationServiceProvider($app);
+        $before   = count(WordPressRuntime::$actions);
+
+        $provider->boot();
+
+        $this->assertCount($before, WordPressRuntime::$actions);
     }
 
     /**

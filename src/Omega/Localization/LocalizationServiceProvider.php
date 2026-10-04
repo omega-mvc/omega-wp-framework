@@ -19,6 +19,7 @@ use Omega\Container\ServiceProvider;
 use ReflectionException;
 
 use function add_action;
+use function did_action;
 use function load_plugin_textdomain;
 use function load_theme_textdomain;
 use function ltrim;
@@ -49,11 +50,36 @@ use function str_replace;
 class LocalizationServiceProvider extends ServiceProvider
 {
     /**
-     * {@inheritdoc}
+     * Priority of the `init` callback that loads the text domain.
+     *
+     * The reference plugin bootstraps the kernel from an `init` callback left at
+     * the WordPress default of 10, so the text domain must be loaded strictly
+     * after it.
+     */
+    private const int INIT_PRIORITY = 20;
+
+    /**
+     * Schedule the text domain registration on the WordPress runtime.
+     *
+     * WordPress snapshots the priority list of a hook before dispatching it
+     * (see WP_Hook::apply_filters()), so a callback registered from inside the
+     * very action it listens to is recorded but never invoked. When the kernel
+     * is built while `init` is already running — which is what the reference
+     * plugin bootstrap does — waiting for another `init` would mean the text
+     * domain is never loaded. In that case the registration runs immediately
+     * instead, at a point where the configuration service is already bound.
+     *
+     * @return void
      */
     public function boot(): void
     {
-        add_action('init', [$this, 'init']);
+        if (did_action('init')) {
+            $this->init();
+
+            return;
+        }
+
+        add_action('init', [$this, 'init'], self::INIT_PRIORITY);
     }
 
     /**
