@@ -124,11 +124,7 @@ class Migrator
         } catch (Throwable $e) {
             // In CLI/deploy context (WP-CLI or standard CLI), let the error bubble to fail fast.
             // In web context, avoid taking the whole site down; log and continue.
-            if (defined('WP_CLI') && WP_CLI) {
-                throw $e;
-            }
-
-            if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {
+            if ($this->isDeployContext()) {
                 throw $e;
             }
 
@@ -140,6 +136,28 @@ class Migrator
                 )
             );
         }
+    }
+    #endregion
+
+    #region Environment
+    /**
+     * Determine whether the migration runs as a deploy step.
+     *
+     * Migrations are executed either from a deploy pipeline (WP-CLI or a plain
+     * command line run) or from a web request. A deploy must fail fast: a swallowed
+     * failure lets the pipeline report success while the schema stayed out of sync.
+     * A web request instead logs and carries on, because run() then simply finds no
+     * applied migration, which is safe since every migration is idempotent.
+     *
+     * @return bool True when a failure must be rethrown instead of logged.
+     */
+    protected function isDeployContext(): bool
+    {
+        if (defined('WP_CLI') && WP_CLI) {
+            return true;
+        }
+
+        return PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
     }
     #endregion
 
