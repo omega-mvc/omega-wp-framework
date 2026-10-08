@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "formatter": true,
+  "permissions": [
+    { "action": "shell", "resource": "composer*", "effect": "ask" },
+    { "action": "shell", "resource": "git*", "effect": "deny" },
+    { "action": "shell", "resource": "phpcs*", "effect": "ask" },
+    { "action": "shell", "resource": "phpstan*", "effect": "ask" },
+    { "action": "shell", "resource": "phpunit --coverage*", "effect": "deny" },
+    { "action": "shell", "resource": "phpunit", "effect": "ask" }
+  ]
+}
