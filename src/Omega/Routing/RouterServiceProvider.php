@@ -30,6 +30,7 @@ use function add_action;
  * It binds the RouterBuilder into the service container as a singleton and ensures that:
  * - API routes are loaded during `rest_api_init`
  * - Admin routes are loaded during `admin_menu`
+ * - Front-end routes are loaded directly when the application boots
  *
  * Route definitions are loaded from both the default route files and any additional
  * files registered by the application container.
@@ -79,6 +80,14 @@ class RouterServiceProvider extends ServiceProvider
             $loader = $this->app->resolve(RouteLoader::class);
             $loader->loadAdminRoutes();
         }, 99);
+
+        // Front-end routes load right away instead of via add_action('init', ...):
+        // this provider already boots during `init`, and WordPress snapshots the
+        // callback list of the executing priority, so a hook registered here at
+        // the same priority would never run.
+        /** @var RouteLoader $loader */
+        $loader = $this->app->resolve(RouteLoader::class);
+        $loader->loadWebRoutes();
     }
     #endregion
 }

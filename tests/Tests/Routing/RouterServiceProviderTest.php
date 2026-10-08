@@ -95,7 +95,10 @@ final class RouterServiceProviderTest extends RoutingTestCase
      */
     public function testBootRegistersRestApiInitHook(): void
     {
-        $provider = new RouterServiceProvider($this->createStub(Application::class));
+        $app = $this->createStub(Application::class);
+        $app->method('resolve')->willReturn($this->createStub(RouteLoader::class));
+
+        $provider = new RouterServiceProvider($app);
 
         $provider->boot();
 
@@ -110,7 +113,10 @@ final class RouterServiceProviderTest extends RoutingTestCase
      */
     public function testBootRegistersAdminMenuHookWithPriority99(): void
     {
-        $provider = new RouterServiceProvider($this->createStub(Application::class));
+        $app = $this->createStub(Application::class);
+        $app->method('resolve')->willReturn($this->createStub(RouteLoader::class));
+
+        $provider = new RouterServiceProvider($app);
 
         $provider->boot();
 

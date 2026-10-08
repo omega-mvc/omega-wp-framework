@@ -13,7 +13,9 @@ use Omega\Container\Exceptions\RecursiveDependencyException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversClassesThatImplementInterface;
 use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 use ReflectionException;
+use RuntimeException;
 use Tests\Container\Support\A;
 use Tests\Container\Support\AEnum;
 use Tests\Container\Support\AInterface;
@@ -155,6 +157,37 @@ class ContainerTest extends TestCase
     }
 
     /**
+     * Should throw exception if alias is a circular reference.
+     *
+     * @return void
+     * @throws ReflectionException
+     */
+    public function testShouldThrowExceptionIfAliasIsCircularReference(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->container->alias('identifier', 'alias');
+        $this->container->alias('alias', 'identifier');
+    }
+
+    /**
+     * Should detect a cycle in the aliases map when registering a new alias.
+     *
+     * @return void
+     * @throws ReflectionException
+     */
+    public function testShouldDetectAliasCycleOnRegistration(): void
+    {
+        $this->container->alias('a', 'b');
+        $this->container->alias('b', 'c');
+        $this->container->alias('c', 'd');
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->container->alias('d', 'a');
+    }
+
+    /**
      * Should accept constructor dependencies.
      *
      * @return void
@@ -240,6 +273,31 @@ class ContainerTest extends TestCase
         $this->expectException(DependencyResolutionException::class);
 
         $this->container->resolve(F::class);
+    }
+
+    /**
+     * Should clean up the dependency stack when the factory throws.
+     *
+     * @return void
+     * @throws ReflectionException
+     */
+    public function testShouldCleanUpDependencyStackWhenFactoryThrows(): void
+    {
+        $this->container->bindFactory('broken', function (): never {
+            throw new RuntimeException('boom');
+        });
+
+        try {
+            $this->container->resolve('broken');
+
+            $this->fail('Expected a RuntimeException to be thrown.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('boom', $exception->getMessage());
+        }
+
+        $this->container->bindFactory('broken', fn() => 'fixed');
+
+        $this->assertSame('fixed', $this->container->resolve('broken'));
     }
 
     /**

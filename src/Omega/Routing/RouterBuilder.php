@@ -133,6 +133,22 @@ class RouterBuilder
 
         return $instance;
     }
+
+    /**
+     * Switch the routing context to front-end (web) routes.
+     *
+     * Routes defined afterwards are matched against the request URI on
+     * `parse_request` and dispatched by the Router's static handler.
+     *
+     * @return Router The underlying router instance.
+     */
+    public function web(): Router
+    {
+        $instance = $this->getInstance();
+        $instance->web();
+
+        return $instance;
+    }
     #endregion
 
     #region HTTP Route Registration

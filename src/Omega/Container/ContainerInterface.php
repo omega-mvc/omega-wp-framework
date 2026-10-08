@@ -133,4 +133,29 @@ interface ContainerInterface
      */
     public function invoke(callable $callable, mixed ...$parameters): mixed;
     #endregion
+
+    #region Inspection
+    /**
+     * Check whether a service is registered for the given identifier.
+     *
+     * Aliases are resolved before the lookup, so an alias answers true
+     * when its canonical identifier holds a binding or an instance.
+     *
+     * @param string $identifier Unique service identifier or alias.
+     * @return bool True when a binding or instance is registered.
+     */
+    public function has(string $identifier): bool;
+
+    /**
+     * Remove every registration stored under the given identifier.
+     *
+     * The binding, the instance and any alias stored under that exact
+     * key are discarded, allowing overrides to be cleaned up in long
+     * running processes.
+     *
+     * @param string $identifier Unique service identifier or alias.
+     * @return void
+     */
+    public function forget(string $identifier): void;
+    #endregion
 }

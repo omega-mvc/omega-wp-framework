@@ -35,6 +35,7 @@ use Omega\Routing\Router;
  * @method static Router prefix(string $prefix)
  * @method static Router guards(array<int, string|callable|array<int, string>> $guards)
  * @method static Router page(string $id, $options = [])
+ * @method static Router web()
  *
  * @see Router
  */

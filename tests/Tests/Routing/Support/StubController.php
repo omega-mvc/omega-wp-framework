@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Routing\Support;
 
+use Omega\Http\HtmlResponse;
+
 class StubController
 {
     /** @return array<string, mixed> */
@@ -15,6 +17,11 @@ class StubController
     public function withString(): string
     {
         return '<p>html output</p>';
+    }
+
+    public function withHtmlResponse(): HtmlResponse
+    {
+        return new HtmlResponse('<p>html output</p>');
     }
 
     public function returnsNull(): void

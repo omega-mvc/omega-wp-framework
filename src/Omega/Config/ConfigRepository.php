@@ -17,16 +17,14 @@ namespace Omega\Config;
 use Omega\Config\ConfigServiceProvider;
 use stdClass;
 
-use function array_find;
-use function array_reduce;
-use function array_walk;
 use function explode;
 use function in_array;
 use function is_array;
 use function is_bool;
 use function is_numeric;
+use function is_scalar;
+use function is_string;
 use function sanitize_text_field;
-use function str_replace;
 use function strtolower;
 use function trim;
 
@@ -49,11 +47,6 @@ use function trim;
  */
 class ConfigRepository
 {
-    #region Properties
-    /** @var array<string, mixed> Flat lookup index for fast configuration value resolution. */
-    private array $index = [];
-    #endregion
-
     #region Lifecycle
     /**
      * ConfigRepository constructor.
@@ -64,7 +57,6 @@ class ConfigRepository
      */
     public function __construct(protected array $config)
     {
-        $this->buildIndex($this->config);
     }
     #endregion
 
@@ -81,25 +73,13 @@ class ConfigRepository
      */
     public function get(string $name, mixed $default = null): mixed
     {
-        $value = $this->resolveFromIndex($name);
-
-        if ($value !== null) {
-            return $value;
-        }
-
-        $value = $this->traverseArray($this->config, explode('.', $name), $default);
-
-        if ($value !== $default) {
-            return $value;
-        }
-
-        return $default;
+        return $this->traverseArray($this->config, explode('.', $name), $default);
     }
 
     /**
      * Determine whether a configuration value exists.
      *
-     * The lookup supports both dot-separated and underscore-separated keys.
+     * Lookup resolves only by exact dot-notated path traversal.
      *
      * @param string $key Configuration key to check.
      * @return bool True if the configuration value exists, false otherwise.
@@ -125,6 +105,8 @@ class ConfigRepository
      * Retrieve a configuration value and cast it to a sanitized string.
      *
      * The value is passed through WordPress sanitize_text_field() before being returned.
+     * Non-string scalar values are converted to their string representation instead of
+     * being discarded; null and array values fall back to the declared default.
      *
      * @param string $name Dot-notated configuration key.
      * @param string|null $default Default value used if the key is not found.
@@ -134,11 +116,15 @@ class ConfigRepository
     {
         $value = $this->get($name, $default);
 
-        if (!is_string($value)) {
-            return sanitize_text_field((string) ($default ?? ''));
+        if (is_string($value)) {
+            return sanitize_text_field($value);
         }
 
-        return sanitize_text_field($value);
+        if (is_scalar($value)) {
+            return sanitize_text_field((string) $value);
+        }
+
+        return sanitize_text_field((string) ($default ?? ''));
     }
 
     /**
@@ -216,70 +202,6 @@ class ConfigRepository
         }
 
         return $default ?? 0;
-    }
-    #endregion
-
-    #region Index
-    /**
-     * Build a flat lookup index from a nested configuration array.
-     *
-     * Nested arrays are recursively traversed and their leaf values are stored
-     * using dot-separated keys for fast direct access.
-     *
-     * @param array<int|string, mixed> $data Configuration data to index.
-     * @param string $prefix Current key prefix used during recursion.
-     * @return void
-     */
-    private function buildIndex(array $data, string $prefix = ''): void
-    {
-        array_walk($data, function (mixed $value, int|string $key) use ($prefix): void {
-            $fullKey = $prefix === ''
-                ? (string)$key
-                : $prefix . '.' . $key;
-
-            if (is_array($value)) {
-                $this->buildIndex($value, $fullKey);
-            } else {
-                $this->index[$fullKey] = $value;
-            }
-        });
-    }
-
-    /**
-     * Resolve a configuration value from the lookup index.
-     *
-     * Multiple key variants are attempted to support both dot-separated and
-     * underscore-separated configuration keys.
-     *
-     * @param string $key Configuration key to resolve.
-     * @return mixed The resolved configuration value, or null if not found.
-     */
-    private function resolveFromIndex(string $key): mixed
-    {
-        $variant = array_find(
-            $this->normalizeKey($key),
-            fn (string $variant): bool => isset($this->index[$variant])
-        );
-
-        return $variant !== null ? $this->index[$variant] : null;
-    }
-
-    /**
-     * Generate equivalent lookup keys for a configuration entry.
-     *
-     * Produces dot-separated and underscore-separated variants so both naming
-     * conventions can be resolved transparently.
-     *
-     * @param string $key Original configuration key.
-     * @return array<int, string> Normalized lookup key variants.
-     */
-    private function normalizeKey(string $key): array
-    {
-        return [
-            $key,
-            str_replace('.', '_', $key),
-            str_replace('_', '.', $key),
-        ];
     }
     #endregion
 

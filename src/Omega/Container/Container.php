@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Container;
 
 use Closure;
+use InvalidArgumentException;
 use Omega\Container\Exceptions\ClassNotFoundException;
 use Omega\Container\Exceptions\DependencyResolutionException;
 use Omega\Container\Exceptions\NotInstantiableException;
@@ -109,6 +110,8 @@ class Container implements ContainerInterface
      */
     public function bindClass(string $identifier, string $className): void
     {
+        unset($this->instances[$identifier]);
+
         $this->bindings[$identifier] = fn(
             ContainerInterface $_,
             mixed ...$parameters
@@ -120,6 +123,10 @@ class Container implements ContainerInterface
      */
     public function bindInstance(string $identifier, mixed $instance): void
     {
+        // An explicit instance replaces any previously registered binding:
+        // the most recent registration always wins.
+        unset($this->bindings[$identifier]);
+
         $this->instances[$identifier] = $instance;
     }
 
@@ -128,6 +135,8 @@ class Container implements ContainerInterface
      */
     public function bindFactory(string $identifier, callable $factory): void
     {
+        unset($this->instances[$identifier]);
+
         $this->bindings[$identifier] = $factory;
     }
 
@@ -137,12 +146,16 @@ class Container implements ContainerInterface
     public function singleton(string $identifier, string|Closure|null $definition = null): void
     {
         $this->bindFactory($identifier, function (ContainerInterface $container) use ($identifier, $definition): mixed {
-            static $instance;
-            if ($instance === null) {
+            static $resolved = false;
+            static $instance = null;
+
+            if (!$resolved) {
                 $instance = ($definition instanceof Closure)
                     ? $definition($container)
                     : $this->resolve($definition ?? $identifier);
+                $resolved = true;
             }
+
             return $instance;
         });
     }
@@ -152,11 +165,29 @@ class Container implements ContainerInterface
      */
     public function alias(string $identifier, string $alias): void
     {
-        while (array_key_exists($identifier, $this->aliases)) {
-            $identifier = $this->aliases[$identifier];
+        $canonical = $identifier;
+        $guard     = count($this->aliases) + 1;
+
+        while (array_key_exists($canonical, $this->aliases)) {
+            $canonical = $this->aliases[$canonical];
+
+            if (--$guard <= 0) {
+                throw new InvalidArgumentException(sprintf(
+                    'Circular alias chain detected while resolving "%s".',
+                    $identifier
+                ));
+            }
         }
 
-        $this->aliases[$alias] = $identifier;
+        if ($canonical === $alias) {
+            throw new InvalidArgumentException(sprintf(
+                'Cannot alias "%s" to "%s": circular alias.',
+                $alias,
+                $identifier
+            ));
+        }
+
+        $this->aliases[$alias] = $canonical;
     }
     #endregion
 
@@ -177,18 +208,17 @@ class Container implements ContainerInterface
 
         $this->dependencyStack[] = $resolvedIdentifier;
 
-        if (array_key_exists($resolvedIdentifier, $this->instances)) {
+        try {
+            if (array_key_exists($resolvedIdentifier, $this->instances)) {
+                return $this->instances[$resolvedIdentifier];
+            }
+
+            return array_key_exists($resolvedIdentifier, $this->bindings)
+                ? $this->bindings[$resolvedIdentifier]($this, ...$parameters)
+                : $this->createInstance($resolvedIdentifier, ...$parameters);
+        } finally {
             array_pop($this->dependencyStack);
-            return $this->instances[$resolvedIdentifier];
         }
-
-        $instance = array_key_exists($resolvedIdentifier, $this->bindings)
-            ? $this->bindings[$resolvedIdentifier]($this, ...$parameters)
-            : $this->createInstance($resolvedIdentifier, ...$parameters);
-
-        array_pop($this->dependencyStack);
-
-        return $instance;
     }
 
     /**
@@ -198,13 +228,38 @@ class Container implements ContainerInterface
      */
     public function invoke(callable $callable, mixed ...$parameters): mixed
     {
-        $reflection = new ReflectionFunction($callable(...));
+        $reflection = new ReflectionFunction(Closure::fromCallable($callable));
 
         if ($reflection->getNumberOfParameters() === 0) {
             return $reflection->invoke();
         }
 
         return $reflection->invokeArgs($this->resolveMethodDependencies($reflection, array_values($parameters)));
+    }
+    #endregion
+
+    #region Inspection
+    /**
+     * {@inheritdoc}
+     */
+    public function has(string $identifier): bool
+    {
+        $resolvedIdentifier = $this->resolveIdentifier($identifier);
+
+        return array_key_exists($resolvedIdentifier, $this->instances)
+            || array_key_exists($resolvedIdentifier, $this->bindings);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function forget(string $identifier): void
+    {
+        unset(
+            $this->instances[$identifier],
+            $this->bindings[$identifier],
+            $this->aliases[$identifier]
+        );
     }
     #endregion
 

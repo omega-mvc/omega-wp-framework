@@ -15,10 +15,14 @@ declare(strict_types=1);
 namespace Omega\Config;
 
 use Omega\Container\ServiceProvider;
+use UnexpectedValueException;
 
+use function array_key_exists;
 use function basename;
 use function glob;
+use function is_array;
 use function is_dir;
+use function sort;
 
 /**
  * ConfigServiceProvider registers configuration-related services into the application container.
@@ -57,9 +61,24 @@ class ConfigServiceProvider extends ServiceProvider
             if (is_dir($configPath)) {
                 $files = glob($configPath . '/*.php');
                 if ($files !== false) {
+                    sort($files);
                     foreach ($files as $file) {
-                        $key          = basename($file, '.php');
-                        $config[$key] = require $file;
+                        $key      = basename($file, '.php');
+                        $resolved = require $file;
+
+                        if (!is_array($resolved)) {
+                            throw new UnexpectedValueException(
+                                sprintf('Config file "%s" must return an array.', $file)
+                            );
+                        }
+
+                        if (array_key_exists($key, $config)) {
+                            throw new UnexpectedValueException(
+                                sprintf('Duplicate config key "%s" from file "%s".', $key, $file)
+                            );
+                        }
+
+                        $config[$key] = $resolved;
                     }
                 }
             }

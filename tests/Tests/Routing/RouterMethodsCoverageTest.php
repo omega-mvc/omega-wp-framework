@@ -180,13 +180,31 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
     // ────────────────────────────────────────
 
     /**
-     * A controller returning a string echoes the string directly.
+     * A controller returning a string echoes the escaped string.
      */
     public function testProcessAdminRequestOutputsStringResult(): void
     {
         $router = $this->makeRouter();
         $router->setPage('my-page');
         $router->addRoute('GET', '/page', ['Tests\Routing\Support\StubController', 'withString']);
+
+        $callback = WordPressRuntime::firstSubmenuCallback();
+        ob_start();
+        $callback();
+        $output = (string) ob_get_clean();
+
+        $this->assertStringContainsString('&lt;p&gt;html output&lt;/p&gt;', $output);
+        $this->assertStringNotContainsString('<p>html output</p>', $output);
+    }
+
+    /**
+     * A controller returning an HtmlResponse echoes the raw HTML.
+     */
+    public function testProcessAdminRequestOutputsHtmlResponseRaw(): void
+    {
+        $router = $this->makeRouter();
+        $router->setPage('my-page');
+        $router->addRoute('GET', '/page', ['Tests\Routing\Support\StubController', 'withHtmlResponse']);
 
         $callback = WordPressRuntime::firstSubmenuCallback();
         ob_start();
@@ -267,7 +285,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
     }
 
     /**
-     * A controller with constructor returning string echoes directly.
+     * A controller with constructor returning string escapes the output.
      */
     public function testProcessAdminRequestWithConstructorOutputsStringResult(): void
     {
@@ -280,7 +298,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
         $callback();
         $output = (string) ob_get_clean();
 
-        $this->assertStringContainsString('<p>html output</p>', $output);
+        $this->assertStringContainsString('&lt;p&gt;html output&lt;/p&gt;', $output);
     }
 
     /**

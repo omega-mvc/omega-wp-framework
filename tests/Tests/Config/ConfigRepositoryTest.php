@@ -87,25 +87,28 @@ final class ConfigRepositoryTest extends TestCase
     }
 
     /**
-     * Test underscore-separated keys resolve to dot-notated values.
+     * Test underscore-separated keys do not resolve to dot-notated values.
+     *
+     * Lookup is exact tree traversal: a dotted path only ever resolves the
+     * key actually stored under those segments, never underscore variants.
      */
-    public function testAcceptsUnderscoreSeparatedKeys(): void
+    public function testDoesNotResolveUnderscoreSeparatedKeys(): void
     {
         $repository = $this->makeRepository();
 
-        $this->assertSame('local', $repository->get('app_environment'));
-        $this->assertSame('localhost', $repository->get('database_connections_mysql_host'));
+        $this->assertNull($repository->get('app_environment'));
+        $this->assertNull($repository->get('database_connections_mysql_host'));
     }
 
     /**
-     * Test underscore keys in the config are reachable through dot notation.
+     * Test an underscore config key is reachable only through its exact name.
      */
-    public function testResolvesUnderscoreConfigKeysViaDot(): void
+    public function testKeepsUnderscoreConfigKeysExact(): void
     {
         $repository = $this->makeRepository();
 
         $this->assertSame('legacy', $repository->get('legacy_key'));
-        $this->assertSame('legacy', $repository->get('legacy.key'));
+        $this->assertNull($repository->get('legacy.key'));
     }
 
     /**
@@ -218,6 +221,48 @@ final class ConfigRepositoryTest extends TestCase
     public function testStringReturnsEmptyWhenNoDefault(): void
     {
         $this->assertSame('', $this->makeRepository()->string('app.missing'));
+    }
+
+    /**
+     * Test string() converts non-string scalar values instead of discarding them.
+     */
+    public function testStringConvertsScalarValue(): void
+    {
+        $repository = new ConfigRepository(['retries' => 3, 'pi' => 3.14]);
+
+        $this->assertSame('3', $repository->string('retries'));
+        $this->assertSame('3.14', $repository->string('pi'));
+    }
+
+    /**
+     * Test string() falls back to the default for array values.
+     */
+    public function testStringReturnsDefaultForArrayValue(): void
+    {
+        $repository = $this->makeRepository();
+
+        $this->assertSame('fallback', $repository->string('database.connections.mysql', 'fallback'));
+        $this->assertSame('', $repository->string('database.connections.mysql'));
+    }
+
+    /**
+     * Test lookup never falls through to a key with the other separator.
+     */
+    public function testGetRespectsExactKeySeparator(): void
+    {
+        $repository = new ConfigRepository(['a_b' => 'PIPPO']);
+
+        $this->assertNull($repository->get('a.b'));
+        $this->assertFalse($repository->has('a.b'));
+        $this->assertSame('fallback', $repository->get('a.b', 'fallback'));
+        $this->assertSame('PIPPO', $repository->get('a_b'));
+
+        // A stored key containing a literal dot is not a navigable path.
+        $reverse = new ConfigRepository(['a.b' => 'x']);
+
+        $this->assertNull($reverse->get('a_b'));
+        $this->assertNull($reverse->get('a.b'));
+        $this->assertSame('x', $reverse->getAll()['a.b']);
     }
 
     /**

@@ -17,6 +17,7 @@ namespace Omega\Routing;
 use Exception;
 use Omega\Application\ApplicationFactory;
 use Omega\Http\FormRequest;
+use Omega\Http\HtmlResponse;
 use Omega\Http\Json\JsonResource;
 use Omega\Http\Json\ResourceCollection;
 use ReflectionClass;
@@ -27,6 +28,7 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
+use function add_action;
 use function add_submenu_page;
 use function array_any;
 use function array_column;
@@ -38,23 +40,35 @@ use function array_values;
 use function call_user_func;
 use function call_user_func_array;
 use function current_user_can;
+use function error_log;
+use function esc_html;
+use function home_url;
+use function in_array;
 use function is_array;
 use function is_callable;
 use function is_string;
 use function is_subclass_of;
+use function parse_url;
+use function preg_match;
 use function preg_match_all;
+use function preg_quote;
 use function register_rest_route;
 use function reset;
 use function rest_ensure_response;
 use function sprintf;
+use function status_header;
 use function str_replace;
+use function str_starts_with;
+use function strtoupper;
+use function substr;
 use function trim;
+use function wp_die;
 
 /**
  * Core routing engine responsible for request dispatching and execution.
  *
  * This class handles route registration, grouping context, guard resolution,
- * and request execution for both REST API and WordPress admin environments.
+ * and request execution for REST API, WordPress admin and front-end environments.
  *
  * It acts as the central execution layer between defined routes and their
  * corresponding controller actions, using reflection-based dependency injection.
@@ -62,6 +76,7 @@ use function trim;
  * The Router supports:
  * - REST API routing via `register_rest_route`
  * - Admin page routing via `add_submenu_page`
+ * - Front-end routing via a `parse_request` matcher for web routes
  * - Route grouping with nested prefix and guard stacks
  * - Automatic dependency resolution for controller methods
  *
@@ -88,7 +103,7 @@ class Router
     /** @var array<int, array{guards:mixed, depth:int}> Stack of authorization guards per group level. */
     protected array $guardStack = [];
 
-    /** @var string Current routing context type: 'rest' or 'admin'. */
+    /** @var string Current routing context type: 'rest', 'admin' or 'web'. */
     protected string $routeType = 'rest';
 
     /** @var string|null Current admin page identifier used for submenu routing. */
@@ -99,6 +114,12 @@ class Router
 
     /** @var array<string, mixed> Additional configuration options for admin page routing. */
     protected array $pageOptions = [];
+
+    /** @var array<int, array{methods: array<int, string>, pattern: string, guards: array<int|string, mixed>, dispatch: callable(): void}> Registered front-end routes. */
+    private static array $webRoutes = [];
+
+    /** @var bool Whether the static front-end dispatcher is hooked to `parse_request`. */
+    private static bool $webDispatchHooked = false;
     #endregion
 
     #region Lifecycle
@@ -122,8 +143,8 @@ class Router
     /**
      * Add a new route to the router and register it based on the current route type.
      *
-     * Supports both REST and admin routes. The URI is normalized and prefixed
-     * according to the current routing group context.
+     * Supports REST, admin and front-end (`web`) routes. The URI is normalized
+     * and prefixed according to the current routing group context.
      *
      * @param string|array<int, string> $httpMethod HTTP method(s) for the route (GET, POST, etc.).
      * @param string       $uri        Route URI pattern.
@@ -139,6 +160,8 @@ class Router
 
         if ($this->routeType === 'admin') {
             $this->registerAdminRoute($action, "{$prefix}{$uri}");
+        } elseif ($this->routeType === 'web') {
+            $this->registerWebRoute($action, $prefix, $uri, $guards, $httpMethod);
         } else {
             $this->registerRestRoute($prefix, $uri, $action, $guards, $httpMethod);
         }
@@ -233,6 +256,15 @@ class Router
                         }
                         return rest_ensure_response($response);
                     } catch (Exception $e) {
+                        error_log(
+                            sprintf(
+                                '[omega-wp] REST route failed: %s in %s:%d',
+                                $e->getMessage(),
+                                $e->getFile(),
+                                $e->getLine()
+                            )
+                        );
+
                         return new WP_Error('server_error', 'An unexpected server error occurred.', ['status' => 500]);
                     }
                 },
@@ -257,11 +289,55 @@ class Router
             ]
         );
     }
+
+    /**
+     * Register a front-end (web) route in the static matcher registry.
+     *
+     * Unlike REST or admin routes, WordPress has no routing primitive for
+     * front-end URIs, so the route is stored as a compiled pattern and
+     * dispatched later by the static `parse_request` handler.
+     *
+     * The prefix is quoted (literal) while the URI is kept as-is because
+     * `addRoute` already converted `{param}` placeholders into named groups.
+     *
+     * @param mixed  $action      Controller action [Class, method].
+     * @param string $prefix      Literal route prefix (no leading/trailing slashes).
+     * @param string $uri         URI pattern, possibly containing `(?P<name>...)` groups.
+     * @param array<int|string, mixed> $guards List of authorization rules.
+     * @param string|array<int, string> $httpMethod HTTP method or list of methods.
+     * @return void
+     */
+    protected function registerWebRoute(
+        mixed $action,
+        string $prefix,
+        string $uri,
+        array $guards,
+        string|array $httpMethod = 'GET'
+    ): void {
+        $pattern = '~^'
+            . ($prefix !== '' ? '/' . preg_quote($prefix, '~') : '')
+            . $uri . '/?$~';
+
+        self::$webRoutes[] = [
+            'methods'  => array_map('strtoupper', (array) $httpMethod),
+            'pattern'  => $pattern,
+            'guards'   => $guards,
+            'dispatch' => function () use ($action): void {
+                /** @var array<int, string> $action */
+                $this->processRequest($action, null);
+            },
+        ];
+
+        if (!self::$webDispatchHooked) {
+            self::$webDispatchHooked = true;
+            add_action('parse_request', [self::class, 'handleWebRequests']);
+        }
+    }
     #endregion
 
     #region Request Dispatching
     /**
-     * Process a controller request and dispatch it to REST or Admin handler.
+     * Process a controller request and dispatch it to REST, admin or web handler.
      *
      * @param array<int, string> $action  Controller action [class, method].
      * @param WP_REST_Request|array<string, mixed>|null $request Optional request payload.
@@ -272,7 +348,7 @@ class Router
         array $action,
         WP_REST_Request|array|null $request = null,
     ): array|null|WP_REST_Response|WP_Error|ResourceCollection|JsonResource {
-        if ($this->routeType === 'admin') {
+        if ($this->routeType === 'admin' || $this->routeType === 'web') {
             $this->processAdminRequest($action, $request);
             return null;
         }
@@ -371,11 +447,94 @@ class Router
         /** @var mixed $result */
         $result = call_user_func_array($controllerMethod, $dependencies);
 
-        if (is_string($result)) {
-            echo $result;
+        if ($result instanceof HtmlResponse) {
+            echo $result->content();
+        } elseif (is_string($result)) {
+            echo esc_html($result);
         } elseif (is_array($result)) {
             echo '<pre>' . esc_html(print_r($result, true)) . '</pre>';
         }
+    }
+
+    /**
+     * Static front-end dispatcher hooked to `parse_request`.
+     *
+     * Matches the current request path against registered web routes. On the
+     * first match it evaluates the route guards, dispatches the controller
+     * (which echoes its output) and terminates the request. A path match with
+     * a different HTTP method, or a guard failure, falls through to the core
+     * routing flow (404 handling), keeping REST requests untouched.
+     *
+     * @return void
+     */
+    public static function handleWebRequests(): void
+    {
+        if (self::$webRoutes === []) {
+            return;
+        }
+
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+        $path = is_string($requestUri) ? parse_url($requestUri, PHP_URL_PATH) : null;
+        if (!is_string($path) || $path === '') {
+            return;
+        }
+
+        // Strip the installation sub-directory path (subdirectory installs).
+        $homePath = parse_url((string) home_url('/'), PHP_URL_PATH);
+        if (is_string($homePath) && $homePath !== '/' && str_starts_with($path, $homePath)) {
+            $path = substr($path, strlen($homePath)) ?: '/';
+        }
+
+        $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $method = strtoupper(is_string($requestMethod) ? $requestMethod : 'GET');
+
+        foreach (self::$webRoutes as $entry) {
+            if (preg_match($entry['pattern'], $path) !== 1) {
+                continue;
+            }
+
+            if (!in_array($method, $entry['methods'], true)) {
+                continue;
+            }
+
+            if (!self::guardsPass($entry['guards'])) {
+                status_header(403);
+                wp_die(esc_html('Forbidden'), '', ['response' => 403]);
+            }
+
+            $entry['dispatch']();
+            exit;
+        }
+    }
+
+    /**
+     * Evaluate route guards with REST `permission_callback` semantics.
+     *
+     * Callables must return a truthy value, strings are checked as
+     * capabilities, and every capability of an array guard must pass.
+     *
+     * @param array<int|string, mixed> $guards List of authorization rules.
+     * @return bool True when every guard passes.
+     */
+    private static function guardsPass(array $guards): bool
+    {
+        foreach ($guards as $guard) {
+            if (is_callable($guard)) {
+                if (!call_user_func($guard)) {
+                    return false;
+                }
+            } elseif (is_string($guard)) {
+                if (!current_user_can($guard)) {
+                    return false;
+                }
+            } elseif (is_array($guard)) {
+                if (array_any($guard, fn(mixed $g): bool => is_string($g) && !current_user_can($g))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
     #endregion
 
@@ -543,13 +702,15 @@ class Router
             $resolved = ApplicationFactory::app($className);
 
             return $resolved;
-        } catch (Exception) {
+        } catch (Exception $e) {
             throw new Exception(
                 sprintf(
                     "Cannot resolve dependency '%s' for parameter '%s'.",
                     $className,
                     $param->getName()
-                )
+                ),
+                0,
+                $e
             );
         }
     }
@@ -716,6 +877,21 @@ class Router
     public function admin(): static
     {
         $this->routeType = 'admin';
+
+        return $this;
+    }
+
+    /**
+     * Switch router mode to front-end (web) routing.
+     *
+     * Web routes are matched and dispatched on `parse_request` instead of
+     * relying on a WordPress routing primitive.
+     *
+     * @return static
+     */
+    public function web(): static
+    {
+        $this->routeType = 'web';
 
         return $this;
     }

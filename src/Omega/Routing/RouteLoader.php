@@ -23,8 +23,8 @@ use function file_exists;
  *
  * Responsible for loading application route definition files.
  *
- * This class provides a centralized mechanism for loading REST API and
- * administrative route files registered by the application. It resolves
+ * This class provides a centralized mechanism for loading REST API,
+ * administrative, and front-end route files registered by the application. It resolves
  * framework default route locations together with additional route files
  * provided by the application or installed packages.
  *
@@ -97,6 +97,27 @@ readonly class RouteLoader
         $this->load([
             $this->app->getBasePath() . '/routes/admin.php',
             ...$this->app->getAdminRouteFiles()
+        ]);
+    }
+
+    /**
+     * Load front-end route definition files.
+     *
+     * Loads the framework default front-end routes file.
+     *
+     * The default route file is resolved from the application's base path:
+     *
+     * routes/web.php
+     *
+     * Unlike REST and administrative route files, no additional
+     * application-registered web route files are resolved yet.
+     *
+     * @return void
+     */
+    public function loadWebRoutes(): void
+    {
+        $this->load([
+            $this->app->getBasePath() . '/routes/web.php'
         ]);
     }
     #endregion
