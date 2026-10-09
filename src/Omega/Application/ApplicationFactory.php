@@ -29,7 +29,10 @@ use function debug_backtrace;
 use function file_exists;
 use function file_get_contents;
 use function json_decode;
-use function str_contains;
+use function realpath;
+use function rtrim;
+use function str_replace;
+use function str_starts_with;
 
 /**
  * Factory and registry for Omega application instances.
@@ -194,10 +197,12 @@ class ApplicationFactory
      */
     private static function appIdByTrace(): ?string
     {
+        $frames = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25);
+
         $matches = array_filter(
             array_map(
                 static fn(string $file): ?string => self::matchingAppId($file),
-                array_column(debug_backtrace(), 'file')
+                array_column($frames, 'file')
             ),
             static fn(?string $id): bool => $id !== null
         );
@@ -213,11 +218,33 @@ class ApplicationFactory
      */
     private static function matchingAppId(string $file): ?string
     {
+        $file = self::normalizePath($file);
+
         return array_find_key(
             self::$apps,
-            static fn(ApplicationPlugin|ApplicationTheme $app): bool =>
-                str_contains($file, $app->getAppRoot())
+            static function (ApplicationPlugin|ApplicationTheme $app) use ($file): bool {
+                $root = self::normalizePath($app->getAppRoot());
+
+                return $file === $root || str_starts_with($file, $root . '/');
+            }
         );
+    }
+
+    /**
+     * Normalise a filesystem path for prefix comparisons.
+     *
+     * @param string $path Absolute filesystem path.
+     * @return string Normalised path without a trailing separator.
+     */
+    private static function normalizePath(string $path): string
+    {
+        $resolved = realpath($path);
+
+        if ($resolved !== false) {
+            $path = $resolved;
+        }
+
+        return rtrim(str_replace('\\', '/', $path), '/');
     }
 
     /**

@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Omega\Routing;
 
 use Exception;
+use Omega\Admin\Menu\AdminPageRegistry;
 use Omega\Application\ApplicationFactory;
 use Omega\Http\FormRequest;
 use Omega\Http\HtmlResponse;
@@ -62,6 +63,7 @@ use function str_starts_with;
 use function strtoupper;
 use function substr;
 use function trim;
+use function ucwords;
 use function wp_die;
 
 /**
@@ -109,8 +111,8 @@ class Router
     /** @var string|null Current admin page identifier used for submenu routing. */
     protected ?string $page = null;
 
-    /** @var int Current nesting level for route groups. */
-    protected int $groupDepth = 0;
+    /** @var string|null Human readable title for the current admin page. */
+    protected ?string $pageTitle = null;
 
     /** @var array<string, mixed> Additional configuration options for admin page routing. */
     protected array $pageOptions = [];
@@ -193,21 +195,28 @@ class Router
             $firstGuard = $currentGuards[0];
         }
 
+        $pageTitle = $this->pageTitle ?? $this->humanizePageTitle($this->page ?? '');
+
+        if (is_string($this->page) && !AdminPageRegistry::register($this->page)) {
+            return;
+        }
+
         add_submenu_page(
             null,
-            $this->page,
+            $pageTitle,
             $this->page,
             $firstGuard,
             $this->page,
-            function () use ($action, $path) {
+            function () use ($action, $path): void {
                 /** @var array<int, string> $action */
                 $requestedPath = $_GET['path'] ?? null;
 
-                if (!is_string($requestedPath) || trim($requestedPath, "/") === trim($path, "/") || $path === '*') {
-                    $this->processRequest($action, []);
-                } else {
-                    return new WP_Error('not_found', 'Page not found', ['status' => 404]);
+                if (is_string($requestedPath) && trim($requestedPath, "/") !== trim($path, "/") && $path !== '*') {
+                    echo '<div class="error"><p>' . esc_html('Page not found') . '</p></div>';
+                    return;
                 }
+
+                $this->processRequest($action, []);
             }
         );
 
@@ -218,6 +227,17 @@ class Router
         //      }
         //  } );
         // } );
+    }
+
+    /**
+     * Build a human readable title from an admin page slug.
+     *
+     * @param string $page Admin page slug.
+     * @return string Title-cased, space separated page title.
+     */
+    private function humanizePageTitle(string $page): string
+    {
+        return ucwords(str_replace(['-', '_'], ' ', $page));
     }
 
     /**
@@ -771,9 +791,9 @@ class Router
     public function prefix(mixed $prefix): static
     {
         /** @var string $prefix */
-        $this->prefixStack[$this->groupDepth] = [
+        $this->prefixStack[$this->depth()] = [
             'prefix' => trim($prefix, '/'),
-            'depth'  => $this->groupDepth
+            'depth'  => $this->depth()
         ];
         return $this;
     }
@@ -789,26 +809,27 @@ class Router
     public function group(callable $callback): static
     {
         $this->routerBuilder->increaseGroupDepth();
-        $this->groupDepth++;
 
         $this->parentRouter?->setPage($this->page);
 
+        try {
+            $callback($this);
+        } finally {
+            $depth = $this->depth();
 
-        $callback($this);
+            // Remove prefixes and guards from current depth
+            $this->prefixStack = array_filter($this->prefixStack, function (array $item) use ($depth): bool {
+                return $item['depth'] < $depth;
+            });
 
-        // Remove prefixes and guards from current depth
-        $this->prefixStack = array_filter($this->prefixStack, function (array $item): bool {
-            return $item['depth'] < $this->groupDepth;
-        });
+            $this->guardStack = array_filter($this->guardStack, function (array $item) use ($depth): bool {
+                return $item['depth'] < $depth;
+            });
 
-        $this->guardStack = array_filter($this->guardStack, function (array $item): bool {
-            return $item['depth'] < $this->groupDepth;
-        });
+            $this->parentRouter?->setPage(null);
 
-        $this->parentRouter?->setPage(null);
-
-        $this->routerBuilder->decreaseGroupDepth();
-        $this->groupDepth--;
+            $this->routerBuilder->decreaseGroupDepth();
+        }
 
         return $this;
     }
@@ -829,9 +850,9 @@ class Router
             }
         }
 
-        $this->guardStack[$this->groupDepth] = [
+        $this->guardStack[$this->depth()] = [
             'guards' => $guards,
-            'depth'  => $this->groupDepth
+            'depth'  => $this->depth()
         ];
 
         return $this;
@@ -908,6 +929,12 @@ class Router
     public function page(mixed $id, array $options = []): Router
     {
         $instance = new self($this->routerBuilder, $this);
+        $instance->pageOptions = $options;
+
+        /** @var mixed $title */
+        $title = $options['title'] ?? null;
+        $instance->pageTitle = is_string($title) ? $title : null;
+
         $instance->setPage($id);
 
         return $instance;
@@ -915,6 +942,19 @@ class Router
     #endregion
 
     #region Context Resolution
+    /**
+     * Retrieve the current route group nesting level.
+     *
+     * The depth is owned by the shared RouterBuilder so it can never drift out
+     * of sync with the builder state.
+     *
+     * @return int Current group nesting level.
+     */
+    private function depth(): int
+    {
+        return $this->routerBuilder->getGroupDepth();
+    }
+
     /**
      * Build the full route prefix based on the current group stack.
      *
@@ -931,7 +971,7 @@ class Router
         return '/' . array_reduce(
             $this->prefixStack,
             function (string $carry, array $item): string {
-                if ($item['depth'] > $this->groupDepth) {
+                if ($item['depth'] > $this->depth()) {
                     return $carry;
                 }
 
@@ -955,7 +995,7 @@ class Router
         }
 
         $currentGuards = array_filter($this->guardStack, function (array $item): bool {
-            return $item['depth'] <= $this->groupDepth;
+            return $item['depth'] <= $this->depth();
         });
 
         return array_merge(...array_map(

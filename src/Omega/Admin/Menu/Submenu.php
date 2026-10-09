@@ -14,6 +14,9 @@ declare(strict_types=1);
 
 namespace Omega\Admin\Menu;
 
+use Closure;
+use TypeError;
+
 /**
  * Represents a submenu item within the WordPress admin menu system.
  *
@@ -45,10 +48,11 @@ class Submenu extends AbstractMenuItem
      *
      * Typically used by WordPress when the submenu is accessed.
      * Can be a callable pointing to a controller method or closure.
+     * Invokable callables are wrapped into a Closure on assignment.
      *
-     * @var callable|null
+     * @var Closure|null
      */
-    public mixed $callback = null;
+    public ?Closure $callback = null;
 
     /**
      * Parent menu instance or identifier.
@@ -105,7 +109,11 @@ class Submenu extends AbstractMenuItem
      */
     public function setCallback(callable $callback): static
     {
-        $this->callback = $callback;
+        $this->callback = $callback instanceof Closure
+            ? $callback
+            : static function (mixed ...$arguments) use ($callback): mixed {
+                return $callback(...$arguments);
+            };
 
         return $this;
     }
@@ -117,10 +125,11 @@ class Submenu extends AbstractMenuItem
      */
     public function getCallback(): callable
     {
-        /** @var callable $callback */
-        $callback = $this->callback;
+        if ($this->callback === null) {
+            throw new TypeError('Cannot read the callback of a submenu that has no callback assigned.');
+        }
 
-        return $callback;
+        return $this->callback;
     }
 
     /**

@@ -40,6 +40,7 @@ use function call_user_func;
 use function count;
 use function current_time;
 use function implode;
+use function in_array;
 use function is_array;
 use function is_callable;
 use function is_int;
@@ -237,7 +238,7 @@ class QueryBuilder
         $this->tableName = $model->getTableName();
 
         if ($model->trashed()) {
-            $this->whereArray[] = ['column' => 'deleted_at', 'value' => '!#####NULL#####!', 'operator' => 'IS'];
+            $this->whereArray[] = ['column' => 'deleted_at', 'value' => null, 'operator' => 'IS'];
         }
     }
     #endregion
@@ -301,17 +302,53 @@ class QueryBuilder
             return $this;
         }
 
-        $whereOperator = is_scalar($operator) ? (string) $operator : '=';
+        $this->pushWhereCondition($column, $operator, $value, $method, $table);
 
-        if (!isset($value)) {
+        return $this;
+    }
+
+    /**
+     * Store a column comparison condition, normalising NULL comparisons.
+     *
+     * When the compared value is null the condition is stored as an
+     * `IS NULL` / `IS NOT NULL` predicate, which is the only valid SQL form.
+     *
+     * @param mixed $column The column name (or the value in the two-argument form).
+     * @param mixed $operator The SQL operator, or the value when no operator is given.
+     * @param mixed $value The comparison value, when an operator is present.
+     * @param string|null $method Boolean operator (AND/OR) used to join conditions.
+     * @param string|null $table Optional table name for fully qualified columns.
+     * @return void
+     */
+    private function pushWhereCondition(
+        mixed $column,
+        mixed $operator,
+        mixed $value,
+        mixed $method,
+        mixed $table
+    ): void {
+        $operatorString = is_scalar($operator) ? (string) $operator : '';
+
+        // A null value is only an explicit NULL comparison when the operator
+        // is one that can be applied to NULL. Any other operator carrying a
+        // null value is actually the two-argument form `where($column, $value)`.
+        if ($value === null && !in_array($operatorString, ['IS', 'IS NOT', '=', '!=', '<>'], true)) {
             $whereOperator = '=';
+            $whereValue    = $operator;
+        } else {
+            $whereOperator = $operatorString !== '' ? $operatorString : '=';
+            $whereValue    = $value;
         }
 
         $where = [
             'column'   => is_scalar($column) ? (string) $column : '',
-            'value'    => $value ?? $operator,
+            'value'    => $whereValue,
             'operator' => $whereOperator
         ];
+
+        if ($whereValue === null) {
+            $where['operator'] = in_array($whereOperator, ['IS NOT', '!=', '<>'], true) ? 'IS NOT' : 'IS';
+        }
 
         if ($method) {
             $where['method'] = (string) $method;
@@ -322,8 +359,6 @@ class QueryBuilder
         }
 
         $this->whereArray[] = $where;
-
-        return $this;
     }
 
     /**
@@ -349,7 +384,9 @@ class QueryBuilder
             return $this;
         }
 
-        return $this->where($column, $operator, $value, 'OR');
+        $this->pushWhereCondition($column, $operator, $value, 'OR', null);
+
+        return $this;
     }
 
     /**
@@ -362,7 +399,7 @@ class QueryBuilder
      */
     public function whereNull(string $column): static
     {
-        $this->where($column, 'IS', '!#####NULL#####!');
+        $this->pushWhereCondition($column, 'IS', null, null, null);
 
         return $this;
     }
@@ -377,7 +414,7 @@ class QueryBuilder
      */
     public function whereNotNull(string $column): static
     {
-        $this->where($column, 'IS NOT', '!#####NULL#####!');
+        $this->pushWhereCondition($column, 'IS NOT', null, null, null);
 
         return $this;
     }
@@ -641,7 +678,7 @@ class QueryBuilder
                 $this->whereArray[] = [
                     'column'   => 'deleted_at',
                     'table'    => $tableName,
-                    'value'    => '!#####NULL#####!',
+                    'value'    => null,
                     'operator' => 'IS'
                 ];
             }
@@ -673,7 +710,7 @@ class QueryBuilder
                 $this->whereArray[] = [
                     'column'   => 'deleted_at',
                     'table'    => $tableName,
-                    'value'    => '!#####NULL#####!',
+                    'value'    => null,
                     'operator' => 'IS'
                 ];
             }
@@ -1160,7 +1197,7 @@ class QueryBuilder
             return true;
         }
 
-        return ($item['value'] ?? null) !== '!#####NULL#####!';
+        return ($item['value'] ?? null) !== null;
     }
 
     /**
@@ -1177,7 +1214,7 @@ class QueryBuilder
 
         $this->whereArray[] = [
             'column'   => 'deleted_at',
-            'value'    => '!#####NULL#####!',
+            'value'    => null,
             'operator' => 'IS NOT',
         ];
 
@@ -1501,14 +1538,23 @@ class QueryBuilder
      */
     private function resolveValueCondition(array $where, array $placeholders, array $values): array
     {
+        $tableName = $where['table'] ?? $this->tableName;
+        $method = $where['method'] ?? 'AND';
+
+        if ($where['value'] === null) {
+            $operator = $where['operator'] === 'IS NOT' ? 'IS NOT' : 'IS';
+            $placeholder = "{$tableName}.{$where['column']} {$operator} NULL";
+            $placeholders = $this->appendCondition($placeholders, $placeholder, $method);
+
+            return [$placeholders, $values];
+        }
+
         $operator = $where['operator'];
         $bindings = $this->bindableValues($where['value']);
         $value = $operator === 'IN'
             ? '(' . implode(', ', array_fill(0, count($bindings), '%s')) . ')'
             : '%s';
-        $tableName = $where['table'] ?? $this->tableName;
         $placeholder = "{$tableName}.{$where['column']} {$operator} {$value}";
-        $method = $where['method'] ?? 'AND';
         $placeholders = $this->appendCondition($placeholders, $placeholder, $method);
 
         return [$placeholders, array_merge($values, $bindings)];

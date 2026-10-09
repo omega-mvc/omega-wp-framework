@@ -74,10 +74,16 @@ final class ConsoleSupport
      */
     public static function removeConsoleBase(string $base): void
     {
-        foreach (['/bootstrap/cache', '/bootstrap', ''] as $suffix) {
+        foreach (['/bootstrap/cache/commands.php', '/bootstrap/cache', '/bootstrap', ''] as $suffix) {
             $path = $base . $suffix;
+
+            if (is_file($path)) {
+                @unlink($path);
+                continue;
+            }
+
             if (is_dir($path)) {
-                rmdir($path);
+                @rmdir($path);
             }
         }
     }

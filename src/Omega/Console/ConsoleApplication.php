@@ -27,17 +27,27 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 
+use function array_key_first;
 use function array_values;
 use function array_walk;
 use function class_exists;
+use function dirname;
 use function file_exists;
+use function file_get_contents;
+use function file_put_contents;
 use function getenv;
 use function is_array;
 use function is_dir;
+use function is_file;
+use function is_string;
+use function is_writable;
 use function iterator_to_array;
-use function putenv;
+use function json_decode;
+use function mkdir;
 use function Omega\Application\slash;
+use function rtrim;
 use function str_contains;
+use function var_export;
 
 /**
  * Console application entry point for Omega.
@@ -67,6 +77,9 @@ use function str_contains;
  */
 class ConsoleApplication
 {
+    /** @var string|null The most recently detected interactive shell, kept locally. */
+    protected ?string $shell = null;
+
     /** @ var array<int, class-string> The list of bootstrapper classes to run during initialization. */
     /**protected array $bootstrappers = [
         ConfigBootstrapper::class,
@@ -106,8 +119,10 @@ class ConsoleApplication
 
         $shell = getenv('SHELL');
 
+        $this->shell = $shell === false ? null : $shell;
+
         if (!$this->isSupportedShell($shell)) {
-            putenv('SHELL=/bin/bash');
+            $this->shell = '/bin/bash';
         }
 
         $omega = new ConsoleBranding(
@@ -188,6 +203,8 @@ class ConsoleApplication
             $commands = is_array($merged) ? $merged : [];
         } else {
             $commands = $this->discoverCommands();
+
+            $this->writeCommandCache($cacheFile, $commands);
         }
 
         /** @var array<string, class-string<Command>> $commands */
@@ -210,8 +227,8 @@ class ConsoleApplication
         $applicationCommands = slash(path: '/app/Commands');
 
         $commandPaths = [
-            'Omega\\Console\\Commands\\' => __DIR__ . $frameworkCommands,
-            'App\\Console\\Commands\\'   => $this->app->getBasePath() . $applicationCommands,
+            'Omega\\Console\\Commands\\'                          => __DIR__ . $frameworkCommands,
+            $this->applicationNamespace() . 'Console\\Commands\\' => $this->app->getBasePath() . $applicationCommands,
         ];
 
         $commands = [];
@@ -225,6 +242,69 @@ class ConsoleApplication
         });
 
         return $commands;
+    }
+
+    /**
+     * Resolve the PSR-4 namespace that maps the application source tree.
+     *
+     * The namespace is read from the composer.json file stored at the
+     * application base path, falling back to the conventional App namespace
+     * when no PSR-4 mapping is declared.
+     *
+     * @return string The application namespace, always suffixed with a backslash.
+     */
+    private function applicationNamespace(): string
+    {
+        $composerFile = $this->app->getBasePath() . '/composer.json';
+
+        if (is_file($composerFile)) {
+            $contents = file_get_contents($composerFile);
+
+            if (is_string($contents)) {
+                $composer = json_decode($contents, true);
+
+                if (is_array($composer)) {
+                    /** @var mixed $autoload */
+                    $autoload = $composer['autoload'] ?? null;
+                    /** @var mixed $prefixes */
+                    $prefixes = is_array($autoload) ? ($autoload['psr-4'] ?? null) : null;
+
+                    if (is_array($prefixes)) {
+                        $prefix = array_key_first($prefixes);
+
+                        if (is_string($prefix) && $prefix !== '') {
+                            return rtrim($prefix, '\\') . '\\';
+                        }
+                    }
+                }
+            }
+        }
+
+        return 'App\\';
+    }
+
+    /**
+     * Persist the discovered command map to the cache file.
+     *
+     * @param string $cacheFile Absolute path of the cache file to write.
+     * @param array<string, class-string> $commands Discovered command map.
+     * @return void
+     */
+    private function writeCommandCache(string $cacheFile, array $commands): void
+    {
+        $directory = dirname($cacheFile);
+
+        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+            return;
+        }
+
+        if (!is_writable($directory)) {
+            return;
+        }
+
+        $contents = "<?php\n\nreturn " . (string) var_export($commands, true) . ";\n";
+
+        file_put_contents($cacheFile, $contents);
     }
 
     /**

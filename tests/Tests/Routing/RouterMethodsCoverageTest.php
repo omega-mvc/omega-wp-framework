@@ -159,7 +159,7 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
     }
 
     /**
-     * When $_GET['path'] is set but does not match, a WP_Error is returned.
+     * When $_GET['path'] is set but does not match, an error notice is printed.
      */
     public function testAdminCallbackReturnsErrorWhenPathDoesNotMatch(): void
     {
@@ -169,10 +169,11 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $_GET['path'] = '/other';
         $callback = WordPressRuntime::firstSubmenuCallback();
-        $result = $callback();
+        ob_start();
+        $callback();
+        $output = (string) ob_get_clean();
 
-        $this->assertInstanceOf(WPError::class, $result);
-        $this->assertSame('not_found', $result->get_error_code());
+        $this->assertStringContainsString('Page not found', $output);
     }
 
     // ────────────────────────────────────────
@@ -490,7 +491,9 @@ final class RouterMethodsCoverageTest extends RoutingTestCase
 
         $child->addRoute('GET', '/top-level', ['Tests\Routing\Support\StubController', 'handle']);
 
-        $this->assertCount(2, WordPressRuntime::$submenus);
+        // Both routes belong to the same admin page, which is registered only once.
+        $this->assertCount(1, WordPressRuntime::$submenus);
+        $this->assertCount(2, $child->getRoutes());
     }
 
     // ────────────────────────────────────────

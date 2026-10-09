@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace Omega\Admin;
 
+use InvalidArgumentException;
+
 use function array_map;
 use function esc_url_raw;
 use function is_array;
@@ -25,6 +27,7 @@ use function rest_sanitize_boolean;
 use function sanitize_email;
 use function sanitize_text_field;
 use function sanitize_textarea_field;
+use function sprintf;
 use function wp_unslash;
 
 /**
@@ -191,13 +194,26 @@ class Sanitizer
      * - url
      * - textarea
      *
+     * An array value cannot be reduced to a scalar in silence: the caller must
+     * choose the explicit list vocabulary (arrayOfStrings) instead. The same
+     * applies to an unknown type, which is signaled with an exception rather
+     * than being silently treated as a string.
+     *
      * @param mixed $value Value to sanitize
      * @param string $type Sanitization type identifier
      * @param mixed $default Default value used when sanitization fails
      * @return mixed Sanitized value
+     * @throws InvalidArgumentException When the value is an array or the type is not supported.
      */
     public static function cast(mixed $value, string $type, mixed $default = null): mixed
     {
+        if (is_array($value)) {
+            throw new InvalidArgumentException(sprintf(
+                'Sanitizer::cast() cannot reduce an array to the type "%s"; use arrayOfStrings() instead.',
+                $type
+            ));
+        }
+
         $stringDefault = is_scalar($default) ? (string) $default : '';
         $intDefault    = is_numeric($default) ? (int) $default : 0;
         $floatDefault  = is_numeric($default) ? (float) $default : 0.0;
@@ -209,7 +225,11 @@ class Sanitizer
             'email'    => static::email($value, $stringDefault),
             'url'      => static::url($value, $stringDefault),
             'textarea' => static::textarea($value, $stringDefault),
-            default    => static::string($value, $stringDefault),
+            'string'   => static::string($value, $stringDefault),
+            default    => throw new InvalidArgumentException(sprintf(
+                'Unsupported sanitization type "%s".',
+                $type
+            )),
         };
     }
 }

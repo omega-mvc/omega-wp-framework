@@ -133,7 +133,7 @@ final class SoftDeletesTraitTest extends DatabaseTestCase
         SoftDeletePost::query()->where('id', 1)->get();
 
         $this->assertStringContainsString(
-            "deleted_at IS '!#####NULL#####!'",
+            "deleted_at IS NULL",
             $this->lastQuery()
         );
     }
@@ -158,7 +158,7 @@ final class SoftDeletesTraitTest extends DatabaseTestCase
         SoftDeletePost::onlyTrashed()->where('id', 1)->get();
 
         $this->assertStringContainsString(
-            "deleted_at IS NOT '!#####NULL#####!'",
+            "deleted_at IS NOT NULL",
             $this->lastQuery()
         );
     }

@@ -145,7 +145,10 @@ final class AbstractMenuItemTest extends TestCase
                 'title'      => 'Tasks',
                 'capability' => 'edit_posts',
                 'icon'       => 'dashicons-lightbulb',
+                'path'       => '',
                 'view'       => 'tasks.index',
+                'position'   => null,
+                'scripts'    => [],
             ],
             $item->toArray()
         );
@@ -164,7 +167,7 @@ final class AbstractMenuItemTest extends TestCase
             ->scripts(['tasks']);
 
         $this->assertSame(
-            ['slug', 'title', 'capability', 'icon', 'view'],
+            ['slug', 'title', 'capability', 'icon', 'path', 'view', 'position', 'scripts'],
             array_keys($item->toArray())
         );
     }

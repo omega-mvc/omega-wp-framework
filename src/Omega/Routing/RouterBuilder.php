@@ -129,9 +129,13 @@ class RouterBuilder
         $adminManager = $this->app->resolve('admin.manager');
         $adminManager->addHiddenNoticesPage($id);
 
-        $instance->page($id, $options);
+        $child = $instance->page($id, $options);
 
-        return $instance;
+        // Keep the child active so routes registered through the builder
+        // (for example inside a group callback) inherit the page context.
+        $this->instances[] = $child;
+
+        return $child;
     }
 
     /**
@@ -229,6 +233,19 @@ class RouterBuilder
     #endregion
 
     #region Group Context Management
+    /**
+     * Retrieve the current routing group nesting level.
+     *
+     * This is the single source of truth for the group depth shared by every
+     * router created through this builder.
+     *
+     * @return int Current group nesting level.
+     */
+    public function getGroupDepth(): int
+    {
+        return $this->groupDepth;
+    }
+
     /**
      * Increase the routing group nesting level.
      *

@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Tests\Admin;
 
 use Omega\Admin\AdminServiceProvider;
+use Omega\Admin\Menu\AdminPageRegistry;
 use Omega\Application\Application;
 use Omega\Application\ApplicationFactory;
 use Omega\Config\ConfigRepository;
@@ -57,6 +58,7 @@ abstract class AdminTestCase extends DatabaseTestCase
     {
         parent::setUp();
 
+        AdminPageRegistry::reset();
         AbstractFacade::clearResolvedInstances();
 
         $this->app = new Application('plugin', $this->pluginBasePath());

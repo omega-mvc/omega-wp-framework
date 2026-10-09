@@ -100,7 +100,7 @@ class ApplicationPlugin extends Application
     {
         parent::__construct($id, $basePath);
 
-        if (!file_exists($basePath . "/$id.php")) {
+        if (!file_exists("{$this->getAppRoot()}/{$id}.php")) {
             throw new FileNotFoundException(
                 "The plugin file for %s does not exist in the specified plugin root, "
                 . "in ApplicationFactory::createPlugin configure application_root.",

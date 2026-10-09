@@ -111,6 +111,10 @@ abstract class AbstractMenuBuilder
             ->title($title);
 
         add_action('admin_menu', function () use ($submenu): void {
+            if (!AdminPageRegistry::register($submenu->getSlug())) {
+                return;
+            }
+
             add_submenu_page(
                 $submenu->getParentMenu(),
                 $submenu->getTitle(),
@@ -149,6 +153,10 @@ abstract class AbstractMenuBuilder
             );
 
             foreach ($menu->getSubmenus() as $submenu) {
+                if (!AdminPageRegistry::register($submenu->getSlug())) {
+                    continue;
+                }
+
                 add_submenu_page(
                     $menu->getSlug(),
                     $submenu->getTitle(),

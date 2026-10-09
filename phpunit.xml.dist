@@ -8,6 +8,8 @@
          beStrictAboutOutputDuringTests="true"
          failOnRisky="true"
          failOnWarning="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
          colors="true"
 >
     <testsuites>

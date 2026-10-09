@@ -16,6 +16,7 @@ namespace Tests\Database;
 
 use Omega\Application\Exceptions\WordPressEnvironmentException;
 use Omega\Database\Database;
+use Omega\Database\Exceptions\BulkInsertException;
 use Omega\Database\DynamicModel;
 use Omega\Database\Migrations\Migrator;
 use Omega\Database\ORM\QueryBuilder;
@@ -27,7 +28,9 @@ use function count;
 use function defined;
 use function define;
 use function Omega\Application\slash;
+use function add_filter;
 use function str_contains;
+use function str_replace;
 
 #[CoversClass(Database::class)]
 #[CoversClass(DynamicModel::class)]
@@ -134,6 +137,25 @@ final class DatabaseTest extends DatabaseTestCase
 
         $this->assertSame(1, $database->query('SELECT 1'));
         $this->assertContains('SELECT 1', $this->wpdb()->queries);
+    }
+
+    public function testPrepareRejectsAPlaceholderArgumentMismatch(): void
+    {
+        $this->assertFalse($this->wpdb()->prepare('SELECT * FROM wp_posts WHERE id = %d'));
+        $this->assertFalse($this->wpdb()->prepare('SELECT %s', 'one', 'two'));
+        $this->assertSame('SELECT * FROM wp_posts', $this->wpdb()->prepare('SELECT * FROM wp_posts'));
+    }
+
+    public function testQueryAppliesTheWordPressQueryFilter(): void
+    {
+        add_filter('query', static function (string $query): string {
+            return str_replace('SELECT 1', 'SELECT 2', $query);
+        });
+
+        $this->wpdb()->query('SELECT 1');
+
+        $this->assertContains('SELECT 2', $this->wpdb()->queries);
+        $this->assertSame('query', WordPressRuntime::$appliedFilters[0][0] ?? null);
     }
 
     public function testGetResultsReturnsTheConfiguredRows(): void
@@ -280,5 +302,27 @@ final class DatabaseTest extends DatabaseTestCase
 
         $this->assertSame(1, $inserted);
         $this->assertTrue(str_contains($queries[0], 'INSERT INTO wp_posts () VALUES ()'));
+    }
+
+    public function testInsertMultipleRejectsRowsWithDifferentColumns(): void
+    {
+        $database = new Database($this->pluginApp());
+
+        $this->expectException(BulkInsertException::class);
+        $database->insertMultiple('wp_posts', [
+            ['id' => 1, 'title' => 'First'],
+            ['id' => 2, 'other' => 'Second'],
+        ]);
+    }
+
+    public function testInsertMultipleRejectsRowsWithColumnsInDifferentOrder(): void
+    {
+        $database = new Database($this->pluginApp());
+
+        $this->expectException(BulkInsertException::class);
+        $database->insertMultiple('wp_posts', [
+            ['id' => 1, 'title' => 'First'],
+            ['title' => 'Second', 'id' => 2],
+        ]);
     }
 }

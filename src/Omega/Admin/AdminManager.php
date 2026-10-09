@@ -16,7 +16,7 @@ namespace Omega\Admin;
 
 use function add_action;
 use function array_any;
-use function remove_all_actions;
+use function remove_action;
 
 /**
  * Manage WordPress admin panel behavior and runtime UI adjustments.
@@ -36,6 +36,9 @@ class AdminManager
 {
     /** @var array<int|string, string> List of admin page identifiers where notices should be hidden. */
     private array $hiddenPages = [];
+
+    /** @var array<int, callable> Notice callbacks registered through this manager. */
+    private array $noticeCallbacks = [];
 
     /**
      * Create a new admin manager instance.
@@ -86,7 +89,28 @@ class AdminManager
     }
 
     /**
-     * Remove WordPress admin notices for configured pages.
+     * Register a notice callback managed by this instance.
+     *
+     * The callback is attached to both the user and network admin notice
+     * hooks and tracked so that it can later be removed without affecting
+     * notices registered by other plugins.
+     *
+     * @param callable $callback Notice rendering callback.
+     * @return void
+     */
+    public function addNotice(callable $callback): void
+    {
+        $this->noticeCallbacks[] = $callback;
+
+        add_action('user_admin_notices', $callback);
+        add_action('admin_notices', $callback);
+    }
+
+    /**
+     * Remove the notices managed by this instance for configured pages.
+     *
+     * Only callbacks registered through {@see self::addNotice()} are removed,
+     * so notices added by other plugins remain untouched.
      *
      * @return void
      */
@@ -96,8 +120,10 @@ class AdminManager
             return;
         }
 
-        remove_all_actions('user_admin_notices');
-        remove_all_actions('admin_notices');
+        foreach ($this->noticeCallbacks as $callback) {
+            remove_action('user_admin_notices', $callback);
+            remove_action('admin_notices', $callback);
+        }
     }
 
     /**

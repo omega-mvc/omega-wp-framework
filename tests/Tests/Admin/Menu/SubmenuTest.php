@@ -170,7 +170,10 @@ final class SubmenuTest extends TestCase
                 'title'      => 'All Tasks',
                 'capability' => 'manage_options',
                 'icon'       => '',
+                'path'       => '',
                 'view'       => '',
+                'position'   => null,
+                'scripts'    => [],
             ],
             $submenu->toArray()
         );

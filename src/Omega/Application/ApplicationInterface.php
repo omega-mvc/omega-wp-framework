@@ -198,8 +198,8 @@ interface ApplicationInterface extends ContainerInterface
      * @param string $headerKey The name of the header field to retrieve
      *                      (e.g. "Version", "Author", "Text Domain").
      * @return string The value of the requested header field.
-     *               Returns an empty string if the field does not exist
-     *               or cannot be resolved.
+     * @throws \Omega\Application\Exceptions\HeaderNotFoundException
+     *         When the requested header field does not exist or is empty.
      */
     public function getHeaderField(string $headerKey): string;
     #endregion

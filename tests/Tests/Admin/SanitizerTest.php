@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Tests\Admin;
 
 use Omega\Admin\Sanitizer;
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -334,9 +335,34 @@ class SanitizerTest extends AdminTestCase
             'url'                => ['https://site.com', 'url', '', 'https://site.com'],
             'url fallback'       => ['bad url', 'url', 'http://x.com', 'http://x.com'],
             'textarea'           => ['<p>Hi</p>', 'textarea', '', 'Hi'],
-            'unknown type'       => ['<b>Text</b>', 'unknown', 'def', 'Text'],
             'non scalar default' => ['value', 'string', [], 'value'],
         ];
+    }
+
+    /**
+     * Test an unsupported type is rejected instead of silently sanitized.
+     *
+     * @return void
+     */
+    public function testItRejectsUnknownTypes(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unsupported sanitization type "unknown".');
+
+        Sanitizer::cast('<b>Text</b>', 'unknown', 'def');
+    }
+
+    /**
+     * Test an array value is rejected instead of silently becoming a string.
+     *
+     * @return void
+     */
+    public function testItRejectsArrayValues(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('use arrayOfStrings() instead');
+
+        Sanitizer::cast(['a', 'b'], 'string', 'def');
     }
 
     /**

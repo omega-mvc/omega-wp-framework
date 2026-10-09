@@ -259,9 +259,10 @@ final class ConsoleApplicationTest extends TestCase
     {
         $previous = $_SERVER['argv'] ?? null;
         $_SERVER['argv'] = ['pest', '--version'];
+        $base = ConsoleSupport::newConsoleBase();
 
         try {
-            $app = new Application('omega', '/');
+            $app = new Application('omega', $base);
             $console = new ConsoleApplication($app);
             $output = new BufferedOutput();
 
@@ -272,6 +273,8 @@ final class ConsoleApplicationTest extends TestCase
             } else {
                 $_SERVER['argv'] = $previous;
             }
+
+            ConsoleSupport::removeConsoleBase($base);
         }
     }
 
@@ -280,14 +283,20 @@ final class ConsoleApplicationTest extends TestCase
      */
     public function testHandlesAnArrayInputAsAVersionRequest(): void
     {
-        $app = new Application('omega', '/');
-        $console = new ConsoleApplication($app);
-        $output = new BufferedOutput();
+        $base = ConsoleSupport::newConsoleBase();
 
-        $exit = $console->handle(['pest', '--version'], $output);
+        try {
+            $app = new Application('omega', $base);
+            $console = new ConsoleApplication($app);
+            $output = new BufferedOutput();
 
-        $this->assertSame(0, $exit);
-        $this->assertStringContainsString('omega Framework:', $output->fetch());
+            $exit = $console->handle(['pest', '--version'], $output);
+
+            $this->assertSame(0, $exit);
+            $this->assertStringContainsString('omega Framework:', $output->fetch());
+        } finally {
+            ConsoleSupport::removeConsoleBase($base);
+        }
     }
 
     /**
@@ -295,14 +304,20 @@ final class ConsoleApplicationTest extends TestCase
      */
     public function testRunsADiscoveredCommandThroughHandle(): void
     {
-        $app = new Application('omega', '/');
-        $console = new ConsoleApplication($app);
-        $output = new BufferedOutput();
+        $base = ConsoleSupport::newConsoleBase();
 
-        $exit = $console->handle(['pest', 'ciao'], $output);
+        try {
+            $app = new Application('omega', $base);
+            $console = new ConsoleApplication($app);
+            $output = new BufferedOutput();
 
-        $this->assertSame(0, $exit);
-        $this->assertStringContainsString('Ciao Mondo!.', $output->fetch());
+            $exit = $console->handle(['pest', 'ciao'], $output);
+
+            $this->assertSame(0, $exit);
+            $this->assertStringContainsString('Ciao Mondo!.', $output->fetch());
+        } finally {
+            ConsoleSupport::removeConsoleBase($base);
+        }
     }
 
     /**
@@ -310,11 +325,17 @@ final class ConsoleApplicationTest extends TestCase
      */
     public function testPassesThroughAPreBuiltArrayInput(): void
     {
-        $app = new Application('omega', '/');
-        $console = new ConsoleApplication($app);
-        $output = new BufferedOutput();
+        $base = ConsoleSupport::newConsoleBase();
 
-        $this->assertSame(0, $console->handle(new ArrayInput(['--version' => true]), $output));
+        try {
+            $app = new Application('omega', $base);
+            $console = new ConsoleApplication($app);
+            $output = new BufferedOutput();
+
+            $this->assertSame(0, $console->handle(new ArrayInput(['--version' => true]), $output));
+        } finally {
+            ConsoleSupport::removeConsoleBase($base);
+        }
     }
 
     /**
@@ -322,10 +343,16 @@ final class ConsoleApplicationTest extends TestCase
      */
     public function testCreatesAConsoleOutputWhenNoneIsProvided(): void
     {
-        $app = new Application('omega', '/');
-        $console = new ConsoleApplication($app);
+        $base = ConsoleSupport::newConsoleBase();
 
-        $this->assertSame(0, $console->handle(['pest', '--version']));
+        try {
+            $app = new Application('omega', $base);
+            $console = new ConsoleApplication($app);
+
+            $this->assertSame(0, $console->handle(['pest', '--version']));
+        } finally {
+            ConsoleSupport::removeConsoleBase($base);
+        }
     }
 
     /**
@@ -333,22 +360,28 @@ final class ConsoleApplicationTest extends TestCase
      */
     public function testForcesShellAndHonoursSupportedShells(): void
     {
-        $app = new Application('omega', '/');
-        $console = new ConsoleApplication($app);
-        $previous = getenv('SHELL');
+        $base = ConsoleSupport::newConsoleBase();
 
-        foreach (['/bin/bash', '/usr/bin/zsh', '/usr/bin/fish', '', '/usr/bin/dash'] as $shell) {
-            try {
-                putenv('SHELL=' . $shell);
+        try {
+            $app = new Application('omega', $base);
+            $console = new ConsoleApplication($app);
+            $previous = getenv('SHELL');
 
-                $this->assertSame(0, $console->handle(['pest', '--version'], new BufferedOutput()));
-            } finally {
-                if ($previous === false) {
-                    putenv('SHELL');
-                } else {
-                    putenv('SHELL=' . $previous);
+            foreach (['/bin/bash', '/usr/bin/zsh', '/usr/bin/fish', '', '/usr/bin/dash'] as $shell) {
+                try {
+                    putenv('SHELL=' . $shell);
+
+                    $this->assertSame(0, $console->handle(['pest', '--version'], new BufferedOutput()));
+                } finally {
+                    if ($previous === false) {
+                        putenv('SHELL');
+                    } else {
+                        putenv('SHELL=' . $previous);
+                    }
                 }
             }
+        } finally {
+            ConsoleSupport::removeConsoleBase($base);
         }
     }
 
@@ -383,6 +416,7 @@ final class ConsoleApplicationTest extends TestCase
         $outputs = [
             new BufferedOutput(),
         ];
+        $base = ConsoleSupport::newConsoleBase();
 
         try {
             foreach ($shells as $shell) {
@@ -393,7 +427,7 @@ final class ConsoleApplicationTest extends TestCase
 
                     foreach ($inputs as $input) {
                         foreach ($outputs as $output) {
-                            $app = new Application('omega', '/');
+                            $app = new Application('omega', $base);
                             $console = new ConsoleApplication($app);
 
                             $this->assertSame(0, $console->handle($input, $output));
@@ -413,6 +447,8 @@ final class ConsoleApplicationTest extends TestCase
             } else {
                 $_SERVER['argv'] = $previousArgv;
             }
+
+            ConsoleSupport::removeConsoleBase($base);
         }
     }
 

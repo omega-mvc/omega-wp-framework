@@ -17,7 +17,6 @@ namespace Tests\Admin;
 use Omega\Admin\AdminManager;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-use function add_action;
 use function remove_all_actions;
 
 /**
@@ -75,8 +74,10 @@ class AdminManagerTest extends AdminTestCase
      */
     private function registerNoticeActions(): void
     {
-        add_action('user_admin_notices', 'omega_test_user_notices');
-        add_action('admin_notices', 'omega_test_admin_notices');
+        $this->manager->addNotice(static function (): void {
+        });
+        $this->manager->addNotice(static function (): void {
+        });
     }
 
     /**

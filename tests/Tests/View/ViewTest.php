@@ -80,6 +80,35 @@ final class ViewTest extends TestCase
     }
 
     /**
+     * Test the `$e` helper escapes the data a template echoes.
+     */
+    public function testExposesAnEscapingHelperToTemplates(): void
+    {
+        $this->assertSame(
+            "Hello, &lt;script&gt;alert(1)&lt;/script&gt;!\n",
+            $this->makeRenderer()->render('page', ['name' => '<script>alert(1)</script>'])
+        );
+    }
+
+    /**
+     * Test a `layout` data key wraps the child view in a parent template.
+     *
+     * The parent receives the child output as `$content` while the original
+     * data stays available to the layout itself.
+     */
+    public function testRendersTheChildViewWithinItsLayout(): void
+    {
+        $this->assertSame(
+            "[layout:Omega &lt;b&gt;:Omega &amp; Co]Hello, Omega &amp; Co!\n[/layout]\n",
+            $this->makeRenderer()->render('page', [
+                'layout' => 'layouts.app',
+                'title'  => 'Omega <b>',
+                'name'   => 'Omega & Co',
+            ])
+        );
+    }
+
+    /**
      * Test a missing view file raises an exception.
      */
     public function testThrowsWhenViewFileDoesNotExist(): void

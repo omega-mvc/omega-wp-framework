@@ -19,6 +19,7 @@ use function count;
 use function is_array;
 use function is_float;
 use function is_int;
+use function preg_match_all;
 use function preg_replace_callback;
 use function str_replace;
 
@@ -188,12 +189,22 @@ final class WPDB
             return false;
         }
 
-        if ($args === []) {
-            return $query;
-        }
-
         if (count($args) === 1 && is_array($args[0])) {
             $args = array_values($args[0]);
+        }
+
+        // Reject the placeholder/argument imbalance that the real wpdb reports.
+        // %% is an escaped percent, not a placeholder, so it is stripped first.
+        $placeholders = preg_match_all('/%[dfis]/', str_replace('%%', '', $query));
+
+        if ($placeholders === false || $placeholders !== count($args)) {
+            $this->last_error = 'wpdb::prepare() placeholder/argument count mismatch';
+
+            return false;
+        }
+
+        if ($placeholders === 0) {
+            return $query;
         }
 
         $index    = 0;
@@ -235,6 +246,10 @@ final class WPDB
      */
     public function query(string $query): int|false
     {
+        // The real wpdb runs every query through the `query` filter first.
+        $filtered = apply_filters('query', $query);
+        $query    = is_string($filtered) ? $filtered : $query;
+
         $this->queries[] = $query;
 
         $failed = $this->failNext;

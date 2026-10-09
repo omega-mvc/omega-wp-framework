@@ -187,7 +187,7 @@ final class QueryBuilderTest extends DatabaseTestCase
         QuerySubject::query()->whereNull('deleted_at')->get();
 
         $this->assertStringContainsString(
-            "WHERE wp_subjects.deleted_at IS '!#####NULL#####!'",
+            "WHERE wp_subjects.deleted_at IS NULL",
             $this->lastQuery()
         );
     }
@@ -200,7 +200,7 @@ final class QueryBuilderTest extends DatabaseTestCase
         QuerySubject::query()->whereNotNull('deleted_at')->get();
 
         $this->assertStringContainsString(
-            "WHERE wp_subjects.deleted_at IS NOT '!#####NULL#####!'",
+            "WHERE wp_subjects.deleted_at IS NOT NULL",
             $this->lastQuery()
         );
     }
@@ -435,7 +435,7 @@ final class QueryBuilderTest extends DatabaseTestCase
 
         $query = $this->lastQuery();
         $this->assertStringContainsString("WHERE wp_posts.title = 'x'", $query);
-        $this->assertStringContainsString("AND wp_posts.deleted_at IS '!#####NULL#####!'", $query);
+        $this->assertStringContainsString("AND wp_posts.deleted_at IS NULL", $query);
     }
 
     /**
@@ -457,7 +457,7 @@ final class QueryBuilderTest extends DatabaseTestCase
     {
         QuerySubject::query()->whereRelation('trashedParent', 'title', 'x')->get();
 
-        $this->assertStringContainsString("AND wp_posts.deleted_at IS '!#####NULL#####!'", $this->lastQuery());
+        $this->assertStringContainsString("AND wp_posts.deleted_at IS NULL", $this->lastQuery());
     }
 
     /**
@@ -951,7 +951,7 @@ final class QueryBuilderTest extends DatabaseTestCase
         SoftDeletePost::query()->whereRaw('1 = 1')->where('id', 2)->forceDelete();
 
         $this->assertSame(
-            [['wp_posts', ['deleted_at' => '!#####NULL#####!', 'id' => 2]]],
+            [['wp_posts', ['deleted_at' => null, 'id' => 2]]],
             $this->wpdb()->deletes
         );
     }
@@ -1025,13 +1025,13 @@ final class QueryBuilderTest extends DatabaseTestCase
     {
         SoftDeletePost::query()
             ->where('title', 'a')
-            ->where('deleted_at', 'IS NOT', '!#####NULL#####!')
+            ->where('deleted_at', 'IS NOT', null)
             ->where('deleted_at', 'IS', '2020-01-01')
             ->withTrashed()
             ->get();
 
         $query = $this->lastQuery();
-        $this->assertStringContainsString("wp_posts.deleted_at IS NOT '!#####NULL#####!'", $query);
+        $this->assertStringContainsString("wp_posts.deleted_at IS NOT NULL", $query);
         $this->assertStringContainsString("wp_posts.deleted_at IS '2020-01-01'", $query);
     }
 
@@ -1043,7 +1043,7 @@ final class QueryBuilderTest extends DatabaseTestCase
         SoftDeletePost::query()->onlyTrashed()->get();
 
         $this->assertStringContainsString(
-            "WHERE wp_posts.deleted_at IS NOT '!#####NULL#####!'",
+            "WHERE wp_posts.deleted_at IS NOT NULL",
             $this->lastQuery()
         );
     }
@@ -1180,7 +1180,7 @@ final class QueryBuilderTest extends DatabaseTestCase
             'raw-on'     => '(title = %s)',
             'in'         => 'wp_subjects.id IN (%s, %s, %s)',
             'in-empty'   => 'wp_subjects.id IN (%s)',
-            'nulls'      => 'wp_subjects.title IS %s AND wp_subjects.body IS NOT %s',
+            'nulls'      => 'wp_subjects.title IS NULL AND wp_subjects.body IS NOT NULL',
             'column'     => '',
             'exists'     => 'wp_subjects.id = %s',
             'scoped'     => 'wp_widgets.title = %s',

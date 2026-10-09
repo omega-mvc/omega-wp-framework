@@ -106,6 +106,13 @@ final class WordPressRuntime
     public static array $filters = [];
 
     /**
+     * Recorded applications of apply_filters(): [hook, value, args].
+     *
+     * @var list<array{0:string,1:mixed,2:array<int,mixed>}>
+     */
+    public static array $appliedFilters = [];
+
+    /**
      * Recorded calls to add_action(): list of positional argument arrays.
      *
      * @var list<array<int|string, mixed>>
@@ -220,6 +227,7 @@ final class WordPressRuntime
         self::$fileHeaders = [];
         self::$theme = null;
         self::$filters = [];
+        self::$appliedFilters = [];
         self::$actions = [];
         self::$textdomains = [];
         self::$firedActions = [];

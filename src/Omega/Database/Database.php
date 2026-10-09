@@ -14,8 +14,10 @@ declare(strict_types=1);
 
 namespace Omega\Database;
 
+use Omega\Application\ApplicationFactory;
 use Omega\Application\ApplicationInterface;
 use Omega\Application\Exceptions\WordPressEnvironmentException;
+use Omega\Database\Exceptions\BulkInsertException;
 use Omega\Database\Migrations\Migrator;
 use Omega\Database\ORM\QueryBuilder;
 use ReflectionException;
@@ -106,6 +108,26 @@ class Database
     }
     #endregion
 
+    #region Instance Resolution
+    /**
+     * Resolve the database manager bound to the active application.
+     *
+     * The static helpers below delegate to this instance so that every
+     * operation runs against the connection, prefix and transaction state
+     * of the correct application instead of a process-wide global.
+     *
+     * @return self The database manager of the active application.
+     * @throws ReflectionException When the service cannot be resolved.
+     */
+    private static function current(): self
+    {
+        /** @var self $database */
+        $database = ApplicationFactory::app('database');
+
+        return $database;
+    }
+    #endregion
+
     #region Schema
     /**
      * Generate a fully qualified WordPress table name.
@@ -119,10 +141,7 @@ class Database
      */
     public static function getTableName(string $tableName, string $prefix = ''): string
     {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
-
-        return sprintf('%s%s%s', $wpdb->prefix, $prefix, $tableName);
+        return sprintf('%s%s%s', self::current()->wpdb->prefix, $prefix, $tableName);
     }
 
     /**
@@ -142,8 +161,7 @@ class Database
      */
     public static function createOrUpdateTable(string $tableName, array $columns): void
     {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
+        $wpdb = self::current()->wpdb;
 
         $charsetCollate = $wpdb->get_charset_collate();
         $fullTableName  = self::getTableName($tableName);
@@ -171,8 +189,7 @@ class Database
      */
     public static function tableExists(string $tableName): bool
     {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
+        $wpdb = self::current()->wpdb;
 
         $exists = $wpdb->get_var(
             $wpdb->prepare("SHOW TABLES LIKE %s", $tableName)
@@ -283,8 +300,7 @@ class Database
      */
     public static function insert(string $table, array $data): bool|int
     {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
+        $wpdb = self::current()->wpdb;
 
         $inserted = $wpdb->insert($table, $data);
 
@@ -337,6 +353,19 @@ class Database
         $columns    = array_keys($firstItem);
         $columnsSql = implode(', ', $columns);
         $rows       = array_values($data);
+
+        foreach ($rows as $index => $item) {
+            if (array_keys($item) !== $columns) {
+                throw new BulkInsertException(
+                    sprintf(
+                        'Row %d does not match the column set of the first row; '
+                        . 'bulk inserts require every row to declare the same columns in the same order.',
+                        $index
+                    )
+                );
+            }
+        }
+
         $values     = array_merge(...array_map(static fn (array $item): array => array_values($item), $rows));
 
         $placeholders = array_map(

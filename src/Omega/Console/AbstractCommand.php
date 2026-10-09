@@ -71,17 +71,29 @@ abstract class AbstractCommand extends Command
         }
     }
 
-    /** @var string Command name used to invoke the command from the CLI */
-    protected string $name;
-
-    /** @var string|null Short description displayed in the command list */
-    protected ?string $description = null;
-
     /** @var array<int|string, string> Alternative names that can be used to execute the command */
     protected array $aliases = [];
 
     /** @var bool Whether the command should be hidden from the command list */
     protected bool $hidden = false;
+
+    /**
+     * Create a new command instance.
+     *
+     * The Omega application is assigned before parent::__construct() runs, so
+     * configure() can already rely on $this->app being available while the
+     * command is being built (for example when resolving framework defaults).
+     *
+     * @param ApplicationInterface|null $app The Omega application instance.
+     */
+    public function __construct(?ApplicationInterface $app = null)
+    {
+        if ($app !== null) {
+            $this->app = $app;
+        }
+
+        parent::__construct();
+    }
 
     /**
      * Executes the console command.

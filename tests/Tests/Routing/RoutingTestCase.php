@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Tests\Routing;
 
 use Omega\Admin\AdminManager;
+use Omega\Admin\Menu\AdminPageRegistry;
 use Omega\Application\Application;
 use Omega\Routing\Router;
 use Omega\Routing\RouterBuilder;
@@ -44,6 +45,7 @@ abstract class RoutingTestCase extends TestCase
         parent::setUp();
 
         WordPressRuntime::reset();
+        AdminPageRegistry::reset();
     }
 
     /**

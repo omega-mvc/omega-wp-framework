@@ -21,6 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
 use function file_exists;
+use function implode;
 use function in_array;
 use function memory_get_usage;
 use function round;
@@ -87,7 +88,7 @@ final class ConsoleBranding extends SymfonyConsole
      */
     public function doRun(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->isSilentCommand($input)) {
+        if (!$this->isSilentCommand($input) && !$input->hasParameterOption('--no-ansi')) {
             $this->renderHeader($output);
         }
 
@@ -144,17 +145,18 @@ final class ConsoleBranding extends SymfonyConsole
         [$debugColor, $debugLabel]   = $debug ? ['green', 'ON'] : ['red', 'OFF'];
         [$cachedColor, $cachedLabel] = $isCached ? ['green', 'YES'] : ['yellow', 'NO'];
 
-        $output->writeln(sprintf(
-            '<fg=gray> Environment:</> <fg=yellow>%s</>  |  <fg=gray>Debug:</> <fg=%s>%s</>  |  '
-            . '<fg=gray>PHP:</> %s  |  <fg=gray>Command Cache:</> <fg=%s>%s</>  |  <fg=gray>Memory:</> %s',
-            $env,
-            $debugColor,
-            $debugLabel,
-            $php,
-            $cachedColor,
-            $cachedLabel,
-            $memory
-        ));
+        $segments = [
+            sprintf('<fg=gray> Environment:</> <fg=yellow>%s</>', $env),
+            sprintf('<fg=gray>Debug:</> <fg=%s>%s</>', $debugColor, $debugLabel),
+            sprintf('<fg=gray>PHP:</> %s', $php),
+            sprintf('<fg=gray>Command Cache:</> <fg=%s>%s</>', $cachedColor, $cachedLabel),
+        ];
+
+        if ($debug) {
+            $segments[] = sprintf('<fg=gray>Memory:</> %s', $memory);
+        }
+
+        $output->writeln(implode('  |  ', $segments));
     }
 
     /**

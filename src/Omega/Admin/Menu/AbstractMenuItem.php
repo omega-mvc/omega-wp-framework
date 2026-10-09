@@ -243,7 +243,10 @@ abstract class AbstractMenuItem
             'title'      => $this->title,
             'capability' => $this->capability,
             'icon'       => $this->icon,
+            'path'       => $this->path,
             'view'       => $this->view,
+            'position'   => $this->position,
+            'scripts'    => $this->scripts,
         ];
     }
 }

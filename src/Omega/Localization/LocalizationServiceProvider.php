@@ -23,8 +23,11 @@ use function did_action;
 use function load_plugin_textdomain;
 use function load_theme_textdomain;
 use function ltrim;
+use function realpath;
 use function sprintf;
-use function str_replace;
+use function str_starts_with;
+use function strlen;
+use function substr;
 
 /**
  * Registers the application text domain with WordPress.
@@ -117,16 +120,31 @@ class LocalizationServiceProvider extends ServiceProvider
     /**
      * Resolve the application path relative to the WordPress plugins directory.
      *
-     * WordPress prefixes plugin language paths with WP_PLUGIN_DIR, so an
-     * absolute application path would be prepended twice and never resolve.
+     * WordPress prefixes plugin language paths with WP_PLUGIN_DIR, so the
+     * application root is resolved against the real plugins directory and
+     * returned relative to it whenever possible.
      *
-     * @return string The application root relative to WP_PLUGIN_DIR.
+     * @return string The application root relative to WP_PLUGIN_DIR, or the
+     *                absolute base path when the application is installed
+     *                outside the plugins directory.
      */
     private function pluginRelativePath(): string
     {
-        return ltrim(
-            str_replace(WP_PLUGIN_DIR, '', $this->app->getBasePath()),
-            '/\\'
-        );
+        $pluginDir = realpath(WP_PLUGIN_DIR);
+        $basePath  = realpath($this->app->getBasePath());
+
+        if (
+            $pluginDir !== false
+            && $basePath !== false
+            && str_starts_with($basePath, $pluginDir . DIRECTORY_SEPARATOR)
+        ) {
+            return ltrim(substr($basePath, strlen($pluginDir)), '/\\');
+        }
+
+        // The application lives outside the WordPress plugins directory (for
+        // example an mu-plugins or custom installation): WordPress still
+        // prefixes plugin language paths with WP_PLUGIN_DIR, so there is no
+        // relative path and the absolute base path is the only usable value.
+        return $this->app->getBasePath();
     }
 }

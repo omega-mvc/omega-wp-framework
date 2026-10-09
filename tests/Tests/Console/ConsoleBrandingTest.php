@@ -65,19 +65,26 @@ final class ConsoleBrandingTest extends TestCase
      */
     public function testRendersTheBrandedHeaderForNonSilentCommands(): void
     {
-        $app = new Application('omega', '/');
-        $branding = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
-        $branding->addCommand((new Command('greet'))->setCode(static fn (): int => 0));
-        $output = new BufferedOutput();
+        $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'omega-branding-' . bin2hex(random_bytes(4));
+        mkdir($base, 0777, true);
 
-        $exit = $branding->doRun(new ArrayInput(['greet']), $output);
-        $display = $output->fetch();
+        try {
+            $app = new Application('omega', $base);
+            $branding = new ConsoleBranding($app, 'Omega Test:', '1.0.0');
+            $branding->addCommand((new Command('greet'))->setCode(static fn (): int => 0));
+            $output = new BufferedOutput();
 
-        $this->assertSame(0, $exit);
-        $this->assertStringContainsString('____', $display);
-        $this->assertStringContainsString('Environment:', $display);
-        $this->assertStringContainsString('Debug: OFF', $display);
-        $this->assertStringContainsString('Command Cache: NO', $display);
+            $exit = $branding->doRun(new ArrayInput(['greet']), $output);
+            $display = $output->fetch();
+
+            $this->assertSame(0, $exit);
+            $this->assertStringContainsString('____', $display);
+            $this->assertStringContainsString('Environment:', $display);
+            $this->assertStringContainsString('Debug: OFF', $display);
+            $this->assertStringContainsString('Command Cache: NO', $display);
+        } finally {
+            @rmdir($base);
+        }
     }
 
     /**

@@ -15,12 +15,16 @@ declare(strict_types=1);
 namespace Omega\Console;
 
 use Omega\Application\ApplicationInterface;
+use ReflectionClass;
 use ReflectionException;
+use ReflectionNamedType;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
 use Symfony\Component\Console\Exception\CommandNotFoundException;
 
 use function array_keys;
+use function is_a;
+use function is_subclass_of;
 use function sprintf;
 
 /**
@@ -77,14 +81,65 @@ final class CommandLoader implements CommandLoaderInterface
             );
         }
 
-        /** @var Command $command */
-        $command = $this->app->resolve($this->commands[$name]);
+        $command = $this->createCommand($this->commands[$name]);
 
         if ($command instanceof AbstractCommand) {
             $command->app = $this->app;
         }
 
         return $command;
+    }
+
+    /**
+     * Resolve a command class through the container.
+     *
+     * Commands extending AbstractCommand receive the application as a
+     * constructor dependency, so it is injected before the instance is built
+     * and is available inside configure(). Other Symfony commands are resolved
+     * with their own constructor signature untouched.
+     *
+     * @param class-string<Command> $class The command class to resolve.
+     * @return Command The resolved command instance.
+     * @throws ReflectionException If the command class cannot be reflected.
+     */
+    private function createCommand(string $class): Command
+    {
+        if (is_subclass_of($class, AbstractCommand::class) && $this->constructorAcceptsApplication($class)) {
+            /** @var Command $command */
+            $command = $this->app->resolve($class, $this->app);
+
+            return $command;
+        }
+
+        /** @var Command $command */
+        $command = $this->app->resolve($class);
+
+        return $command;
+    }
+
+    /**
+     * Determine whether a command constructor declares the application as a dependency.
+     *
+     * @param class-string<Command> $class The command class to inspect.
+     * @return bool True when the constructor accepts an ApplicationInterface argument.
+     */
+    private function constructorAcceptsApplication(string $class): bool
+    {
+        $constructor = (new ReflectionClass($class))->getConstructor();
+
+        if ($constructor === null) {
+            return false;
+        }
+
+        foreach ($constructor->getParameters() as $parameter) {
+            $type = $parameter->getType();
+
+            if ($type instanceof ReflectionNamedType && !$type->isBuiltin() && is_a($this->app, $type->getName())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

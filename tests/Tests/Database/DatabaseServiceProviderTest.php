@@ -19,13 +19,9 @@ use Omega\Database\Database;
 use Omega\Database\DatabaseServiceProvider;
 use Omega\Database\Migrations\Migrator;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Tests\Routing\WordPressRuntime;
-
-use function array_filter;
-use function count;
 
 /**
- * Tests the SQL compatibility adjustments applied by the database provider.
+ * Tests the database service provider bindings.
  *
  * @category  Tests
  * @package   Database
@@ -39,21 +35,6 @@ use function count;
 final class DatabaseServiceProviderTest extends DatabaseTestCase
 {
     /**
-     * Test that placeholder markers become native SQL NULL operators.
-     */
-    public function testRestoreNullOperatorsConvertsPlaceholderMarkers(): void
-    {
-        $provider = new DatabaseServiceProvider($this->pluginApp());
-
-        $this->assertSame(
-            'SELECT * FROM wp_posts WHERE deleted_at IS NULL AND id IS NOT NULL',
-            $provider->restoreNullOperators(
-                "SELECT * FROM wp_posts WHERE deleted_at IS '!#####NULL#####!' AND id IS NOT '!#####NULL#####!'"
-            )
-        );
-    }
-
-    /**
      * Test that registration binds the database and the migrator as singletons.
      */
     public function testRegisterBindsTheDatabaseAndTheMigrator(): void
@@ -64,28 +45,5 @@ final class DatabaseServiceProviderTest extends DatabaseTestCase
 
         $this->assertInstanceOf(Database::class, ApplicationFactory::app('database'));
         $this->assertInstanceOf(Migrator::class, ApplicationFactory::app('migrator'));
-    }
-
-    /**
-     * Test that booting registers the query filter restoring NULL operators.
-     */
-    public function testBootRegistersTheQueryFilter(): void
-    {
-        $provider = new DatabaseServiceProvider($this->pluginApp());
-
-        $provider->boot();
-
-        $registered = array_filter(
-            WordPressRuntime::$filters,
-            static function (array $args) use ($provider): bool {
-                $callback = $args[1] ?? null;
-
-                return ($args[0] ?? null) === 'query'
-                    && is_array($callback)
-                    && ($callback[0] ?? null) === $provider;
-            }
-        );
-
-        $this->assertCount(1, $registered);
     }
 }

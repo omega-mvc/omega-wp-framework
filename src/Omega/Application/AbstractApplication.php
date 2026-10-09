@@ -70,7 +70,6 @@ abstract class AbstractApplication extends Container implements ApplicationInter
      * - Registers core container bindings
      * - Registers base framework service providers
      * - Registers user-defined service providers
-     * - Registers core container aliases
      *
      * The application instance is fully bootstrapped at the end of this process,
      * meaning that all core services are available for resolution and use.
@@ -82,7 +81,6 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         $this->registerBaseBindings();
         $this->registerBaseServiceProviders();
         $this->registerServiceProviders();
-        $this->registerCoreContainerAliases();
     }
 
     /**
@@ -185,14 +183,6 @@ abstract class AbstractApplication extends Container implements ApplicationInter
         return is_string($provider) ? new $provider($this) : $provider;
     }
 
-    /**
-     * Register core container aliases for internal services.
-     *
-     * @return void
-     */
-    protected function registerCoreContainerAliases(): void
-    {
-    }
     #endregion
 
     #region Questo metodo è provvisorio.

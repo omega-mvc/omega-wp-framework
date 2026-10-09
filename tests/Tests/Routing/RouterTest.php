@@ -14,8 +14,15 @@ declare(strict_types=1);
 
 namespace Tests\Routing;
 
+use Omega\Application\Application;
 use Omega\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Tests\Admin\Fixtures\HookedAdminMenu;
+use Tests\Routing\Support\StubController;
+
+use function array_filter;
+use function array_values;
+use function is_callable;
 
 /**
  * Tests the Router REST registration behavior.
@@ -131,5 +138,33 @@ final class RouterTest extends RoutingTestCase
         $router->addRoute(['GET', 'POST'], '/tasks', ['App\Http\Controllers\TaskController', 'index']);
 
         $this->assertSame(['GET', 'POST'], WordPressRuntime::$restRoutes[0][2]['methods']);
+    }
+
+    /**
+     * A page already registered by the menu builder must not be registered again.
+     */
+    public function testAdminPageAlreadyRegisteredByTheMenuBuilderIsNotDuplicated(): void
+    {
+        $builder = new HookedAdminMenu($this->createStub(Application::class));
+        $builder->register();
+
+        $router = $this->makeRouter();
+        $router->page('omega-hooks-child')->addRoute('GET', '/', [StubController::class, 'handle']);
+
+        $registered = array_values(array_filter(
+            WordPressRuntime::$actions,
+            static fn(array $action): bool => $action[0] === 'admin_menu'
+        ));
+        $this->assertNotEmpty($registered);
+
+        foreach ($registered as $registration) {
+            $callback = $registration[1] ?? null;
+            if (is_callable($callback)) {
+                $callback();
+            }
+        }
+
+        $this->assertCount(1, WordPressRuntime::$submenus);
+        $this->assertSame('omega-hooks-child', WordPressRuntime::$submenus[0][4]);
     }
 }

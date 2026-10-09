@@ -209,6 +209,39 @@ function add_filter(mixed ...$args): void
     WordPressRuntime::$filters[] = $args;
 }
 
+if (!function_exists('apply_filters')) {
+    /**
+     * Stub for apply_filters().
+     *
+     * Applies every callback registered for the hook in registration order and
+     * records the call, so tests can observe a filter rewriting a value without
+     * booting the real WordPress hook system.
+     *
+     * @param string $hook  Filter hook name.
+     * @param mixed  $value Value being filtered.
+     * @param mixed  ...$args Additional arguments passed to the callbacks.
+     * @return mixed The filtered value.
+     */
+    function apply_filters(string $hook, mixed $value, mixed ...$args): mixed
+    {
+        Tests\Routing\WordPressRuntime::$appliedFilters[] = [$hook, $value, array_values($args)];
+
+        foreach (Tests\Routing\WordPressRuntime::$filters as $filter) {
+            if (($filter[0] ?? null) !== $hook) {
+                continue;
+            }
+
+            $callback = $filter[1] ?? null;
+
+            if (is_callable($callback)) {
+                $value = $callback($value, ...$args);
+            }
+        }
+
+        return $value;
+    }
+}
+
 /**
  * Stub for sanitize_text_field().
  *

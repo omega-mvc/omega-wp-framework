@@ -77,6 +77,9 @@ class Application extends AbstractApplication
 
     /** @var string Unique application identifier. */
     protected string $id;
+
+    /** @var string|null Memoized application entry file path. */
+    private ?string $appFile = null;
     #endregion
 
     #region Lifecycle
@@ -202,11 +205,13 @@ class Application extends AbstractApplication
      */
     public function getAppFile(): string
     {
-        if ($this->isThemeApplication()) {
-            return "{$this->getAppRoot()}/style.css";
+        if ($this->appFile === null) {
+            $this->appFile = $this->isThemeApplication()
+                ? "{$this->getAppRoot()}/style.css"
+                : "{$this->getAppRoot()}/{$this->getId()}.php";
         }
 
-        return "{$this->getAppRoot()}/{$this->getId()}.php";
+        return $this->appFile;
     }
 
     /**
@@ -348,11 +353,11 @@ class Application extends AbstractApplication
      */
     private function isValidData(string $id, string $basePath): void
     {
-        if (empty($id)) {
+        if ($id === '') {
             throw new MissingParameterException('The "id" parameter is required.');
         }
 
-        if (empty($basePath)) {
+        if ($basePath === '') {
             throw new MissingParameterException('The "basePath" parameter is required.');
         }
     }

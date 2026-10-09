@@ -14,8 +14,11 @@ declare(strict_types=1);
 
 namespace Omega\Application;
 
+use Omega\Application\Exceptions\FileNotFoundException;
 use Omega\Application\Exceptions\HeaderNotFoundException;
 
+use function file_exists;
+use function rtrim;
 use function sprintf;
 use function wp_get_theme;
 
@@ -99,6 +102,15 @@ class ApplicationTheme extends Application
     public function __construct(string $id, string $basePath)
     {
         parent::__construct($id, $basePath);
+
+        if (!file_exists(rtrim($basePath, '/\\') . '/style.css')) {
+            throw new FileNotFoundException(
+                'The theme entry file (style.css) for %s does not exist '
+                . 'in the specified theme root, in ApplicationFactory::createTheme '
+                . 'configure application_root.',
+                $id
+            );
+        }
     }
     #endregion
 
